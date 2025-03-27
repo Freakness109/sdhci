@@ -19,6 +19,7 @@ module crc7_write (
   always_comb begin : crc7_comb
     lower_3_d = lower_3_q;
     upper_4_d = upper_4_q;
+    dat_i_xor_out = 1'b0;
     
     if (shift_out_crc7_i) begin : shift_out_result
       upper_4_d[3:1]  = upper_4_q[2:0];
