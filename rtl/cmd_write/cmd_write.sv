@@ -6,12 +6,12 @@ module cmd_write (
   input   logic         sd_freq_clk_i,  //clock at sd frequency, should be active independantly of sd clock
   input   logic         rst_ni,
 
-  input   logic         start_tx_i,
+  input   logic         start_tx_i,     //start transmission, only works when tx_done_o is high
   input   logic [31:0]  cmd_argument_i, //from cmd argument register
   input   logic [5:0]   cmd_nr_i, //cmd index (eg. CMD12 == 6'b001100)
   input   logic         cmd_od_i, //open drain output mode, otherwise push-pull
 
-  output  logic         tx_done_o //high when nothing is currently being transmitted
+  output  logic         tx_done_o //high when nothing is currently being transmitted (module is in READY state)
 );
   //State machine/////////////////////////////////////////////////////////////////////////////////////
   logic [5:0] bit_count;
@@ -48,9 +48,9 @@ module cmd_write (
   `FF (tx_state_q, tx_state_d, READY, sd_freq_clk_i, rst_ni);
 
   //data path////////////////////////////////////////////////////////////////////////////////////////////
-  logic [39:0] cmd_bits_47_to_8;
-  assign cmd_bits_47_to_8 [39]    = 1'b0;
-  assign cmd_bits_47_to_8 [38]    = 1'b1;
+  logic [39:0] cmd_bits_47_to_8; //cmd without crc7 and end bit
+  assign cmd_bits_47_to_8 [39]    = 1'b0; //start bit
+  assign cmd_bits_47_to_8 [38]    = 1'b1; //transmission bit
   assign cmd_bits_47_to_8 [37:32] = cmd_nr_i;
   assign cmd_bits_47_to_8 [31:0]  = cmd_argument_i;
 
@@ -75,31 +75,31 @@ module cmd_write (
 
       SHIFT_REG_OUT:begin
         shift_en    = 1'b1;
-        highz       = 1'b0;
+        highz       = 1'b0; //bus active
         sd_cmd      = shift_reg_out;
       end
 
       CRC7_OUT:     begin
         crc7_shift_en = 1'b1;
-        highz         = 1'b0;
+        highz         = 1'b0; //bus active
         sd_cmd        = crc7_out;
       end
 
       END_BIT_OUT:  begin
-        sd_cmd = 1'b1;
-        highz  = 1'b0;
+        sd_cmd = 1'b1;  //end bit
+        highz  = 1'b0;  //bus active
       end
 
       default: ;
     endcase
   end
 
-  assign  tx_done_o = ~tx_ongoing_q;
+  assign  tx_done_o = ~tx_ongoing_q; 
 
   `FF (tx_ongoing_q, tx_ongoing_d, 0, sd_freq_clk_i, rst_ni);
 
   par_ser_shift_reg #(
-    .NumBits    (40),
+    .NumBits    (40), //start bit + transmission bit + 6 cmd bits + 32 argument bits
     .ShiftInVal (0)
   ) i_cmd_shift_reg (
     .clk_i          (sd_freq_clk_i),
@@ -120,18 +120,18 @@ module cmd_write (
   );
 
   counter #(
-    .WIDTH            (3'd6),
-    .STICKY_OVERFLOW  (1'b0)
+    .WIDTH            (3'd6), //6 bit counter (48 bits to transmit)
+    .STICKY_OVERFLOW  (1'b0)  //overflow not needed
   ) i_tx_bits_counter (
     .clk_i      (sd_freq_clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (tx_done),
+    .clear_i    (tx_done),  //clears to 0
     .en_i       (tx_ongoing_q),
-    .load_i     (1'b0),
-    .down_i     (1'b0),
-    .d_i        (6'b0),
-    .q_o        (bit_count),
-    .overflow_o ()
+    .load_i     (1'b0), //always start at 0, no loading needed
+    .down_i     (1'b0), //count up
+    .d_i        (6'b0), //not needed
+    .q_o        (bit_count),  
+    .overflow_o ()  //overflow not nneded
   );
 
   sd_bus_cmd_driver i_sd_bus_cmd_driver (

@@ -1,5 +1,8 @@
+//Handles reception of responses on CMD line
+
+//Untested!
 module rsp_read (
-  input logic sd_clk_i,
+  input logic sd_clk_i,         //should be synchronous with clk line of Sd card
   input logic rst_ni,
   
   input logic long_rsp_i,        //high if response is of type R2 (136 bit)
@@ -8,7 +11,7 @@ module rsp_read (
   output  logic rsp_valid_o,     //write response, end_bit_err and crc_corr to register
   output  logic end_bit_err_o,    //valid at the same time as response
   output  logic [126:0] rsp_o,   //without start, transmission, reserved and end bits
-  output  logic crc_corr_o
+  output  logic crc_corr_o       //active if crc7 was correct, valid when rsp_valid_o is active
 );
   //state transition
   typedef enum logic  [2:0] { 

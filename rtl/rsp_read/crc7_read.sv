@@ -7,11 +7,11 @@ module crc7_read (
   input   logic       sd_clk_i,
   input   logic       rst_ni,
       
-  input   logic       start_i,
-  input   logic       end_output_i,
+  input   logic       start_i,  //start considering input next clock cycle
+  input   logic       end_output_i, //stop consider input and output result next cycle
 
-  input   logic       rsp_ser_i,
-  output  logic [6:0] crc7_o
+  input   logic       rsp_ser_i,  //from CMD line
+  output  logic [6:0] crc7_o  //result parallel out
 );
   //state transition/////////////////////////////////////////////////////////////////////////
 
@@ -42,8 +42,8 @@ module crc7_read (
 
   //data path///////////////////////////////////////////////////////////////////////////////
 
-  logic [2:0] lower_3_d, lower_3_q;
-  logic [3:0] upper_4_d, upper_4_q;
+  logic [2:0] lower_3_d, lower_3_q; //lower 3 bits lsb of crc
+  logic [3:0] upper_4_d, upper_4_q; //upper 4 msb bits of crc
   logic int_rst_n, rst_n, dat_i_xor_out;
 
   always_comb begin : crc_data_path
@@ -61,7 +61,7 @@ module crc7_read (
         crc7_o  [2:0] = lower_3_q;  
       end
 
-      START:    int_rst_n = 1'b0;
+      START:    int_rst_n = 1'b0; //reset contents to zero
 
       CALCULATE:  begin
         dat_i_xor_out   = (rsp_ser_i ^ upper_4_q[3]);
@@ -75,7 +75,7 @@ module crc7_read (
     endcase
   end
 
-  assign  rst_n = (rst_ni & int_rst_n);
+  assign  rst_n = (rst_ni & int_rst_n); //only for data, not for state
 
   `FF (lower_3_q, lower_3_d, 3'b0, sd_clk_i, rst_n);
   `FF (upper_4_q, upper_4_d, 4'b0, sd_clk_i, rst_n);
