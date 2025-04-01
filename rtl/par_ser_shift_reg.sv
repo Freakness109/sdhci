@@ -3,14 +3,14 @@
 
 //Untested!
 module par_ser_shift_reg #(
-  parameter int unsigned  NumBits     = 40,
-  parameter bit           ShiftInVal  = 0
+  parameter int unsigned  NumBits     = 40,   //Number of bits
+  parameter bit           ShiftInVal  = 0     //value to be shifted in, unimportant
 ) (
   input   logic clk_i,
   input   logic rst_ni,
 
-  input   logic par_write_en_i,
-  input   logic shift_en_i, 
+  input   logic par_write_en_i, //write data in parallel to shift register
+  input   logic shift_en_i,     //enable shifting, non-latching!s
 
   input   logic [NumBits-1:0] dat_par_i,
   output  logic               dat_ser_o
