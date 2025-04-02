@@ -128,6 +128,7 @@ module sdhci_reg_top #(
   logic [31:0] buffer_data_port_qs;
   logic [31:0] buffer_data_port_wd;
   logic buffer_data_port_we;
+  logic buffer_data_port_re;
   logic present_state_command_inhibit_cmd_qs;
   logic present_state_command_inhibit_dat_qs;
   logic present_state_dat_line_active_qs;
@@ -1073,29 +1074,18 @@ module sdhci_reg_top #(
   );
 
 
-  // R[buffer_data_port]: V(False)
+  // R[buffer_data_port]: V(True)
 
-  prim_subreg #(
-    .DW      (32),
-    .SWACCESS("RW"),
-    .RESVAL  (32'h0)
+  prim_subreg_ext #(
+    .DW    (32)
   ) u_buffer_data_port (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (buffer_data_port_re),
     .we     (buffer_data_port_we),
     .wd     (buffer_data_port_wd),
-
-    // from internal hardware
-    .de     (hw2reg.buffer_data_port.de),
-    .d      (hw2reg.buffer_data_port.d ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.buffer_data_port.d),
+    .qre    (reg2hw.buffer_data_port.re),
+    .qe     (reg2hw.buffer_data_port.qe),
     .q      (reg2hw.buffer_data_port.q ),
-
-    // to register interface (read)
     .qs     (buffer_data_port_qs)
   );
 
@@ -4693,36 +4683,36 @@ module sdhci_reg_top #(
   logic [29:0] addr_hit;
   always_comb begin
     addr_hit = '0;
-    addr_hit[ 0] = ((reg_be & SDHCI_BYTEMASK[ 0]) && reg_addr == SDHCI_SYSTEM_ADDRESS_OFFSET);
-    addr_hit[ 1] = ((reg_be & SDHCI_BYTEMASK[ 1]) && reg_addr == SDHCI_BLOCK_SIZE_OFFSET);
-    addr_hit[ 2] = ((reg_be & SDHCI_BYTEMASK[ 2]) && reg_addr == SDHCI_BLOCK_COUNT_OFFSET);
-    addr_hit[ 3] = ((reg_be & SDHCI_BYTEMASK[ 3]) && reg_addr == SDHCI_ARGUMENT_OFFSET);
-    addr_hit[ 4] = ((reg_be & SDHCI_BYTEMASK[ 4]) && reg_addr == SDHCI_TRANSFER_MODE_OFFSET);
-    addr_hit[ 5] = ((reg_be & SDHCI_BYTEMASK[ 5]) && reg_addr == SDHCI_COMMAND_OFFSET);
-    addr_hit[ 6] = ((reg_be & SDHCI_BYTEMASK[ 6]) && reg_addr == SDHCI_RESPONSE0_OFFSET);
-    addr_hit[ 7] = ((reg_be & SDHCI_BYTEMASK[ 7]) && reg_addr == SDHCI_RESPONSE1_OFFSET);
-    addr_hit[ 8] = ((reg_be & SDHCI_BYTEMASK[ 8]) && reg_addr == SDHCI_RESPONSE2_OFFSET);
-    addr_hit[ 9] = ((reg_be & SDHCI_BYTEMASK[ 9]) && reg_addr == SDHCI_RESPONSE3_OFFSET);
-    addr_hit[10] = ((reg_be & SDHCI_BYTEMASK[10]) && reg_addr == SDHCI_BUFFER_DATA_PORT_OFFSET);
-    addr_hit[11] = ((reg_be & SDHCI_BYTEMASK[11]) && reg_addr == SDHCI_PRESENT_STATE_OFFSET);
-    addr_hit[12] = ((reg_be & SDHCI_BYTEMASK[12]) && reg_addr == SDHCI_HOST_CONTROL_OFFSET);
-    addr_hit[13] = ((reg_be & SDHCI_BYTEMASK[13]) && reg_addr == SDHCI_POWER_CONTROL_OFFSET);
-    addr_hit[14] = ((reg_be & SDHCI_BYTEMASK[14]) && reg_addr == SDHCI_BLOCK_GAP_CONTROL_OFFSET);
-    addr_hit[15] = ((reg_be & SDHCI_BYTEMASK[15]) && reg_addr == SDHCI_WAKEUP_CONTROL_OFFSET);
-    addr_hit[16] = ((reg_be & SDHCI_BYTEMASK[16]) && reg_addr == SDHCI_CLOCK_CONTROL_OFFSET);
-    addr_hit[17] = ((reg_be & SDHCI_BYTEMASK[17]) && reg_addr == SDHCI_TIMEOUT_CONTROL_OFFSET);
-    addr_hit[18] = ((reg_be & SDHCI_BYTEMASK[18]) && reg_addr == SDHCI_SOFTWARE_RESET_OFFSET);
-    addr_hit[19] = ((reg_be & SDHCI_BYTEMASK[19]) && reg_addr == SDHCI_NORMAL_INTERRUPT_STATUS_OFFSET);
-    addr_hit[20] = ((reg_be & SDHCI_BYTEMASK[20]) && reg_addr == SDHCI_ERROR_INTERRUPT_STATUS_OFFSET);
-    addr_hit[21] = ((reg_be & SDHCI_BYTEMASK[21]) && reg_addr == SDHCI_NORMAL_INTERRUPT_STATUS_ENABLE_OFFSET);
-    addr_hit[22] = ((reg_be & SDHCI_BYTEMASK[22]) && reg_addr == SDHCI_ERROR_INTERRUPT_STATUS_ENABLE_OFFSET);
-    addr_hit[23] = ((reg_be & SDHCI_BYTEMASK[23]) && reg_addr == SDHCI_NORMAL_INTERRUPT_SIGNAL_ENABLE_OFFSET);
-    addr_hit[24] = ((reg_be & SDHCI_BYTEMASK[24]) && reg_addr == SDHCI_ERROR_INTERRUPT_SIGNAL_ENABLE_OFFSET);
-    addr_hit[25] = ((reg_be & SDHCI_BYTEMASK[25]) && reg_addr == SDHCI_AUTO_CMD12_ERROR_STATUS_OFFSET);
-    addr_hit[26] = ((reg_be & SDHCI_BYTEMASK[26]) && reg_addr == SDHCI_CAPABILITIES_OFFSET);
-    addr_hit[27] = ((reg_be & SDHCI_BYTEMASK[27]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_OFFSET);
-    addr_hit[28] = ((reg_be & SDHCI_BYTEMASK[28]) && reg_addr == SDHCI_SLOT_INTERRUPT_STATUS_REGISTER_OFFSET);
-    addr_hit[29] = ((reg_be & SDHCI_BYTEMASK[29]) && reg_addr == SDHCI_HOST_CONTROLLER_VERSION_REGISTER_OFFSET);
+    addr_hit[ 0] = |(reg_be & SDHCI_BYTEMASK[ 0]) && reg_addr == SDHCI_SYSTEM_ADDRESS_OFFSET;
+    addr_hit[ 1] = |(reg_be & SDHCI_BYTEMASK[ 1]) && reg_addr == SDHCI_BLOCK_SIZE_OFFSET;
+    addr_hit[ 2] = |(reg_be & SDHCI_BYTEMASK[ 2]) && reg_addr == SDHCI_BLOCK_COUNT_OFFSET;
+    addr_hit[ 3] = |(reg_be & SDHCI_BYTEMASK[ 3]) && reg_addr == SDHCI_ARGUMENT_OFFSET;
+    addr_hit[ 4] = |(reg_be & SDHCI_BYTEMASK[ 4]) && reg_addr == SDHCI_TRANSFER_MODE_OFFSET;
+    addr_hit[ 5] = |(reg_be & SDHCI_BYTEMASK[ 5]) && reg_addr == SDHCI_COMMAND_OFFSET;
+    addr_hit[ 6] = |(reg_be & SDHCI_BYTEMASK[ 6]) && reg_addr == SDHCI_RESPONSE0_OFFSET;
+    addr_hit[ 7] = |(reg_be & SDHCI_BYTEMASK[ 7]) && reg_addr == SDHCI_RESPONSE1_OFFSET;
+    addr_hit[ 8] = |(reg_be & SDHCI_BYTEMASK[ 8]) && reg_addr == SDHCI_RESPONSE2_OFFSET;
+    addr_hit[ 9] = |(reg_be & SDHCI_BYTEMASK[ 9]) && reg_addr == SDHCI_RESPONSE3_OFFSET;
+    addr_hit[10] = |(reg_be & SDHCI_BYTEMASK[10]) && reg_addr == SDHCI_BUFFER_DATA_PORT_OFFSET;
+    addr_hit[11] = |(reg_be & SDHCI_BYTEMASK[11]) && reg_addr == SDHCI_PRESENT_STATE_OFFSET;
+    addr_hit[12] = |(reg_be & SDHCI_BYTEMASK[12]) && reg_addr == SDHCI_HOST_CONTROL_OFFSET;
+    addr_hit[13] = |(reg_be & SDHCI_BYTEMASK[13]) && reg_addr == SDHCI_POWER_CONTROL_OFFSET;
+    addr_hit[14] = |(reg_be & SDHCI_BYTEMASK[14]) && reg_addr == SDHCI_BLOCK_GAP_CONTROL_OFFSET;
+    addr_hit[15] = |(reg_be & SDHCI_BYTEMASK[15]) && reg_addr == SDHCI_WAKEUP_CONTROL_OFFSET;
+    addr_hit[16] = |(reg_be & SDHCI_BYTEMASK[16]) && reg_addr == SDHCI_CLOCK_CONTROL_OFFSET;
+    addr_hit[17] = |(reg_be & SDHCI_BYTEMASK[17]) && reg_addr == SDHCI_TIMEOUT_CONTROL_OFFSET;
+    addr_hit[18] = |(reg_be & SDHCI_BYTEMASK[18]) && reg_addr == SDHCI_SOFTWARE_RESET_OFFSET;
+    addr_hit[19] = |(reg_be & SDHCI_BYTEMASK[19]) && reg_addr == SDHCI_NORMAL_INTERRUPT_STATUS_OFFSET;
+    addr_hit[20] = |(reg_be & SDHCI_BYTEMASK[20]) && reg_addr == SDHCI_ERROR_INTERRUPT_STATUS_OFFSET;
+    addr_hit[21] = |(reg_be & SDHCI_BYTEMASK[21]) && reg_addr == SDHCI_NORMAL_INTERRUPT_STATUS_ENABLE_OFFSET;
+    addr_hit[22] = |(reg_be & SDHCI_BYTEMASK[22]) && reg_addr == SDHCI_ERROR_INTERRUPT_STATUS_ENABLE_OFFSET;
+    addr_hit[23] = |(reg_be & SDHCI_BYTEMASK[23]) && reg_addr == SDHCI_NORMAL_INTERRUPT_SIGNAL_ENABLE_OFFSET;
+    addr_hit[24] = |(reg_be & SDHCI_BYTEMASK[24]) && reg_addr == SDHCI_ERROR_INTERRUPT_SIGNAL_ENABLE_OFFSET;
+    addr_hit[25] = |(reg_be & SDHCI_BYTEMASK[25]) && reg_addr == SDHCI_AUTO_CMD12_ERROR_STATUS_OFFSET;
+    addr_hit[26] = |(reg_be & SDHCI_BYTEMASK[26]) && reg_addr == SDHCI_CAPABILITIES_OFFSET;
+    addr_hit[27] = |(reg_be & SDHCI_BYTEMASK[27]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_OFFSET;
+    addr_hit[28] = |(reg_be & SDHCI_BYTEMASK[28]) && reg_addr == SDHCI_SLOT_INTERRUPT_STATUS_REGISTER_OFFSET;
+    addr_hit[29] = |(reg_be & SDHCI_BYTEMASK[29]) && reg_addr == SDHCI_HOST_CONTROLLER_VERSION_REGISTER_OFFSET;
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -4812,6 +4802,7 @@ module sdhci_reg_top #(
 
   assign buffer_data_port_we = addr_hit[10] & reg_we & !reg_error & (|(4'b 1111 & reg_be));
   assign buffer_data_port_wd = reg_wdata[31:0];
+  assign buffer_data_port_re = addr_hit[10] & reg_re & !reg_error & (|(4'b 1111 & reg_be));
 
   assign host_control_led_control_we = addr_hit[12] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign host_control_led_control_wd = reg_wdata[0];

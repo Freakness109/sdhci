@@ -114,6 +114,8 @@ package sdhci_reg_pkg;
 
   typedef struct packed {
     logic [31:0] q;
+    logic        qe;
+    logic        re;
   } sdhci_reg2hw_buffer_data_port_reg_t;
 
   typedef struct packed {
@@ -688,7 +690,6 @@ package sdhci_reg_pkg;
 
   typedef struct packed {
     logic [31:0] d;
-    logic        de;
   } sdhci_hw2reg_buffer_data_port_reg_t;
 
   typedef struct packed {
@@ -1195,17 +1196,17 @@ package sdhci_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    sdhci_reg2hw_system_address_reg_t system_address; // [598:567]
-    sdhci_reg2hw_block_size_reg_t block_size; // [566:551]
-    sdhci_reg2hw_block_count_reg_t block_count; // [550:535]
-    sdhci_reg2hw_argument_reg_t argument; // [534:503]
-    sdhci_reg2hw_transfer_mode_reg_t transfer_mode; // [502:487]
-    sdhci_reg2hw_command_reg_t command; // [486:463]
-    sdhci_reg2hw_response0_reg_t response0; // [462:431]
-    sdhci_reg2hw_response1_reg_t response1; // [430:399]
-    sdhci_reg2hw_response2_reg_t response2; // [398:367]
-    sdhci_reg2hw_response3_reg_t response3; // [366:335]
-    sdhci_reg2hw_buffer_data_port_reg_t buffer_data_port; // [334:303]
+    sdhci_reg2hw_system_address_reg_t system_address; // [600:569]
+    sdhci_reg2hw_block_size_reg_t block_size; // [568:553]
+    sdhci_reg2hw_block_count_reg_t block_count; // [552:537]
+    sdhci_reg2hw_argument_reg_t argument; // [536:505]
+    sdhci_reg2hw_transfer_mode_reg_t transfer_mode; // [504:489]
+    sdhci_reg2hw_command_reg_t command; // [488:465]
+    sdhci_reg2hw_response0_reg_t response0; // [464:433]
+    sdhci_reg2hw_response1_reg_t response1; // [432:401]
+    sdhci_reg2hw_response2_reg_t response2; // [400:369]
+    sdhci_reg2hw_response3_reg_t response3; // [368:337]
+    sdhci_reg2hw_buffer_data_port_reg_t buffer_data_port; // [336:303]
     sdhci_reg2hw_present_state_reg_t present_state; // [302:271]
     sdhci_reg2hw_host_control_reg_t host_control; // [270:263]
     sdhci_reg2hw_power_control_reg_t power_control; // [262:255]
@@ -1229,17 +1230,17 @@ package sdhci_reg_pkg;
 
   // HW -> register type
   typedef struct packed {
-    sdhci_hw2reg_system_address_reg_t system_address; // [573:541]
-    sdhci_hw2reg_block_size_reg_t block_size; // [540:524]
-    sdhci_hw2reg_block_count_reg_t block_count; // [523:507]
-    sdhci_hw2reg_argument_reg_t argument; // [506:474]
-    sdhci_hw2reg_transfer_mode_reg_t transfer_mode; // [473:464]
-    sdhci_hw2reg_command_reg_t command; // [463:445]
-    sdhci_hw2reg_response0_reg_t response0; // [444:412]
-    sdhci_hw2reg_response1_reg_t response1; // [411:379]
-    sdhci_hw2reg_response2_reg_t response2; // [378:346]
-    sdhci_hw2reg_response3_reg_t response3; // [345:313]
-    sdhci_hw2reg_buffer_data_port_reg_t buffer_data_port; // [312:280]
+    sdhci_hw2reg_system_address_reg_t system_address; // [572:540]
+    sdhci_hw2reg_block_size_reg_t block_size; // [539:523]
+    sdhci_hw2reg_block_count_reg_t block_count; // [522:506]
+    sdhci_hw2reg_argument_reg_t argument; // [505:473]
+    sdhci_hw2reg_transfer_mode_reg_t transfer_mode; // [472:463]
+    sdhci_hw2reg_command_reg_t command; // [462:444]
+    sdhci_hw2reg_response0_reg_t response0; // [443:411]
+    sdhci_hw2reg_response1_reg_t response1; // [410:378]
+    sdhci_hw2reg_response2_reg_t response2; // [377:345]
+    sdhci_hw2reg_response3_reg_t response3; // [344:312]
+    sdhci_hw2reg_buffer_data_port_reg_t buffer_data_port; // [311:280]
     sdhci_hw2reg_present_state_reg_t present_state; // [279:251]
     sdhci_hw2reg_host_control_reg_t host_control; // [250:245]
     sdhci_hw2reg_power_control_reg_t power_control; // [244:239]
@@ -1292,6 +1293,9 @@ package sdhci_reg_pkg;
   parameter logic [BlockAw-1:0] SDHCI_SLOT_INTERRUPT_STATUS_REGISTER_OFFSET = 8'h fc;
   parameter logic [BlockAw-1:0] SDHCI_HOST_CONTROLLER_VERSION_REGISTER_OFFSET = 8'h fc;
 
+  // Reset values for hwext registers and their fields
+  parameter logic [31:0] SDHCI_BUFFER_DATA_PORT_RESVAL = 32'h 0;
+
   // Register index
   typedef enum int {
     SDHCI_SYSTEM_ADDRESS,
@@ -1326,7 +1330,7 @@ package sdhci_reg_pkg;
     SDHCI_HOST_CONTROLLER_VERSION_REGISTER
   } sdhci_id_e;
 
-  // Register width information to check illegal writes
+  // Register bytemaks used to see if a register is to be written to 
   parameter logic [3:0] SDHCI_BYTEMASK [30] = '{
     4'b 1111, // index[ 0] SDHCI_SYSTEM_ADDRESS
     4'b 0011, // index[ 1] SDHCI_BLOCK_SIZE
@@ -1360,7 +1364,7 @@ package sdhci_reg_pkg;
     4'b 1100  // index[29] SDHCI_HOST_CONTROLLER_VERSION_REGISTER
   };
 
-  // Register boudary crossing infromation to make sure we don't write to half a register
+  // Register boudary crossing infromation to make sure we don't write to half of a field
   parameter logic [3:0] SDHCI_DISALLOWED_BOUNDARY_CROSSINGS [30] = '{
     3'b 111, // index[ 0] SDHCI_SYSTEM_ADDRESS
     3'b 001, // index[ 1] SDHCI_BLOCK_SIZE
