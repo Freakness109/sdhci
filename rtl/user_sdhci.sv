@@ -54,11 +54,11 @@ module user_sdhci #(
     .clk_i,
     .rst_ni,
 
-    .req_i (reg2hw.buffer_data_port.re | reg2hw.buffer_data_port.qe),
-    .we_i  (reg2hw.buffer_data_port.qe),
+    .pop_front_i  (reg2hw.buffer_data_port.re),
+    .front_data_o (hw2reg.buffer_data_port.d),
 
-    .read_data_o  (hw2reg.buffer_data_port.d),
-    .write_data_i (reg2hw.buffer_data_port.q),
+    .push_back_i (reg2hw.buffer_data_port.qe),
+    .back_data_i (reg2hw.buffer_data_port.q),
     
     .full_o  (),
     .empty_o ()
