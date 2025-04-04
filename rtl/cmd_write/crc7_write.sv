@@ -26,7 +26,7 @@ module crc7_write (
       upper_4_d[3:1]  = upper_4_q[2:0];
       upper_4_d[0]    = lower_3_q[2];
       lower_3_d[2:1]  = lower_3_q[1:0];
-      lower_3_d[0]    = 0'b0; //Fill with zeros while shifting out crc; no reset needed?
+      lower_3_d[0]    = 1'b0; //Fill with zeros while shifting out crc; no reset needed?
     end else begin : calc_crc7
       dat_i_xor_out   = (dat_ser_i ^ upper_4_q[3]);
       upper_4_d[3:1]  = upper_4_q[2:0];
