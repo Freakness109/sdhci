@@ -1,6 +1,8 @@
 //Parallel to serial converter with active low asynchronous reset
 //shifts out MSb first!
 
+`include "common_cells/registers.svh"
+
 //Untested!
 module par_ser_shift_reg #(
   parameter int unsigned  NumBits     = 40,   //Number of bits

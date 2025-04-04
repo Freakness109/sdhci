@@ -1,6 +1,8 @@
 //serial to parallel converter with active low asynchronous reset
 //shifts in MSb first!
 
+`include "common_cells/registers.svh"
+
 //Untested!
 module ser_par_shift_reg #(
   parameter int unsigned  NumBits     = 48,

@@ -2,7 +2,7 @@
 //shifts out result MSb first when shift_out_crc7_i is high, output should otherwise be ignored.
 //polynomial: x⁷ + x³ + 1
 
-
+`include "common_cells/registers.svh"
 
 //Untested!
 module crc7_write (

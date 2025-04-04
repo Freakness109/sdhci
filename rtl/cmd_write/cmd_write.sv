@@ -1,5 +1,6 @@
 //Handels SD CMD line transmission
 
+`include "common_cells/registers.svh"
 
 //untested!
 module cmd_write (

@@ -1,5 +1,7 @@
 //Handles reception of responses on CMD line
 
+`include "common_cells/registers.svh"
+
 //Untested!
 module rsp_read (
   input logic sd_clk_i,         //should be synchronous with clk line of Sd card

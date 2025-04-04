@@ -2,6 +2,8 @@
 //output is valid 1st cycle after end_output_i is asserted to cycle where start_i is asserted
 //start_i must be asserted 1 clock cycle before first input bit should be considered
 
+`include "common_cells/registers.svh"
+
 //Untested!
 module crc7_read (
   input   logic       sd_clk_i,
