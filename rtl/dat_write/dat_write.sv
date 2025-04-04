@@ -1,5 +1,6 @@
 //write 512-Byte data block
 
+`include "common_cells/registers.svh"
 
 module dat_write ( 
   input logic sd_clk_i,
