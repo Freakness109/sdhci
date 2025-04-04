@@ -70,17 +70,17 @@ module dat_write (
     
     unique case (dat_tx_state_q)
 
-      READY:    dat_tx_state_d  = (start_send_i && !stop_transmission_i) ? START_BIT : READY;
+      READY:     dat_tx_state_d  = (start_send_i && !stop_transmission_i) ? START_BIT : READY;
 
-      STAR_BIT: dat_tx_state_d  = (stop_transmission_i) ? END_BIT : DAT;
+      START_BIT: dat_tx_state_d  = (stop_transmission_i) ? END_BIT : DAT;
 
-      DAT:      dat_tx_state_d  = (stop_transmission_i) ? END_BIT : ((dat_done)  ? CRC : DAT);
+      DAT:       dat_tx_state_d  = (stop_transmission_i) ? END_BIT : ((dat_done)  ? CRC : DAT);
 
-      CRC:      dat_tx_state_d  = (crc_done || stop_transmission_i)  ? END_BIT : CRC;
+      CRC:       dat_tx_state_d  = (crc_done || stop_transmission_i)  ? END_BIT : CRC;
 
-      END_BIT:  dat_tx_state_d  = READY;
+      END_BIT:   dat_tx_state_d  = READY;
 
-      default:  dat_tx_state_d  = ERROR; 
+      default:   dat_tx_state_d  = ERROR; 
     endcase
   end
   
@@ -156,7 +156,7 @@ module dat_write (
     endcase
   end
 
-  assign done_transmitting_o = (tx_state_q == READY)  ? 1'b1: 1'b0;
+  assign done_transmitting_o = (dat_tx_state_q == READY)  ? 1'b1: 1'b0;
 
   //module instantiations
 

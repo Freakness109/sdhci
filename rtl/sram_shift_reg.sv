@@ -7,6 +7,7 @@
  */
 
 `include "common_cells/registers.svh"
+`include "common_cells/assertions.svh"
 
 module sram_shift_reg #(
   parameter int unsigned NumWords     = 1024,
@@ -30,7 +31,7 @@ module sram_shift_reg #(
   `FF(pop_front_q, pop_front_i & (push_back_i | pop_front_q), '0, clk_i, rst_ni);
   assign pop_front = pop_front_q | pop_front_i;
 
-  assert property (@(posedge clk_i) !(pop_front_i & push_back_i & pop_front_q));
+  `ASSERT_NEVER(Overwhelmed, pop_front_i & push_back_i & pop_front_q);
 
   logic [AddrWidth-1:0] back_addr_q, back_addr_d;
   logic [LengthWidth-1:0] length_q, length_d;
@@ -44,8 +45,8 @@ module sram_shift_reg #(
   assign empty_o = length_q == '0;
   assign full_o = length_q == NumWords;
 
-  assert property (@(posedge clk_i) !(pop_front_i && empty_o));
-  assert property (@(posedge clk_i) !(push_back_i && full_o));
+  `ASSERT_NEVER(Underflow, pop_front_i && empty_o);
+  `ASSERT_NEVER(Overflow, push_back_i && full_o);
 
   // // To make writes instantly appear in reads
   // logic first_push_q, first_push_d;

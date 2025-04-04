@@ -1,3 +1,5 @@
+`include "common_cells/registers.svh"
+
 module crc16_write (
   input logic clk_i,
   input logic rst_ni,
