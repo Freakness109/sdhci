@@ -100,7 +100,8 @@ module sdhci_reg_top #(
   logic transfer_mode_multi_single_bit_block_select_qs;
   logic transfer_mode_multi_single_bit_block_select_wd;
   logic transfer_mode_multi_single_bit_block_select_we;
-  logic [9:0] transfer_mode_rsvd_6_qs;
+  logic [1:0] transfer_mode_rsvd_6_qs;
+  logic [7:0] transfer_mode_rsvd_8_qs;
   logic [1:0] command_response_type_select_qs;
   logic [1:0] command_response_type_select_wd;
   logic command_response_type_select_we;
@@ -502,28 +503,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_15]: 15:15
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_block_size_rsvd_15 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.block_size.rsvd_15.q ),
-
-    // to register interface (read)
-    .qs     (block_size_rsvd_15_qs)
-  );
+  // constant-only read
+  assign block_size_rsvd_15_qs = 1'h0;
 
 
   // R[block_count]: V(False)
@@ -661,28 +642,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_3]: 3:3
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_transfer_mode_rsvd_3 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.transfer_mode.rsvd_3.q ),
-
-    // to register interface (read)
-    .qs     (transfer_mode_rsvd_3_qs)
-  );
+  // constant-only read
+  assign transfer_mode_rsvd_3_qs = 1'h0;
 
 
   //   F[data_transfer_direction_select]: 4:4
@@ -737,29 +698,14 @@ module sdhci_reg_top #(
   );
 
 
-  //   F[rsvd_6]: 15:6
-  prim_subreg #(
-    .DW      (10),
-    .SWACCESS("RO"),
-    .RESVAL  (10'h0)
-  ) u_transfer_mode_rsvd_6 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
+  //   F[rsvd_6]: 7:6
+  // constant-only read
+  assign transfer_mode_rsvd_6_qs = 2'h0;
 
-    .we     (1'b0),
-    .wd     ('0  ),
 
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.transfer_mode.rsvd_6.q ),
-
-    // to register interface (read)
-    .qs     (transfer_mode_rsvd_6_qs)
-  );
+  //   F[rsvd_8]: 15:8
+  // constant-only read
+  assign transfer_mode_rsvd_8_qs = 8'h0;
 
 
   // R[command]: V(False)
@@ -791,28 +737,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_2]: 18:18
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_command_rsvd_2 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (reg2hw.command.rsvd_2.qe),
-    .q      (reg2hw.command.rsvd_2.q ),
-
-    // to register interface (read)
-    .qs     (command_rsvd_2_qs)
-  );
+  // constant-only read
+  assign command_rsvd_2_qs = 1'h0;
 
 
   //   F[command_crc_check_enable]: 19:19
@@ -946,28 +872,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_14]: 31:30
-  prim_subreg #(
-    .DW      (2),
-    .SWACCESS("RO"),
-    .RESVAL  (2'h0)
-  ) u_command_rsvd_14 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (reg2hw.command.rsvd_14.qe),
-    .q      (reg2hw.command.rsvd_14.q ),
-
-    // to register interface (read)
-    .qs     (command_rsvd_14_qs)
-  );
+  // constant-only read
+  assign command_rsvd_14_qs = 2'h0;
 
 
   // R[response0]: V(False)
@@ -1168,28 +1074,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_3]: 7:3
-  prim_subreg #(
-    .DW      (5),
-    .SWACCESS("RO"),
-    .RESVAL  (5'h0)
-  ) u_present_state_rsvd_3 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.present_state.rsvd_3.q ),
-
-    // to register interface (read)
-    .qs     (present_state_rsvd_3_qs)
-  );
+  // constant-only read
+  assign present_state_rsvd_3_qs = 5'h0;
 
 
   //   F[write_transfer_active]: 8:8
@@ -1293,28 +1179,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_12]: 15:12
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RO"),
-    .RESVAL  (4'h0)
-  ) u_present_state_rsvd_12 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.present_state.rsvd_12.q ),
-
-    // to register interface (read)
-    .qs     (present_state_rsvd_12_qs)
-  );
+  // constant-only read
+  assign present_state_rsvd_12_qs = 4'h0;
 
 
   //   F[card_inserted]: 16:16
@@ -1468,28 +1334,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_25]: 31:25
-  prim_subreg #(
-    .DW      (7),
-    .SWACCESS("RO"),
-    .RESVAL  (7'h0)
-  ) u_present_state_rsvd_25 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.present_state.rsvd_25.q ),
-
-    // to register interface (read)
-    .qs     (present_state_rsvd_25_qs)
-  );
+  // constant-only read
+  assign present_state_rsvd_25_qs = 7'h0;
 
 
   // R[host_control]: V(False)
@@ -1573,28 +1419,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_3]: 7:3
-  prim_subreg #(
-    .DW      (5),
-    .SWACCESS("RO"),
-    .RESVAL  (5'h0)
-  ) u_host_control_rsvd_3 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.host_control.rsvd_3.q ),
-
-    // to register interface (read)
-    .qs     (host_control_rsvd_3_qs)
-  );
+  // constant-only read
+  assign host_control_rsvd_3_qs = 5'h0;
 
 
   // R[power_control]: V(False)
@@ -1652,28 +1478,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_4]: 15:12
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RO"),
-    .RESVAL  (4'h0)
-  ) u_power_control_rsvd_4 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.power_control.rsvd_4.q ),
-
-    // to register interface (read)
-    .qs     (power_control_rsvd_4_qs)
-  );
+  // constant-only read
+  assign power_control_rsvd_4_qs = 4'h0;
 
 
   // R[block_gap_control]: V(False)
@@ -1783,28 +1589,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_4]: 23:20
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RO"),
-    .RESVAL  (4'h0)
-  ) u_block_gap_control_rsvd_4 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.block_gap_control.rsvd_4.q ),
-
-    // to register interface (read)
-    .qs     (block_gap_control_rsvd_4_qs)
-  );
+  // constant-only read
+  assign block_gap_control_rsvd_4_qs = 4'h0;
 
 
   // R[wakeup_control]: V(False)
@@ -1888,28 +1674,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_3]: 31:27
-  prim_subreg #(
-    .DW      (5),
-    .SWACCESS("RO"),
-    .RESVAL  (5'h0)
-  ) u_wakeup_control_rsvd_3 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.wakeup_control.rsvd_3.q ),
-
-    // to register interface (read)
-    .qs     (wakeup_control_rsvd_3_qs)
-  );
+  // constant-only read
+  assign wakeup_control_rsvd_3_qs = 5'h0;
 
 
   // R[clock_control]: V(False)
@@ -1992,28 +1758,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_3]: 7:3
-  prim_subreg #(
-    .DW      (5),
-    .SWACCESS("RO"),
-    .RESVAL  (5'h0)
-  ) u_clock_control_rsvd_3 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (reg2hw.clock_control.rsvd_3.qe),
-    .q      (reg2hw.clock_control.rsvd_3.q ),
-
-    // to register interface (read)
-    .qs     (clock_control_rsvd_3_qs)
-  );
+  // constant-only read
+  assign clock_control_rsvd_3_qs = 5'h0;
 
 
   //   F[sdclk_frequency_select]: 15:8
@@ -2071,28 +1817,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_4]: 23:20
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RO"),
-    .RESVAL  (4'h0)
-  ) u_timeout_control_rsvd_4 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.timeout_control.rsvd_4.q ),
-
-    // to register interface (read)
-    .qs     (timeout_control_rsvd_4_qs)
-  );
+  // constant-only read
+  assign timeout_control_rsvd_4_qs = 4'h0;
 
 
   // R[software_reset]: V(False)
@@ -2176,28 +1902,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_4]: 31:28
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RO"),
-    .RESVAL  (4'h0)
-  ) u_software_reset_rsvd_4 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.software_reset.rsvd_4.q ),
-
-    // to register interface (read)
-    .qs     (software_reset_rsvd_4_qs)
-  );
+  // constant-only read
+  assign software_reset_rsvd_4_qs = 4'h0;
 
 
   // R[normal_interrupt_status]: V(False)
@@ -2436,28 +2142,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_9]: 14:9
-  prim_subreg #(
-    .DW      (6),
-    .SWACCESS("RO"),
-    .RESVAL  (6'h0)
-  ) u_normal_interrupt_status_rsvd_9 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_status.rsvd_9.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_status_rsvd_9_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_status_rsvd_9_qs = 6'h0;
 
 
   //   F[error_interrupt]: 15:15
@@ -2722,28 +2408,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_9]: 27:25
-  prim_subreg #(
-    .DW      (3),
-    .SWACCESS("RO"),
-    .RESVAL  (3'h0)
-  ) u_error_interrupt_status_rsvd_9 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_status.rsvd_9.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_status_rsvd_9_qs)
-  );
+  // constant-only read
+  assign error_interrupt_status_rsvd_9_qs = 3'h0;
 
 
   //   F[vendor_specific_error]: 31:28
@@ -3009,28 +2675,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_9]: 14:9
-  prim_subreg #(
-    .DW      (6),
-    .SWACCESS("RO"),
-    .RESVAL  (6'h0)
-  ) u_normal_interrupt_status_enable_rsvd_9 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_status_enable.rsvd_9.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_status_enable_rsvd_9_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_status_enable_rsvd_9_qs = 6'h0;
 
 
   //   F[fixed_to_0]: 15:15
@@ -3295,28 +2941,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_9]: 27:25
-  prim_subreg #(
-    .DW      (3),
-    .SWACCESS("RO"),
-    .RESVAL  (3'h0)
-  ) u_error_interrupt_status_enable_rsvd_9 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_status_enable.rsvd_9.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_status_enable_rsvd_9_qs)
-  );
+  // constant-only read
+  assign error_interrupt_status_enable_rsvd_9_qs = 3'h0;
 
 
   //   F[vendor_specific_error_status_enable]: 31:28
@@ -3582,53 +3208,13 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_9]: 14:9
-  prim_subreg #(
-    .DW      (6),
-    .SWACCESS("RO"),
-    .RESVAL  (6'h0)
-  ) u_normal_interrupt_signal_enable_rsvd_9 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_signal_enable.rsvd_9.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_signal_enable_rsvd_9_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_signal_enable_rsvd_9_qs = 6'h0;
 
 
   //   F[fixed_to_0]: 15:15
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_normal_interrupt_signal_enable_fixed_to_0 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.fixed_to_0.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.fixed_to_0.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_signal_enable.fixed_to_0.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_signal_enable_fixed_to_0_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_signal_enable_fixed_to_0_qs = 1'h0;
 
 
   // R[error_interrupt_signal_enable]: V(False)
@@ -3868,28 +3454,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_9]: 27:25
-  prim_subreg #(
-    .DW      (3),
-    .SWACCESS("RO"),
-    .RESVAL  (3'h0)
-  ) u_error_interrupt_signal_enable_rsvd_9 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_signal_enable.rsvd_9.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_signal_enable_rsvd_9_qs)
-  );
+  // constant-only read
+  assign error_interrupt_signal_enable_rsvd_9_qs = 3'h0;
 
 
   //   F[vendor_specific_error_signal_enable]: 31:28
@@ -4046,28 +3612,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_5]: 6:5
-  prim_subreg #(
-    .DW      (2),
-    .SWACCESS("RO"),
-    .RESVAL  (2'h0)
-  ) u_auto_cmd12_error_status_rsvd_5 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.auto_cmd12_error_status.rsvd_5.q ),
-
-    // to register interface (read)
-    .qs     (auto_cmd12_error_status_rsvd_5_qs)
-  );
+  // constant-only read
+  assign auto_cmd12_error_status_rsvd_5_qs = 2'h0;
 
 
   //   F[command_not_issued_by_auto_cmd12_error]: 7:7
@@ -4096,28 +3642,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_8]: 15:8
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_auto_cmd12_error_status_rsvd_8 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.auto_cmd12_error_status.rsvd_8.q ),
-
-    // to register interface (read)
-    .qs     (auto_cmd12_error_status_rsvd_8_qs)
-  );
+  // constant-only read
+  assign auto_cmd12_error_status_rsvd_8_qs = 8'h0;
 
 
   // R[capabilities]: V(False)
@@ -4148,28 +3674,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_6]: 6:6
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_capabilities_rsvd_6 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.rsvd_6.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_rsvd_6_qs)
-  );
+  // constant-only read
+  assign capabilities_rsvd_6_qs = 1'h0;
 
 
   //   F[timeout_clock_unit]: 7:7
@@ -4223,28 +3729,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_14]: 15:14
-  prim_subreg #(
-    .DW      (2),
-    .SWACCESS("RO"),
-    .RESVAL  (2'h0)
-  ) u_capabilities_rsvd_14 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.rsvd_14.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_rsvd_14_qs)
-  );
+  // constant-only read
+  assign capabilities_rsvd_14_qs = 2'h0;
 
 
   //   F[max_block_length]: 17:16
@@ -4273,28 +3759,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_18]: 20:18
-  prim_subreg #(
-    .DW      (3),
-    .SWACCESS("RO"),
-    .RESVAL  (3'h0)
-  ) u_capabilities_rsvd_18 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.rsvd_18.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_rsvd_18_qs)
-  );
+  // constant-only read
+  assign capabilities_rsvd_18_qs = 3'h0;
 
 
   //   F[high_speed_support]: 21:21
@@ -4448,28 +3914,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_27]: 31:27
-  prim_subreg #(
-    .DW      (5),
-    .SWACCESS("RO"),
-    .RESVAL  (5'h0)
-  ) u_capabilities_rsvd_27 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.rsvd_27.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_rsvd_27_qs)
-  );
+  // constant-only read
+  assign capabilities_rsvd_27_qs = 5'h0;
 
 
   // R[maximum_current_capabilities]: V(False)
@@ -4550,28 +3996,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_24]: 31:24
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_maximum_current_capabilities_rsvd_24 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.maximum_current_capabilities.rsvd_24.q ),
-
-    // to register interface (read)
-    .qs     (maximum_current_capabilities_rsvd_24_qs)
-  );
+  // constant-only read
+  assign maximum_current_capabilities_rsvd_24_qs = 8'h0;
 
 
   // R[slot_interrupt_status_register]: V(False)
@@ -4602,28 +4028,8 @@ module sdhci_reg_top #(
 
 
   //   F[rsvd_8]: 15:8
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_slot_interrupt_status_register_rsvd_8 (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.slot_interrupt_status_register.rsvd_8.q ),
-
-    // to register interface (read)
-    .qs     (slot_interrupt_status_register_rsvd_8_qs)
-  );
+  // constant-only read
+  assign slot_interrupt_status_register_rsvd_8_qs = 8'h0;
 
 
   // R[host_controller_version_register]: V(False)
@@ -5058,7 +4464,8 @@ module sdhci_reg_top #(
         reg_rdata_next[3] = transfer_mode_rsvd_3_qs;
         reg_rdata_next[4] = transfer_mode_data_transfer_direction_select_qs;
         reg_rdata_next[5] = transfer_mode_multi_single_bit_block_select_qs;
-        reg_rdata_next[15:6] = transfer_mode_rsvd_6_qs;
+        reg_rdata_next[7:6] = transfer_mode_rsvd_6_qs;
+        reg_rdata_next[15:8] = transfer_mode_rsvd_8_qs;
       end
 
       addr_hit[5]: begin

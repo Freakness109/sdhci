@@ -24,9 +24,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic [2:0]  q;
     } host_dma_buffer_boundary;
-    struct packed {
-      logic        q;
-    } rsvd_15;
   } sdhci_reg2hw_block_size_reg_t;
 
   typedef struct packed {
@@ -49,16 +46,10 @@ package sdhci_reg_pkg;
     } auto_cmd12_enable;
     struct packed {
       logic        q;
-    } rsvd_3;
-    struct packed {
-      logic        q;
     } data_transfer_direction_select;
     struct packed {
       logic        q;
     } multi_single_bit_block_select;
-    struct packed {
-      logic [9:0] q;
-    } rsvd_6;
   } sdhci_reg2hw_transfer_mode_reg_t;
 
   typedef struct packed {
@@ -66,10 +57,6 @@ package sdhci_reg_pkg;
       logic [1:0]  q;
       logic        qe;
     } response_type_select;
-    struct packed {
-      logic        q;
-      logic        qe;
-    } rsvd_2;
     struct packed {
       logic        q;
       logic        qe;
@@ -90,10 +77,6 @@ package sdhci_reg_pkg;
       logic [5:0]  q;
       logic        qe;
     } command_index;
-    struct packed {
-      logic [1:0]  q;
-      logic        qe;
-    } rsvd_14;
   } sdhci_reg2hw_command_reg_t;
 
   typedef struct packed {
@@ -129,9 +112,6 @@ package sdhci_reg_pkg;
       logic        q;
     } dat_line_active;
     struct packed {
-      logic [4:0]  q;
-    } rsvd_3;
-    struct packed {
       logic        q;
     } write_transfer_active;
     struct packed {
@@ -143,9 +123,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } buffer_read_enable;
-    struct packed {
-      logic [3:0]  q;
-    } rsvd_12;
     struct packed {
       logic        q;
     } card_inserted;
@@ -164,9 +141,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } cmd_line_signal_level;
-    struct packed {
-      logic [6:0]  q;
-    } rsvd_25;
   } sdhci_reg2hw_present_state_reg_t;
 
   typedef struct packed {
@@ -179,9 +153,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } high_speed_enable;
-    struct packed {
-      logic [4:0]  q;
-    } rsvd_3;
   } sdhci_reg2hw_host_control_reg_t;
 
   typedef struct packed {
@@ -191,9 +162,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic [2:0]  q;
     } sd_bus_voltage_select;
-    struct packed {
-      logic [3:0]  q;
-    } rsvd_4;
   } sdhci_reg2hw_power_control_reg_t;
 
   typedef struct packed {
@@ -209,9 +177,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } interrupt_at_block_gap;
-    struct packed {
-      logic [3:0]  q;
-    } rsvd_4;
   } sdhci_reg2hw_block_gap_control_reg_t;
 
   typedef struct packed {
@@ -224,9 +189,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } wakeup_event_enable_on_sd_card_removal;
-    struct packed {
-      logic [4:0]  q;
-    } rsvd_3;
   } sdhci_reg2hw_wakeup_control_reg_t;
 
   typedef struct packed {
@@ -243,10 +205,6 @@ package sdhci_reg_pkg;
       logic        qe;
     } sd_clock_enable;
     struct packed {
-      logic [4:0]  q;
-      logic        qe;
-    } rsvd_3;
-    struct packed {
       logic [7:0]  q;
       logic        qe;
     } sdclk_frequency_select;
@@ -256,9 +214,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic [3:0]  q;
     } data_timeout_counter_value;
-    struct packed {
-      logic [3:0]  q;
-    } rsvd_4;
   } sdhci_reg2hw_timeout_control_reg_t;
 
   typedef struct packed {
@@ -271,9 +226,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } software_reset_for_dat_line;
-    struct packed {
-      logic [3:0]  q;
-    } rsvd_4;
   } sdhci_reg2hw_software_reset_reg_t;
 
   typedef struct packed {
@@ -304,9 +256,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } card_interrupt;
-    struct packed {
-      logic [5:0]  q;
-    } rsvd_9;
     struct packed {
       logic        q;
     } error_interrupt;
@@ -341,9 +290,6 @@ package sdhci_reg_pkg;
       logic        q;
     } auto_cmd12_error;
     struct packed {
-      logic [2:0]  q;
-    } rsvd_9;
-    struct packed {
       logic [3:0]  q;
     } vendor_specific_error;
   } sdhci_reg2hw_error_interrupt_status_reg_t;
@@ -376,9 +322,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } card_interrupt_status_enable;
-    struct packed {
-      logic [5:0]  q;
-    } rsvd_9;
     struct packed {
       logic        q;
     } fixed_to_0;
@@ -413,9 +356,6 @@ package sdhci_reg_pkg;
       logic        q;
     } auto_cmd12_error_status_enable;
     struct packed {
-      logic [2:0]  q;
-    } rsvd_9;
-    struct packed {
       logic [3:0]  q;
     } vendor_specific_error_status_enable;
   } sdhci_reg2hw_error_interrupt_status_enable_reg_t;
@@ -448,12 +388,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } card_interrupt_signal_enable;
-    struct packed {
-      logic [5:0]  q;
-    } rsvd_9;
-    struct packed {
-      logic        q;
-    } fixed_to_0;
   } sdhci_reg2hw_normal_interrupt_signal_enable_reg_t;
 
   typedef struct packed {
@@ -485,9 +419,6 @@ package sdhci_reg_pkg;
       logic        q;
     } auto_cmd12_error_signal_enable;
     struct packed {
-      logic [2:0]  q;
-    } rsvd_9;
-    struct packed {
       logic [3:0]  q;
     } vendor_specific_error_signal_enable;
   } sdhci_reg2hw_error_interrupt_signal_enable_reg_t;
@@ -509,14 +440,8 @@ package sdhci_reg_pkg;
       logic        q;
     } auto_cmd12_index_error;
     struct packed {
-      logic [1:0]  q;
-    } rsvd_5;
-    struct packed {
       logic        q;
     } command_not_issued_by_auto_cmd12_error;
-    struct packed {
-      logic [7:0]  q;
-    } rsvd_8;
   } sdhci_reg2hw_auto_cmd12_error_status_reg_t;
 
   typedef struct packed {
@@ -525,22 +450,13 @@ package sdhci_reg_pkg;
     } timeout_clock_frequency;
     struct packed {
       logic        q;
-    } rsvd_6;
-    struct packed {
-      logic        q;
     } timeout_clock_unit;
     struct packed {
       logic [5:0]  q;
     } base_clock_frequency_for_sd_clock;
     struct packed {
       logic [1:0]  q;
-    } rsvd_14;
-    struct packed {
-      logic [1:0]  q;
     } max_block_length;
-    struct packed {
-      logic [2:0]  q;
-    } rsvd_18;
     struct packed {
       logic        q;
     } high_speed_support;
@@ -559,9 +475,6 @@ package sdhci_reg_pkg;
     struct packed {
       logic        q;
     } voltage_support_1_8v;
-    struct packed {
-      logic [4:0]  q;
-    } rsvd_27;
   } sdhci_reg2hw_capabilities_reg_t;
 
   typedef struct packed {
@@ -574,18 +487,12 @@ package sdhci_reg_pkg;
     struct packed {
       logic [7:0]  q;
     } maximum_current_for_1_8v;
-    struct packed {
-      logic [7:0]  q;
-    } rsvd_24;
   } sdhci_reg2hw_maximum_current_capabilities_reg_t;
 
   typedef struct packed {
     struct packed {
       logic [7:0]  q;
     } interrupt_signal_for_each_slot;
-    struct packed {
-      logic [7:0]  q;
-    } rsvd_8;
   } sdhci_reg2hw_slot_interrupt_status_register_reg_t;
 
   typedef struct packed {
@@ -1062,10 +969,6 @@ package sdhci_reg_pkg;
       logic        d;
       logic        de;
     } card_interrupt_signal_enable;
-    struct packed {
-      logic        d;
-      logic        de;
-    } fixed_to_0;
   } sdhci_hw2reg_normal_interrupt_signal_enable_reg_t;
 
   typedef struct packed {
@@ -1201,64 +1104,64 @@ package sdhci_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    sdhci_reg2hw_system_address_reg_t system_address; // [605:574]
-    sdhci_reg2hw_block_size_reg_t block_size; // [573:558]
-    sdhci_reg2hw_block_count_reg_t block_count; // [557:542]
-    sdhci_reg2hw_argument_reg_t argument; // [541:510]
-    sdhci_reg2hw_transfer_mode_reg_t transfer_mode; // [509:494]
-    sdhci_reg2hw_command_reg_t command; // [493:470]
-    sdhci_reg2hw_response0_reg_t response0; // [469:438]
-    sdhci_reg2hw_response1_reg_t response1; // [437:406]
-    sdhci_reg2hw_response2_reg_t response2; // [405:374]
-    sdhci_reg2hw_response3_reg_t response3; // [373:342]
-    sdhci_reg2hw_buffer_data_port_reg_t buffer_data_port; // [341:308]
-    sdhci_reg2hw_present_state_reg_t present_state; // [307:276]
-    sdhci_reg2hw_host_control_reg_t host_control; // [275:268]
-    sdhci_reg2hw_power_control_reg_t power_control; // [267:260]
-    sdhci_reg2hw_block_gap_control_reg_t block_gap_control; // [259:252]
-    sdhci_reg2hw_wakeup_control_reg_t wakeup_control; // [251:244]
-    sdhci_reg2hw_clock_control_reg_t clock_control; // [243:223]
-    sdhci_reg2hw_timeout_control_reg_t timeout_control; // [222:215]
-    sdhci_reg2hw_software_reset_reg_t software_reset; // [214:208]
-    sdhci_reg2hw_normal_interrupt_status_reg_t normal_interrupt_status; // [207:192]
-    sdhci_reg2hw_error_interrupt_status_reg_t error_interrupt_status; // [191:176]
-    sdhci_reg2hw_normal_interrupt_status_enable_reg_t normal_interrupt_status_enable; // [175:160]
-    sdhci_reg2hw_error_interrupt_status_enable_reg_t error_interrupt_status_enable; // [159:144]
-    sdhci_reg2hw_normal_interrupt_signal_enable_reg_t normal_interrupt_signal_enable; // [143:128]
-    sdhci_reg2hw_error_interrupt_signal_enable_reg_t error_interrupt_signal_enable; // [127:112]
-    sdhci_reg2hw_auto_cmd12_error_status_reg_t auto_cmd12_error_status; // [111:96]
-    sdhci_reg2hw_capabilities_reg_t capabilities; // [95:64]
-    sdhci_reg2hw_maximum_current_capabilities_reg_t maximum_current_capabilities; // [63:32]
-    sdhci_reg2hw_slot_interrupt_status_register_reg_t slot_interrupt_status_register; // [31:16]
+    sdhci_reg2hw_system_address_reg_t system_address; // [475:444]
+    sdhci_reg2hw_block_size_reg_t block_size; // [443:429]
+    sdhci_reg2hw_block_count_reg_t block_count; // [428:413]
+    sdhci_reg2hw_argument_reg_t argument; // [412:381]
+    sdhci_reg2hw_transfer_mode_reg_t transfer_mode; // [380:376]
+    sdhci_reg2hw_command_reg_t command; // [375:357]
+    sdhci_reg2hw_response0_reg_t response0; // [356:325]
+    sdhci_reg2hw_response1_reg_t response1; // [324:293]
+    sdhci_reg2hw_response2_reg_t response2; // [292:261]
+    sdhci_reg2hw_response3_reg_t response3; // [260:229]
+    sdhci_reg2hw_buffer_data_port_reg_t buffer_data_port; // [228:195]
+    sdhci_reg2hw_present_state_reg_t present_state; // [194:179]
+    sdhci_reg2hw_host_control_reg_t host_control; // [178:176]
+    sdhci_reg2hw_power_control_reg_t power_control; // [175:172]
+    sdhci_reg2hw_block_gap_control_reg_t block_gap_control; // [171:168]
+    sdhci_reg2hw_wakeup_control_reg_t wakeup_control; // [167:165]
+    sdhci_reg2hw_clock_control_reg_t clock_control; // [164:150]
+    sdhci_reg2hw_timeout_control_reg_t timeout_control; // [149:146]
+    sdhci_reg2hw_software_reset_reg_t software_reset; // [145:143]
+    sdhci_reg2hw_normal_interrupt_status_reg_t normal_interrupt_status; // [142:133]
+    sdhci_reg2hw_error_interrupt_status_reg_t error_interrupt_status; // [132:120]
+    sdhci_reg2hw_normal_interrupt_status_enable_reg_t normal_interrupt_status_enable; // [119:110]
+    sdhci_reg2hw_error_interrupt_status_enable_reg_t error_interrupt_status_enable; // [109:97]
+    sdhci_reg2hw_normal_interrupt_signal_enable_reg_t normal_interrupt_signal_enable; // [96:88]
+    sdhci_reg2hw_error_interrupt_signal_enable_reg_t error_interrupt_signal_enable; // [87:75]
+    sdhci_reg2hw_auto_cmd12_error_status_reg_t auto_cmd12_error_status; // [74:69]
+    sdhci_reg2hw_capabilities_reg_t capabilities; // [68:48]
+    sdhci_reg2hw_maximum_current_capabilities_reg_t maximum_current_capabilities; // [47:24]
+    sdhci_reg2hw_slot_interrupt_status_register_reg_t slot_interrupt_status_register; // [23:16]
     sdhci_reg2hw_host_controller_version_register_reg_t host_controller_version_register; // [15:0]
   } sdhci_reg2hw_t;
 
   // HW -> register type
   typedef struct packed {
-    sdhci_hw2reg_system_address_reg_t system_address; // [572:540]
-    sdhci_hw2reg_block_size_reg_t block_size; // [539:523]
-    sdhci_hw2reg_block_count_reg_t block_count; // [522:506]
-    sdhci_hw2reg_argument_reg_t argument; // [505:473]
-    sdhci_hw2reg_transfer_mode_reg_t transfer_mode; // [472:463]
-    sdhci_hw2reg_command_reg_t command; // [462:444]
-    sdhci_hw2reg_response0_reg_t response0; // [443:411]
-    sdhci_hw2reg_response1_reg_t response1; // [410:378]
-    sdhci_hw2reg_response2_reg_t response2; // [377:345]
-    sdhci_hw2reg_response3_reg_t response3; // [344:312]
-    sdhci_hw2reg_buffer_data_port_reg_t buffer_data_port; // [311:280]
-    sdhci_hw2reg_present_state_reg_t present_state; // [279:251]
-    sdhci_hw2reg_host_control_reg_t host_control; // [250:245]
-    sdhci_hw2reg_power_control_reg_t power_control; // [244:239]
-    sdhci_hw2reg_block_gap_control_reg_t block_gap_control; // [238:231]
-    sdhci_hw2reg_wakeup_control_reg_t wakeup_control; // [230:225]
-    sdhci_hw2reg_clock_control_reg_t clock_control; // [224:210]
-    sdhci_hw2reg_timeout_control_reg_t timeout_control; // [209:205]
-    sdhci_hw2reg_software_reset_reg_t software_reset; // [204:199]
-    sdhci_hw2reg_normal_interrupt_status_reg_t normal_interrupt_status; // [198:179]
-    sdhci_hw2reg_error_interrupt_status_reg_t error_interrupt_status; // [178:156]
-    sdhci_hw2reg_normal_interrupt_status_enable_reg_t normal_interrupt_status_enable; // [155:136]
-    sdhci_hw2reg_error_interrupt_status_enable_reg_t error_interrupt_status_enable; // [135:113]
-    sdhci_hw2reg_normal_interrupt_signal_enable_reg_t normal_interrupt_signal_enable; // [112:93]
+    sdhci_hw2reg_system_address_reg_t system_address; // [570:538]
+    sdhci_hw2reg_block_size_reg_t block_size; // [537:521]
+    sdhci_hw2reg_block_count_reg_t block_count; // [520:504]
+    sdhci_hw2reg_argument_reg_t argument; // [503:471]
+    sdhci_hw2reg_transfer_mode_reg_t transfer_mode; // [470:461]
+    sdhci_hw2reg_command_reg_t command; // [460:442]
+    sdhci_hw2reg_response0_reg_t response0; // [441:409]
+    sdhci_hw2reg_response1_reg_t response1; // [408:376]
+    sdhci_hw2reg_response2_reg_t response2; // [375:343]
+    sdhci_hw2reg_response3_reg_t response3; // [342:310]
+    sdhci_hw2reg_buffer_data_port_reg_t buffer_data_port; // [309:278]
+    sdhci_hw2reg_present_state_reg_t present_state; // [277:249]
+    sdhci_hw2reg_host_control_reg_t host_control; // [248:243]
+    sdhci_hw2reg_power_control_reg_t power_control; // [242:237]
+    sdhci_hw2reg_block_gap_control_reg_t block_gap_control; // [236:229]
+    sdhci_hw2reg_wakeup_control_reg_t wakeup_control; // [228:223]
+    sdhci_hw2reg_clock_control_reg_t clock_control; // [222:208]
+    sdhci_hw2reg_timeout_control_reg_t timeout_control; // [207:203]
+    sdhci_hw2reg_software_reset_reg_t software_reset; // [202:197]
+    sdhci_hw2reg_normal_interrupt_status_reg_t normal_interrupt_status; // [196:177]
+    sdhci_hw2reg_error_interrupt_status_reg_t error_interrupt_status; // [176:154]
+    sdhci_hw2reg_normal_interrupt_status_enable_reg_t normal_interrupt_status_enable; // [153:134]
+    sdhci_hw2reg_error_interrupt_status_enable_reg_t error_interrupt_status_enable; // [133:111]
+    sdhci_hw2reg_normal_interrupt_signal_enable_reg_t normal_interrupt_signal_enable; // [110:93]
     sdhci_hw2reg_error_interrupt_signal_enable_reg_t error_interrupt_signal_enable; // [92:70]
     sdhci_hw2reg_auto_cmd12_error_status_reg_t auto_cmd12_error_status; // [69:58]
     sdhci_hw2reg_capabilities_reg_t capabilities; // [57:27]
@@ -1375,7 +1278,7 @@ package sdhci_reg_pkg;
     3'b 001, // index[ 1] SDHCI_BLOCK_SIZE
     3'b 100, // index[ 2] SDHCI_BLOCK_COUNT
     3'b 111, // index[ 3] SDHCI_ARGUMENT
-    3'b 001, // index[ 4] SDHCI_TRANSFER_MODE
+    3'b 000, // index[ 4] SDHCI_TRANSFER_MODE
     3'b 000, // index[ 5] SDHCI_COMMAND
     3'b 111, // index[ 6] SDHCI_RESPONSE0
     3'b 111, // index[ 7] SDHCI_RESPONSE1
