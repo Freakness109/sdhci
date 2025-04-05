@@ -510,6 +510,7 @@
           name: "clock_control"
           desc: ""
           hwaccess: "hrw"
+          hwqe: true
           fields: [
             {
               bits: "15:8"
@@ -689,7 +690,7 @@
           fields: [
             {
               bits: "15:12"
-              name: "vendor_specific_error_status"
+              name: "vendor_specific_error"
               desc: ""
             }
             {

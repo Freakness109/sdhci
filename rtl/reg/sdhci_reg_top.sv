@@ -265,9 +265,9 @@ module sdhci_reg_top #(
   logic error_interrupt_status_auto_cmd12_error_wd;
   logic error_interrupt_status_auto_cmd12_error_we;
   logic [2:0] error_interrupt_status_rsvd_9_qs;
-  logic [3:0] error_interrupt_status_vendor_specific_error_status_qs;
-  logic [3:0] error_interrupt_status_vendor_specific_error_status_wd;
-  logic error_interrupt_status_vendor_specific_error_status_we;
+  logic [3:0] error_interrupt_status_vendor_specific_error_qs;
+  logic [3:0] error_interrupt_status_vendor_specific_error_wd;
+  logic error_interrupt_status_vendor_specific_error_we;
   logic normal_interrupt_status_enable_command_complete_status_enable_qs;
   logic normal_interrupt_status_enable_command_complete_status_enable_wd;
   logic normal_interrupt_status_enable_command_complete_status_enable_we;
@@ -1932,7 +1932,7 @@ module sdhci_reg_top #(
     .d      (hw2reg.clock_control.internal_clock_enable.d ),
 
     // to internal hardware
-    .qe     (),
+    .qe     (reg2hw.clock_control.internal_clock_enable.qe),
     .q      (reg2hw.clock_control.internal_clock_enable.q ),
 
     // to register interface (read)
@@ -1957,7 +1957,7 @@ module sdhci_reg_top #(
     .d      (hw2reg.clock_control.internal_clock_stable.d ),
 
     // to internal hardware
-    .qe     (),
+    .qe     (reg2hw.clock_control.internal_clock_stable.qe),
     .q      (reg2hw.clock_control.internal_clock_stable.q ),
 
     // to register interface (read)
@@ -1983,7 +1983,7 @@ module sdhci_reg_top #(
     .d      (hw2reg.clock_control.sd_clock_enable.d ),
 
     // to internal hardware
-    .qe     (),
+    .qe     (reg2hw.clock_control.sd_clock_enable.qe),
     .q      (reg2hw.clock_control.sd_clock_enable.q ),
 
     // to register interface (read)
@@ -2008,7 +2008,7 @@ module sdhci_reg_top #(
     .d      ('0  ),
 
     // to internal hardware
-    .qe     (),
+    .qe     (reg2hw.clock_control.rsvd_3.qe),
     .q      (reg2hw.clock_control.rsvd_3.q ),
 
     // to register interface (read)
@@ -2034,7 +2034,7 @@ module sdhci_reg_top #(
     .d      (hw2reg.clock_control.sdclk_frequency_select.d ),
 
     // to internal hardware
-    .qe     (),
+    .qe     (reg2hw.clock_control.sdclk_frequency_select.qe),
     .q      (reg2hw.clock_control.sdclk_frequency_select.q ),
 
     // to register interface (read)
@@ -2746,29 +2746,29 @@ module sdhci_reg_top #(
   );
 
 
-  //   F[vendor_specific_error_status]: 31:28
+  //   F[vendor_specific_error]: 31:28
   prim_subreg #(
     .DW      (4),
     .SWACCESS("W1C"),
     .RESVAL  (4'h0)
-  ) u_error_interrupt_status_vendor_specific_error_status (
+  ) u_error_interrupt_status_vendor_specific_error (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
     // from register interface
-    .we     (error_interrupt_status_vendor_specific_error_status_we),
-    .wd     (error_interrupt_status_vendor_specific_error_status_wd),
+    .we     (error_interrupt_status_vendor_specific_error_we),
+    .wd     (error_interrupt_status_vendor_specific_error_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status.vendor_specific_error_status.de),
-    .d      (hw2reg.error_interrupt_status.vendor_specific_error_status.d ),
+    .de     (hw2reg.error_interrupt_status.vendor_specific_error.de),
+    .d      (hw2reg.error_interrupt_status.vendor_specific_error.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.error_interrupt_status.vendor_specific_error_status.q ),
+    .q      (reg2hw.error_interrupt_status.vendor_specific_error.q ),
 
     // to register interface (read)
-    .qs     (error_interrupt_status_vendor_specific_error_status_qs)
+    .qs     (error_interrupt_status_vendor_specific_error_qs)
   );
 
 
@@ -4912,8 +4912,8 @@ module sdhci_reg_top #(
   assign error_interrupt_status_auto_cmd12_error_we = addr_hit[20] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
   assign error_interrupt_status_auto_cmd12_error_wd = reg_wdata[24];
 
-  assign error_interrupt_status_vendor_specific_error_status_we = addr_hit[20] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
-  assign error_interrupt_status_vendor_specific_error_status_wd = reg_wdata[31:28];
+  assign error_interrupt_status_vendor_specific_error_we = addr_hit[20] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
+  assign error_interrupt_status_vendor_specific_error_wd = reg_wdata[31:28];
 
   assign normal_interrupt_status_enable_command_complete_status_enable_we = addr_hit[21] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign normal_interrupt_status_enable_command_complete_status_enable_wd = reg_wdata[0];
@@ -5184,7 +5184,7 @@ module sdhci_reg_top #(
         reg_rdata_next[23] = error_interrupt_status_current_limit_error_qs;
         reg_rdata_next[24] = error_interrupt_status_auto_cmd12_error_qs;
         reg_rdata_next[27:25] = error_interrupt_status_rsvd_9_qs;
-        reg_rdata_next[31:28] = error_interrupt_status_vendor_specific_error_status_qs;
+        reg_rdata_next[31:28] = error_interrupt_status_vendor_specific_error_qs;
       end
 
       addr_hit[21]: begin

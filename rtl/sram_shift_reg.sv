@@ -36,7 +36,7 @@ module sram_shift_reg #(
   logic [AddrWidth-1:0] back_addr_q, back_addr_d;
   logic [LengthWidth-1:0] length_q, length_d;
 
-  `FF(length_q, length_d, 0, clk_i, rst_ni);
+  `FF(length_q, length_d, '0, clk_i, rst_ni);
   `FF(back_addr_q, back_addr_d, '0, clk_i, rst_ni);
 
   assign back_addr_d = push_back_i ? AddrWidth'((back_addr_q + 1) % NumWords) : back_addr_q;

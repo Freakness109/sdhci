@@ -232,18 +232,23 @@ package sdhci_reg_pkg;
   typedef struct packed {
     struct packed {
       logic        q;
+      logic        qe;
     } internal_clock_enable;
     struct packed {
       logic        q;
+      logic        qe;
     } internal_clock_stable;
     struct packed {
       logic        q;
+      logic        qe;
     } sd_clock_enable;
     struct packed {
       logic [4:0]  q;
+      logic        qe;
     } rsvd_3;
     struct packed {
       logic [7:0]  q;
+      logic        qe;
     } sdclk_frequency_select;
   } sdhci_reg2hw_clock_control_reg_t;
 
@@ -340,7 +345,7 @@ package sdhci_reg_pkg;
     } rsvd_9;
     struct packed {
       logic [3:0]  q;
-    } vendor_specific_error_status;
+    } vendor_specific_error;
   } sdhci_reg2hw_error_interrupt_status_reg_t;
 
   typedef struct packed {
@@ -931,7 +936,7 @@ package sdhci_reg_pkg;
     struct packed {
       logic [3:0]  d;
       logic        de;
-    } vendor_specific_error_status;
+    } vendor_specific_error;
   } sdhci_hw2reg_error_interrupt_status_reg_t;
 
   typedef struct packed {
@@ -1196,23 +1201,23 @@ package sdhci_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    sdhci_reg2hw_system_address_reg_t system_address; // [600:569]
-    sdhci_reg2hw_block_size_reg_t block_size; // [568:553]
-    sdhci_reg2hw_block_count_reg_t block_count; // [552:537]
-    sdhci_reg2hw_argument_reg_t argument; // [536:505]
-    sdhci_reg2hw_transfer_mode_reg_t transfer_mode; // [504:489]
-    sdhci_reg2hw_command_reg_t command; // [488:465]
-    sdhci_reg2hw_response0_reg_t response0; // [464:433]
-    sdhci_reg2hw_response1_reg_t response1; // [432:401]
-    sdhci_reg2hw_response2_reg_t response2; // [400:369]
-    sdhci_reg2hw_response3_reg_t response3; // [368:337]
-    sdhci_reg2hw_buffer_data_port_reg_t buffer_data_port; // [336:303]
-    sdhci_reg2hw_present_state_reg_t present_state; // [302:271]
-    sdhci_reg2hw_host_control_reg_t host_control; // [270:263]
-    sdhci_reg2hw_power_control_reg_t power_control; // [262:255]
-    sdhci_reg2hw_block_gap_control_reg_t block_gap_control; // [254:247]
-    sdhci_reg2hw_wakeup_control_reg_t wakeup_control; // [246:239]
-    sdhci_reg2hw_clock_control_reg_t clock_control; // [238:223]
+    sdhci_reg2hw_system_address_reg_t system_address; // [605:574]
+    sdhci_reg2hw_block_size_reg_t block_size; // [573:558]
+    sdhci_reg2hw_block_count_reg_t block_count; // [557:542]
+    sdhci_reg2hw_argument_reg_t argument; // [541:510]
+    sdhci_reg2hw_transfer_mode_reg_t transfer_mode; // [509:494]
+    sdhci_reg2hw_command_reg_t command; // [493:470]
+    sdhci_reg2hw_response0_reg_t response0; // [469:438]
+    sdhci_reg2hw_response1_reg_t response1; // [437:406]
+    sdhci_reg2hw_response2_reg_t response2; // [405:374]
+    sdhci_reg2hw_response3_reg_t response3; // [373:342]
+    sdhci_reg2hw_buffer_data_port_reg_t buffer_data_port; // [341:308]
+    sdhci_reg2hw_present_state_reg_t present_state; // [307:276]
+    sdhci_reg2hw_host_control_reg_t host_control; // [275:268]
+    sdhci_reg2hw_power_control_reg_t power_control; // [267:260]
+    sdhci_reg2hw_block_gap_control_reg_t block_gap_control; // [259:252]
+    sdhci_reg2hw_wakeup_control_reg_t wakeup_control; // [251:244]
+    sdhci_reg2hw_clock_control_reg_t clock_control; // [243:223]
     sdhci_reg2hw_timeout_control_reg_t timeout_control; // [222:215]
     sdhci_reg2hw_software_reset_reg_t software_reset; // [214:208]
     sdhci_reg2hw_normal_interrupt_status_reg_t normal_interrupt_status; // [207:192]
