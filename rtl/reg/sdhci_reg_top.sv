@@ -411,10 +411,12 @@ module sdhci_reg_top #(
   logic capabilities_voltage_support_3_0v_qs;
   logic capabilities_voltage_support_1_8v_qs;
   logic [4:0] capabilities_rsvd_27_qs;
+  logic [31:0] capabilities_reserved_qs;
   logic [7:0] maximum_current_capabilities_maximum_current_for_3_3v_qs;
   logic [7:0] maximum_current_capabilities_maximum_current_for_3_0v_qs;
   logic [7:0] maximum_current_capabilities_maximum_current_for_1_8v_qs;
   logic [7:0] maximum_current_capabilities_rsvd_24_qs;
+  logic [31:0] maximum_current_capabilities_reserved_qs;
   logic [7:0] slot_interrupt_status_register_interrupt_signal_for_each_slot_qs;
   logic [7:0] slot_interrupt_status_register_rsvd_8_qs;
   logic [7:0] host_controller_version_register_specification_version_number_qs;
@@ -1132,7 +1134,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RO"),
-    .RESVAL  (1'h0)
+    .RESVAL  (1'h1)
   ) u_present_state_buffer_write_enable (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -3652,7 +3654,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (6),
     .SWACCESS("RO"),
-    .RESVAL  (6'h0)
+    .RESVAL  (6'h32)
   ) u_capabilities_timeout_clock_frequency (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -3682,7 +3684,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RO"),
-    .RESVAL  (1'h0)
+    .RESVAL  (1'h1)
   ) u_capabilities_timeout_clock_unit (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -3707,7 +3709,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (6),
     .SWACCESS("RO"),
-    .RESVAL  (6'h0)
+    .RESVAL  (6'h32)
   ) u_capabilities_base_clock_frequency_for_sd_clock (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -3842,7 +3844,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RO"),
-    .RESVAL  (1'h0)
+    .RESVAL  (1'h1)
   ) u_capabilities_voltage_support_3_3v (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -3916,6 +3918,12 @@ module sdhci_reg_top #(
   //   F[rsvd_27]: 31:27
   // constant-only read
   assign capabilities_rsvd_27_qs = 5'h0;
+
+
+  // R[capabilities_reserved]: V(False)
+
+  // constant-only read
+  assign capabilities_reserved_qs = 32'h0;
 
 
   // R[maximum_current_capabilities]: V(False)
@@ -3998,6 +4006,12 @@ module sdhci_reg_top #(
   //   F[rsvd_24]: 31:24
   // constant-only read
   assign maximum_current_capabilities_rsvd_24_qs = 8'h0;
+
+
+  // R[maximum_current_capabilities_reserved]: V(False)
+
+  // constant-only read
+  assign maximum_current_capabilities_reserved_qs = 32'h0;
 
 
   // R[slot_interrupt_status_register]: V(False)
@@ -4086,7 +4100,7 @@ module sdhci_reg_top #(
 
 
 
-  logic [29:0] addr_hit;
+  logic [31:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[ 0] = |(reg_be & SDHCI_BYTEMASK[ 0]) && reg_addr == SDHCI_SYSTEM_ADDRESS_OFFSET;
@@ -4116,9 +4130,11 @@ module sdhci_reg_top #(
     addr_hit[24] = |(reg_be & SDHCI_BYTEMASK[24]) && reg_addr == SDHCI_ERROR_INTERRUPT_SIGNAL_ENABLE_OFFSET;
     addr_hit[25] = |(reg_be & SDHCI_BYTEMASK[25]) && reg_addr == SDHCI_AUTO_CMD12_ERROR_STATUS_OFFSET;
     addr_hit[26] = |(reg_be & SDHCI_BYTEMASK[26]) && reg_addr == SDHCI_CAPABILITIES_OFFSET;
-    addr_hit[27] = |(reg_be & SDHCI_BYTEMASK[27]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_OFFSET;
-    addr_hit[28] = |(reg_be & SDHCI_BYTEMASK[28]) && reg_addr == SDHCI_SLOT_INTERRUPT_STATUS_REGISTER_OFFSET;
-    addr_hit[29] = |(reg_be & SDHCI_BYTEMASK[29]) && reg_addr == SDHCI_HOST_CONTROLLER_VERSION_REGISTER_OFFSET;
+    addr_hit[27] = |(reg_be & SDHCI_BYTEMASK[27]) && reg_addr == SDHCI_CAPABILITIES_RESERVED_OFFSET;
+    addr_hit[28] = |(reg_be & SDHCI_BYTEMASK[28]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_OFFSET;
+    addr_hit[29] = |(reg_be & SDHCI_BYTEMASK[29]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_RESERVED_OFFSET;
+    addr_hit[30] = |(reg_be & SDHCI_BYTEMASK[30]) && reg_addr == SDHCI_SLOT_INTERRUPT_STATUS_REGISTER_OFFSET;
+    addr_hit[31] = |(reg_be & SDHCI_BYTEMASK[31]) && reg_addr == SDHCI_HOST_CONTROLLER_VERSION_REGISTER_OFFSET;
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -4155,7 +4171,9 @@ module sdhci_reg_top #(
                (addr_hit[26] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[26]))) |
                (addr_hit[27] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[27]))) |
                (addr_hit[28] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[28]))) |
-               (addr_hit[29] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[29])))));
+               (addr_hit[29] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[29]))) |
+               (addr_hit[30] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[30]))) |
+               (addr_hit[31] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[31])))));
   end
 
   assign system_address_we = addr_hit[0] & reg_we & !reg_error & (|(4'b 1111 & reg_be));
@@ -4679,18 +4697,26 @@ module sdhci_reg_top #(
       end
 
       addr_hit[27]: begin
+        reg_rdata_next[31:0] = capabilities_reserved_qs;
+      end
+
+      addr_hit[28]: begin
         reg_rdata_next[7:0] = maximum_current_capabilities_maximum_current_for_3_3v_qs;
         reg_rdata_next[15:8] = maximum_current_capabilities_maximum_current_for_3_0v_qs;
         reg_rdata_next[23:16] = maximum_current_capabilities_maximum_current_for_1_8v_qs;
         reg_rdata_next[31:24] = maximum_current_capabilities_rsvd_24_qs;
       end
 
-      addr_hit[28]: begin
+      addr_hit[29]: begin
+        reg_rdata_next[31:0] = maximum_current_capabilities_reserved_qs;
+      end
+
+      addr_hit[30]: begin
         reg_rdata_next[7:0] = slot_interrupt_status_register_interrupt_signal_for_each_slot_qs;
         reg_rdata_next[15:8] = slot_interrupt_status_register_rsvd_8_qs;
       end
 
-      addr_hit[29]: begin
+      addr_hit[31]: begin
         reg_rdata_next[23:16] = host_controller_version_register_specification_version_number_qs;
         reg_rdata_next[31:24] = host_controller_version_register_vendor_version_number_qs;
       end

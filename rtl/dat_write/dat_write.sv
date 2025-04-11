@@ -260,7 +260,7 @@ module dat_write (
 
   //crc calculation
   crc16_write i_crc16_write_0 (
-    .clk_i              (clk_i),
+    .clk_i              (sd_clk_i),
     .rst_ni             (rst_ni),
     .shift_out_crc16_i  (shift_out_crc),
     .dat_ser_i          (dat_0),
@@ -268,7 +268,7 @@ module dat_write (
   );
   
   crc16_write i_crc16_write_1 (
-    .clk_i              (clk_i),
+    .clk_i              (sd_clk_i),
     .rst_ni             (rst_ni),
     .shift_out_crc16_i  (shift_out_crc),
     .dat_ser_i          (dat_1),
@@ -276,7 +276,7 @@ module dat_write (
   );
 
   crc16_write i_crc16_write_2 (
-    .clk_i              (clk_i),
+    .clk_i              (sd_clk_i),
     .rst_ni             (rst_ni),
     .shift_out_crc16_i  (shift_out_crc),
     .dat_ser_i          (dat_2),
@@ -284,7 +284,7 @@ module dat_write (
   );
 
   crc16_write i_crc16_write_3 (
-    .clk_i              (clk_i),
+    .clk_i              (sd_clk_i),
     .rst_ni             (rst_ni),
     .shift_out_crc16_i  (shift_out_crc),
     .dat_ser_i          (dat_3),
@@ -306,8 +306,8 @@ module dat_write (
   ) i_bit_counter (
     .clk_i      (sd_clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (cout_clear),
-    .en_i       (count_start),
+    .clear_i    (count_clear),
+    .en_i       (count_en),
     .load_i     ('0),
     .down_i     ('0),
     .d_i        ('0),

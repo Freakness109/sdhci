@@ -284,7 +284,6 @@
       name: "present_state"
       desc: ""
       swaccess: "ro"
-      resval: "0"
       hwaccess: "hrw"
       fields: [
         {
@@ -299,21 +298,25 @@
           bits: "11"
           name: "buffer_read_enable"
           desc: ""
+          resval: "0"
         }
         {
           bits: "10"
           name: "buffer_write_enable"
           desc: ""
+          resval: "1"
         }
         {
           bits: "9"
           name: "read_transfer_active"
           desc: ""
+          resval: "0"
         }
         {
           bits: "8"
           name: "write_transfer_active"
           desc: ""
+          resval: "0"
         }
         {
           bits: "7:3"
@@ -327,16 +330,19 @@
           bits: "2"
           name: "dat_line_active"
           desc: ""
+          resval: "0"
         }
         {
           bits: "1"
           name: "command_inhibit_dat"
           desc: ""
+          resval: "0"
         }
         {
           bits: "0"
           name: "command_inhibit_cmd"
           desc: ""
+          resval: "0"
         }
         {
           bits: "31:25"
@@ -350,31 +356,37 @@
           bits: "24"
           name: "cmd_line_signal_level"
           desc: ""
+          resval: "0"
         }
         {
           bits: "23:20"
           name: "dat_line_signal_level"
           desc: ""
+          resval: "0"
         }
         {
           bits: "19"
           name: "write_protect_switch_pin_level"
           desc: ""
+          resval: "0"
         }
         {
           bits: "18"
           name: "card_detect_pin_level"
           desc: ""
+          resval: "0"
         }
         {
           bits: "17"
           name: "card_state_stable"
           desc: ""
+          resval: "0"
         }
         {
           bits: "16"
           name: "card_inserted"
           desc: ""
+          resval: "0"
         }
       ]
     }
@@ -1111,7 +1123,6 @@
       desc: ""
       swaccess: "ro"
       hwaccess: "hrw"
-      hwaccess: "hrw"
       fields: [
         {
           bits: "31:27"
@@ -1125,31 +1136,37 @@
           bits: "26"
           name: "voltage_support_1_8v"
           desc: ""
+          resval: "0"
         }
         {
           bits: "25"
           name: "voltage_support_3_0v"
           desc: ""
+          resval: "0"
         }
         {
           bits: "24"
           name: "voltage_support_3_3v"
           desc: ""
+          resval: "1"
         }
         {
           bits: "23"
           name: "suspend_resume_support"
           desc: ""
+          resval: "0"
         }
         {
           bits: "22"
           name: "dma_support"
           desc: ""
+          resval: "0"
         }
         {
           bits: "21"
           name: "high_speed_support"
           desc: ""
+          resval: "0"
         }
         {
           bits: "20:18"
@@ -1163,6 +1180,7 @@
           bits: "17:16"
           name: "max_block_length"
           desc: ""
+          resval: "0b00"
         }
         {
           bits: "15:14"
@@ -1176,11 +1194,13 @@
           bits: "13:8"
           name: "base_clock_frequency_for_sd_clock"
           desc: ""
+          resval: "0b110010" // 50Mhz
         }
         {
           bits: "7"
           name: "timeout_clock_unit"
           desc: ""
+          resval: "1" // MHz
         }
         {
           bits: "6"
@@ -1194,12 +1214,24 @@
           bits: "5:0"
           name: "timeout_clock_frequency"
           desc: ""
+          resval: "0b110010" // 50Mhz
         }
       ]
     }
     // Capabilities (Reserved)
     {
-      reserved: 1
+      name: "capabilities_reserved"
+      desc: ""
+      fields: [
+        {
+          bits: "31:0"
+          name: "rsvd"
+          desc: ""
+          swaccess: "ro"
+          hwaccess: "none"
+          resval: "0"
+        }
+      ]
     }
     {
       name: "maximum_current_capabilities"
@@ -1234,7 +1266,18 @@
     }
     // Maximum Current Capabilities (Reserved)
     {
-      reserved: 1
+      name: "maximum_current_capabilities_reserved"
+      desc: ""
+      fields: [
+        {
+          bits: "31:0"
+          name: "rsvd"
+          desc: ""
+          swaccess: "ro"
+          hwaccess: "none"
+          resval: "0"
+        }
+      ]
     }
 
 

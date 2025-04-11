@@ -1,9 +1,9 @@
 /**
  * Shift Register built using an SRAM
  * The first element is always readable at `read_data_o`
- * Asserting `pop_front_i` tries to puts the next word into `read_data_o` within one clock cycle
+ * Asserting `pop_front_i` tries to put the next word into `read_data_o` within one clock cycle
  * If a push is happening at the same time the pop is delayed by a clock cycle
- * A push takes 2 clock cycles to appear in the `front_data_o`
+ * The first push (when empty_o = '1) takes 2 clock cycles to appear in the `front_data_o`
  */
 
 `include "common_cells/registers.svh"
@@ -27,26 +27,30 @@ module sram_shift_reg #(
   output logic full_o
 );
   // Push a pop operation to the next clock cycle if the sram is busy
-  logic pop_front_q, pop_front;
-  `FF(pop_front_q, pop_front_i & (push_back_i | pop_front_q), '0, clk_i, rst_ni);
-  assign pop_front = pop_front_q | pop_front_i;
+  logic pop_front_q, pop_front_d;
+  `FF(pop_front_q, pop_front_d, '0, clk_i, rst_ni);
+  assign pop_front_d = pop_front_i & (push_back_i | pop_front_q);
 
-  `ASSERT_NEVER(Overwhelmed, pop_front_i & push_back_i & pop_front_q);
+`ifdef VERILATOR
+  assert property (@(posedge clk_i) !(pop_front_i & push_back_i & pop_front_q));
+`endif
 
   logic [AddrWidth-1:0] back_addr_q, back_addr_d;
-  logic [LengthWidth-1:0] length_q, length_d;
-
-  `FF(length_q, length_d, '0, clk_i, rst_ni);
   `FF(back_addr_q, back_addr_d, '0, clk_i, rst_ni);
-
   assign back_addr_d = push_back_i ? AddrWidth'((back_addr_q + 1) % NumWords) : back_addr_q;
-  assign length_d = push_back_i ? length_q + 1 : pop_front ? length_q - 1 : length_q;
+
+  logic [LengthWidth-1:0] length_q, length_d;
+  `FF(length_q, length_d, '0, clk_i, rst_ni);
+  assign length_d = push_back_i ? length_q + 1 : pop_front_i | pop_front_q ? length_q - 1 : length_q;
 
   assign empty_o = length_q == '0;
   assign full_o = length_q == NumWords;
 
-  `ASSERT_NEVER(Underflow, pop_front_i && empty_o);
-  `ASSERT_NEVER(Overflow, push_back_i && full_o);
+
+`ifdef VERILATOR
+  assert property (@(posedge clk_i) !(pop_front_i && empty_o));
+  assert property (@(posedge clk_i) !(push_back_i && full_o));
+`endif
 
   // // To make writes instantly appear in reads
   // logic first_push_q, first_push_d;
@@ -69,9 +73,9 @@ module sram_shift_reg #(
     .clk_i,
     .rst_ni,
 
-    .req_i   (pop_front | push_back_i),
+    .req_i   (push_back_i | pop_front_i | pop_front_q),
     .we_i    (push_back_i),
-    .addr_i  ({ push_back_i ? back_addr_q : AddrWidth'((back_addr_q - length_q + 1) % NumWords) }),
+    .addr_i  (push_back_i ? back_addr_q : AddrWidth'((back_addr_q - length_q + 1) % NumWords)),
 
     .wdata_i (back_data_i),
     .be_i    ('1),

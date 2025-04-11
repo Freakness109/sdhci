@@ -6,13 +6,14 @@
 module rsp_read (
   input logic sd_clk_i,         //should be synchronous with clk line of Sd card
   input logic rst_ni,
-  
+  input logic cmd_i, 
+
   input logic long_rsp_i,        //high if response is of type R2 (136 bit)
   input logic start_listening_i,  //should be asserted 2nd cycle after end bit of CMD
   
   output  logic rsp_valid_o,     //write response, end_bit_err and crc_corr to register
   output  logic end_bit_err_o,    //valid at the same time as response
-  output  logic [126:0] rsp_o,   //without start, transmission, reserved and end bits
+  output  logic [119:0] rsp_o,   //without start, transmission, reserved and end bits
   output  logic crc_corr_o       //active if crc7 was correct, valid when rsp_valid_o is active
 );
   //state transition
@@ -49,6 +50,7 @@ module rsp_read (
 
   //data path
   logic rsp_ser;
+  assign rsp_ser = cmd_i;
 
   logic start_bit_observed, all_bits_received;
 
@@ -61,11 +63,12 @@ module rsp_read (
   logic [7:0] bit_cnt;
 
   logic [8:0] shift_start_cnt, crc_start_cnt, done_cnt;
+  logic [126:0] rsp_with_crc7;
 
   assign shift_start_cnt= (long_rsp_i)  ? 8'd7    : 8'd2;      //should be right
   assign crc_start_cnt  = (long_rsp_i)  ? 8'd126  : 8'd38;     //could be wrong
   assign done_cnt       = (long_rsp_i)  ? 8'd134  : 8'd46;     //could be wrong
-
+  assign rsp_o  = rsp_with_crc7 [126:7];
   always_comb begin : rsp_data_path
     start_bit_observed      = 1'b0;
     all_bits_received       = 1'b0;
@@ -86,7 +89,7 @@ module rsp_read (
         //?
       end
       
-      WAIT_FOR_START_BIT: start_bit_observed  = (~rsp_ser) ? SHIFT_IN : WAIT_FOR_START_BIT;
+      WAIT_FOR_START_BIT: start_bit_observed = ~rsp_ser;
 
       SHIFT_IN:           begin
         cnt_clear = 1'b0;
@@ -109,7 +112,7 @@ module rsp_read (
         shift_reg_par_output_en = 1'b1;
         rsp_valid_o             = 1'b1;
         
-        crc_corr_o    = (crc7_calc == rsp_o[6:0]) ? 1'b1  : 1'b0;
+        crc_corr_o    = (crc7_calc == rsp_with_crc7[6:0]) ? 1'b1  : 1'b0;
         end_bit_err_o = ~rsp_ser;
       end
 
@@ -131,7 +134,7 @@ module rsp_read (
     .shift_in_en_i    (shift_reg_shift_in_en),
     .par_output_en_i  (shift_reg_par_output_en),
     .dat_ser_i        (rsp_ser),
-    .dat_par_o        (rsp_o)
+    .dat_par_o        (rsp_with_crc7)
   );
 
   crc7_read i_crc7_read (
@@ -156,9 +159,5 @@ module rsp_read (
     .d_i        (8'b0),
     .q_o        (bit_cnt),
     .overflow_o ()
-  );
-
-  sd_bus_cmd_receiver i_sd_bus_cmd_receiver (
-    .cmd_o  (rsp_ser)
   );
 endmodule
