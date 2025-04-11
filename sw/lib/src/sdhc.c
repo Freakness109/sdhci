@@ -83,7 +83,7 @@ void	sdhc_read_data(struct sdhc_host *, u_char *, int);
 void	sdhc_write_data(struct sdhc_host *, u_char *, int);
 
 #ifdef SDHC_DEBUG
-int sdhcdebug = 0;
+int sdhcdebug = 2;
 #define DPRINTF(n,s)	do { if ((n) <= sdhcdebug) printf s; } while (0)
 void	sdhc_dump_regs(struct sdhc_host *);
 #else
@@ -213,6 +213,7 @@ sdhc_init(struct sdhc_host *hp, struct sdhc_softc *sc, struct sdmmc_softc *paren
 		if (SDHC_BASE_FREQ_KHZ(caps) != 0)
 			hp->clkbase = SDHC_BASE_FREQ_KHZ(caps);
 	}
+
 	if (hp->clkbase == 0) {
 		/* Make sure we can clock down to 400 kHz. */
 		max_clock = 400 * SDHC_SDCLK_DIV_MAX_V3;
@@ -237,8 +238,8 @@ sdhc_init(struct sdhc_host *hp, struct sdhc_softc *sc, struct sdmmc_softc *paren
 		break;
 	}
 
-	// printf("%s: SDHC %d.%02d, %d MHz base clock\n", DEVNAME(sc),
-	    // major, minor, hp->clkbase / 1000);
+	printf("%s: SDHC %d.%02d, %d MHz base clock\n", DEVNAME(sc),
+	    major, minor, hp->clkbase / 1000);
 
 	/*
 	 * XXX Set the data timeout counter value according to
@@ -319,6 +320,7 @@ sdhc_init(struct sdhc_host *hp, struct sdhc_softc *sc, struct sdmmc_softc *paren
 	 * not invoke any chipset functions before it is attached.)
 	 */
 	bzero(&saa, sizeof(saa));
+	saa.flags = SMF_MEM_MODE;
 	saa.saa_busname = "sdmmc";
 	saa.sct = &sdhc_functions;
 	saa.sch = hp;
@@ -630,13 +632,14 @@ sdhc_bus_clock(sdmmc_chipset_handle_t sch, int freq, int timing)
 	 * Start internal clock.  Wait 10ms for stabilization.
 	 */
 	HSET2(hp, SDHC_CLOCK_CTL, SDHC_INTCLK_ENABLE);
-	for (timo = 1000; timo > 0; timo--) {
+	for (timo = 10; timo > 0; timo--) {
 		if (ISSET(HREAD2(hp, SDHC_CLOCK_CTL), SDHC_INTCLK_STABLE))
 			break;
-		sdmmc_delay(10);
+		sdmmc_delay(1000);
 	}
 	if (timo == 0) {
 		error = ETIMEDOUT;
+		printf("Timed out!");
 		goto ret;
 	}
 

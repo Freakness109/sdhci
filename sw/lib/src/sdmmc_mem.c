@@ -138,6 +138,7 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 	}
 
 	/* Set the lowest voltage supported by the card and host. */
+	// TODO this is not used since we have fixed power
 	host_ocr = sdmmc_chip_host_ocr(sc->sct, sc->sch);
 	if (sdmmc_set_bus_power(sc, host_ocr, card_ocr) != 0) {
 		DPRINTF(("%s: can't supply voltage requested by card\n",
@@ -414,6 +415,16 @@ sdmmc_decode_cid(struct sdmmc_softc *sc, sdmmc_response resp,
 	}
 	return 0;
 }
+
+#ifdef SDMMC_DEBUG
+void
+sdmmc_print_cid(struct sdmmc_cid *cid)
+{
+	printf("mid=0x%02x oid=0x%04x pnm=\"%s\" rev=0x%02x psn=0x%08x"
+	    " mdt=%03x\n", cid->mid, cid->oid, cid->pnm, cid->rev, cid->psn,
+	    cid->mdt);
+}
+#endif
 
 int
 sdmmc_mem_send_scr(struct sdmmc_softc *sc, uint32_t *scr)

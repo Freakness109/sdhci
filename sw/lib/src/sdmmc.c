@@ -38,7 +38,7 @@ void sdmmc_card_detach(struct sdmmc_softc *sc, int flags);
 
 
 #ifdef SDMMC_DEBUG
-int sdmmcdebug = 0;
+int sdmmcdebug = 2;
 extern int sdhcdebug;	/* XXX should have a sdmmc_chip_debug() function */
 void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #define DPRINTF(n,s)	do { if ((n) <= sdmmcdebug) printf s; } while (0)
@@ -51,6 +51,7 @@ void
 sdmmc_attach(struct sdmmc_softc *sc, struct sdmmcbus_attach_args *saa)
 {
 	int error;
+	printf("sdmmc");
 
 	if (ISSET(saa->caps, SMC_CAPS_8BIT_MODE))
 		printf(": 8-bit");
@@ -237,7 +238,10 @@ sdmmc_enable(struct sdmmc_softc *sc)
 	}
 
 	/* XXX wait for card to power up */
+#ifndef SDMMC_DEBUG
+	// TODO
 	sdmmc_delay(250000);
+#endif
 
 	/* Initialize SD I/O card function(s). */
 	// if ((error = sdmmc_io_enable(sc)) != 0)
@@ -386,6 +390,7 @@ sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 
 	if (!ISSET(MMC_R1(acmd.c_resp), MMC_R1_APP_CMD)) {
 		/* Card does not support application commands. */
+		DPRINTF(1,("%s: Card does not support ACMD %x\n", DEVNAME(sc), acmd.c_resp[0]));
 		return ENODEV;
 	}
 
@@ -521,12 +526,12 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 {
 	int i;
 
-	rw_assert_wrlock(&sc->sc_lock);
+	// rw_assert_wrlock(&sc->sc_lock);
 
 	DPRINTF(1,("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
-	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
+	    "(error %d)\n", DEVNAME(sc), cmd->c_opcode,
 	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
-	    curproc ? curproc->p_p->ps_comm : "", cmd->c_error));
+	    cmd->c_error));
 
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;
