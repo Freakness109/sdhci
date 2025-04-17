@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: SHL-0.51
 
 `include "common_cells/registers.svh"
+`define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
 
 module user_sdhci #(
   parameter obi_pkg::obi_cfg_t ObiCfg      = obi_pkg::ObiDefaultConfig,
@@ -30,11 +31,41 @@ module user_sdhci #(
   assign hw2reg.clock_control.internal_clock_stable.d = '1;
   assign hw2reg.clock_control.internal_clock_stable.de = '1;
 
-  logic software_reset_all_q, software_reset_all_d;
-  `FF(software_reset_all_q, software_reset_all_d, '0, clk_i, rst_ni);
+  //Soft Reset Logic/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  logic software_reset_all_q, software_reset_all_d, software_reset_cmd_q, software_reset_cmd_d, software_reset_dat_q, software_reset_dat_d;
+  
   assign software_reset_all_d = reg2hw.software_reset.software_reset_for_all.q;
-  assign sd_rst_n = rst_ni && !software_reset_all_q;
+  `FF(software_reset_all_q, software_reset_all_d, '0, clk_i, rst_ni);
+  
+  assign software_reset_cmd_d = rst_ni && !reg2hw.software_reset.software_reset_for_cmd_line.q;  //comand circuit soft reset
+  `FF(software_reset_cmd_q, software_reset_cmd_d, '1, clk_i, rst_ni);
 
+  assign software_reset_dat_d = rst_ni && !reg2hw.software_reset.software_reset_for_dat_line.q;  //dat circuit soft reset
+  `FF(software_reset_dat_q, software_reset_dat_d, '1, clk_i, rst_ni);
+
+  assign sd_rst_n = rst_ni && !software_reset_all_q;
+  
+  always_comb begin : reset_reset_bits
+    hw2reg.software_reset.software_reset_for_all.d  = 1'b0;
+    hw2reg.software_reset.software_reset_for_all.de = 1'b0;
+    hw2reg.software_reset.software_reset_for_dat_line.d   = 1'b0;
+    hw2reg.software_reset.software_reset_for_dat_line.de  = 1'b0;
+    hw2reg.software_reset.software_reset_for_cmd_line.d   = 1'b0;
+    hw2reg.software_reset.software_reset_for_cmd_line.de  = 1'b0;
+
+    if(software_reset_all_q) hw2reg.software_reset.software_reset_for_all.de = 1'b1;
+    if(!software_reset_dat_q) hw2reg.software_reset.software_reset_for_dat_line.de = 1'b1;
+    if(!software_reset_cmd_q) hw2reg.software_reset.software_reset_for_cmd_line.de = 1'b1;
+
+    `ifdef CMD_RESET_ON_TIMEOUT
+      if(reg2hw.error_interrupt_status.command_timeout_error.q) begin //evtl noch error status resetten?
+        hw2reg.software_reset.software_reset_for_cmd_line.d = 1'b1;
+        hw2reg.software_reset.software_reset_for_cmd_line.de = 1'b1;
+      end
+    `endif
+  end
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   sdhci_reg_obi #(
     .ObiCfg    (ObiCfg),
     .obi_req_t (obi_req_t),
@@ -187,125 +218,38 @@ module user_sdhci #(
   );
   
   logic cmd_start_q, cmd_start_d;
-  `FF(cmd_start_q, cmd_start_d, '0, sd_clk)
+  `FF(cmd_start_q, cmd_start_d, '0, sd_clk);
 
-  logic cmd_argument, cmd_number, cmd_done;
-  cmd_write i_cmd_write (
-    .sd_freq_clk_i (sd_clk),
-    .rst_ni (sd_rst_n),
-    .cmd_o    (cmd_write),
-    .cmd_en_o (cmd_write_en),
 
-    .start_tx_i     (cmd_start_q),
-    .cmd_argument_i (reg2hw.argument.q),
-    .cmd_nr_i       (reg2hw.command.command_index.q),
-
-    .tx_done_o (cmd_done)
-  );
-
-  logic rsp_start_q, rsp_start_d;
-  `FF(rsp_start_q, rsp_start_d, '0, sd_clk)
-
-  logic rsp_valid, rsp_end_bit_err, rsp_crc_correct;
-  logic [119:0] rsp;
-  rsp_read i_rsp_read (
+  cmd_wrap  i_cmd_wrap (
+    .clk_i (clk_i),
     .sd_clk_i (sd_clk),
-    .rst_ni (sd_rst_n),
-    .cmd_i (cmd_read),
-
-    .long_rsp_i (reg2hw.command.response_type_select == 2'b01),
-    .start_listening_i (rsp_start_q),
-    
-    .rsp_valid_o   (rsp_valid),
-    .end_bit_err_o (rsp_end_bit_err),
-    .rsp_o         (rsp),
-    .crc_corr_o    (rsp_crc_correct)
-
+    .rst_ni (software_reset_cmd_q),
+    .sd_bus_cmd_i (cmd_read),
+    .sd_bus_cmd_o (cmd_write),
+    .sd_bus_cmd_en_o (cmd_write_en),
+    .reg2hw (reg2hw),
+    .busy_dat0_i ('0), //hook up to busy signal from dat_wrap
+    .hw2reg_response0_d (hw2reg.response0.d),
+    .hw2reg_response1_d (hw2reg.response1.d),
+    .hw2reg_response2_d (hw2reg.response2.d),
+    .hw2reg_response3_d (hw2reg.response3.d),
+    .hw2reg_response0_de (hw2reg.response0.de),
+    .hw2reg_response1_de (hw2reg.response1.de),
+    .hw2reg_response2_de (hw2reg.response2.de),
+    .hw2reg_response3_de (hw2reg.response3.de),
+    .hw2reg_present_state_command_inhibit_cmd_d (hw2reg.present_state.command_inhibit_cmd.d),
+    .hw2reg_present_state_command_inhibit_cmd_de (hw2reg.present_state.command_inhibit_cmd.de),
+    .hw2reg_present_state_command_inhibit_dat_d (hw2reg.present_state.command_inhibit_dat.d),
+    .hw2reg_present_state_command_inhibit_dat_de (hw2reg.present_state.command_inhibit_dat.de),
+    .hw2reg_error_interrupt_status_command_end_bit_error_d (hw2reg.error_interrupt_status.command_end_bit_error.d),
+    .hw2reg_error_interrupt_status_command_end_bit_error_de (hw2reg.error_interrupt_status.command_end_bit_error.de),
+    .hw2reg_error_interrupt_status_command_crc_error_d (hw2reg.error_interrupt_status.command_crc_error.d),
+    .hw2reg_error_interrupt_status_command_crc_error_de (hw2reg.error_interrupt_status.command_crc_error.de),
+    .hw2reg_error_interrupt_status_command_index_error_d (hw2reg.error_interrupt_status.command_index_error.d),
+    .hw2reg_error_interrupt_status_command_index_error_de (hw2reg.error_interrupt_status.command_index_error.de),
+    .hw2reg_error_interrupt_status_command_timeout_error_d (hw2reg.error_interrupt_status.command_timeout_error.d),
+    .hw2reg_error_interrupt_status_command_timeout_error_de (hw2reg.error_interrupt_status.command_timeout_error.de)
   );
-
-  typedef enum logic [2:0] {
-    READY,
-    CMD_STARTING,
-    CMD_STARTED,
-    RSP_STARTING,
-    RSP_STARTED,
-    DONE
-  } sdhc_state_e;
-  sdhc_state_e sdhc_state_q, sdhc_state_d;
-  `FF(sdhc_state_q, sdhc_state_d, READY);
-
-  always_comb begin
-    sdhc_state_d = sdhc_state_q;
-
-    unique case (sdhc_state_q)
-      READY:        if (reg2hw.command.command_index.qe) sdhc_state_d = CMD_STARTING;
-      CMD_STARTING: if (!cmd_done) sdhc_state_d = CMD_STARTED;
-      CMD_STARTED:  if (cmd_done) sdhc_state_d = reg2hw.command.response_type_select == 2'b00 ? DONE : RSP_STARTING;
-      RSP_STARTING: if (rsp_start_q) sdhc_state_d = RSP_STARTED;
-      RSP_STARTED:  if (rsp_valid) sdhc_state_d = DONE;
-      DONE:         sdhc_state_d = READY;
-      default:      sdhc_state_d = READY;
-    endcase
-  end
-
-  always_comb begin
-    cmd_start_d = '0;
-    rsp_start_d = '0;
-    hw2reg.present_state.command_inhibit_cmd.de = '0;
-    hw2reg.present_state.command_inhibit_cmd.d = '0;
-    hw2reg.response0.de = '0;
-    hw2reg.response0.d = '0;
-    hw2reg.response1.de = '0;
-    hw2reg.response1.d = '0;
-    hw2reg.response2.de = '0;
-    hw2reg.response2.d = '0;
-    hw2reg.response3.de = '0;
-    hw2reg.response3.d = '0;
-    hw2reg.error_interrupt_status.command_end_bit_error.de = '0;
-    hw2reg.error_interrupt_status.command_end_bit_error.d = '1;
-    hw2reg.error_interrupt_status.command_crc_error.de = '0;
-    hw2reg.error_interrupt_status.command_crc_error.d = '1;
-    hw2reg.error_interrupt_status.command_index_error.de = '0;
-    hw2reg.error_interrupt_status.command_index_error.d = '1;
-
-    unique case (sdhc_state_d)
-      CMD_STARTING: begin
-        cmd_start_d = '1;
-        hw2reg.present_state.command_inhibit_cmd.de = '1;
-        hw2reg.present_state.command_inhibit_cmd.d = '1;
-      end
-      RSP_STARTING: rsp_start_d = '1;
-      DONE: begin
-        if (reg2hw.command.response_type_select != 2'b00) begin
-          if (rsp_end_bit_err) begin
-            hw2reg.error_interrupt_status.command_end_bit_error.de = '1;
-          end
-          if (reg2hw.command.command_crc_check_enable.q && !rsp_crc_correct) begin
-            hw2reg.error_interrupt_status.command_crc_error.de = '1;
-          end
-          if (reg2hw.command.command_index_check_enable.q && rsp[45:40] != reg2hw.command.command_index.q) begin
-            hw2reg.error_interrupt_status.command_index_error.de = '1;
-          end
-
-          if (reg2hw.command.response_type_select != 2'b01) begin
-            hw2reg.response0.de = '1;
-            hw2reg.response0.d = rsp[31:0];
-          end else begin
-            hw2reg.response0.de = '1;
-            hw2reg.response0.d = rsp[31:0];
-            hw2reg.response1.de = '1;
-            hw2reg.response1.d = rsp[63:32];
-            hw2reg.response2.de = '1;
-            hw2reg.response2.d = rsp[95:64];
-            hw2reg.response3.de = '1;
-            hw2reg.response3.d = { reg2hw.response3.q[31:24], rsp[119:96] };
-          end
-        end
-
-        hw2reg.present_state.command_inhibit_cmd.de = '1;
-        hw2reg.present_state.command_inhibit_cmd.d = '0;
-      end
-      default: ;
-    endcase
-  end
+  
 endmodule
