@@ -304,7 +304,7 @@
           bits: "10"
           name: "buffer_write_enable"
           desc: ""
-          resval: "1"
+          resval: "0"
         }
         {
           bits: "9"
@@ -1180,7 +1180,7 @@
           bits: "17:16"
           name: "max_block_length"
           desc: ""
-          resval: "0b00"
+          resval: "0b00" // 512
         }
         {
           bits: "15:14"

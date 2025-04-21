@@ -1134,7 +1134,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RO"),
-    .RESVAL  (1'h1)
+    .RESVAL  (1'h0)
   ) u_present_state_buffer_write_enable (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),

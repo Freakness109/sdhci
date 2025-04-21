@@ -6,6 +6,10 @@
  * The first push (when empty_o = '1) takes 2 clock cycles to appear in the `front_data_o`
  */
 
+`ifdef VERILATOR
+`define INC_ASSERT
+`endif
+
 `include "common_cells/registers.svh"
 `include "common_cells/assertions.svh"
 
@@ -22,18 +26,17 @@ module sram_shift_reg #(
   output logic [DataWidth-1:0] front_data_o,
   input  logic                 push_back_i,
   input  logic [DataWidth-1:0] back_data_i,
-  
-  output logic empty_o,
-  output logic full_o
+
+  output logic                   empty_o,
+  output logic                   full_o,
+  output logic [LengthWidth-1:0] length_o
 );
   // Push a pop operation to the next clock cycle if the sram is busy
   logic pop_front_q, pop_front_d;
   `FF(pop_front_q, pop_front_d, '0, clk_i, rst_ni);
   assign pop_front_d = pop_front_i & (push_back_i | pop_front_q);
 
-`ifdef VERILATOR
-  assert property (@(posedge clk_i) !(pop_front_i & push_back_i & pop_front_q));
-`endif
+  `ASSERT_NEVER(Overload, pop_front_i & push_back_i & pop_front_q);
 
   logic [AddrWidth-1:0] back_addr_q, back_addr_d;
   `FF(back_addr_q, back_addr_d, '0, clk_i, rst_ni);
@@ -43,14 +46,12 @@ module sram_shift_reg #(
   `FF(length_q, length_d, '0, clk_i, rst_ni);
   assign length_d = push_back_i ? length_q + 1 : pop_front_i | pop_front_q ? length_q - 1 : length_q;
 
-  assign empty_o = length_q == '0;
-  assign full_o = length_q == NumWords;
+  assign empty_o  = length_q == '0;
+  assign full_o   = length_q == NumWords;
+  assign length_o = length_q;
 
-
-`ifdef VERILATOR
-  assert property (@(posedge clk_i) !(pop_front_i && empty_o));
-  assert property (@(posedge clk_i) !(push_back_i && full_o));
-`endif
+  `ASSERT_NEVER(Underflow, pop_front_i && empty_o);
+  `ASSERT_NEVER(Overflow,  push_back_i && full_o);
 
   // // To make writes instantly appear in reads
   // logic first_push_q, first_push_d;
