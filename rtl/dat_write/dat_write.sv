@@ -31,12 +31,13 @@ module dat_write #(
     END_BIT,
 
     BUS_SWITCH, //wait 2 clock cycles before listening for Response
+
     STATUS_START_BIT,
     STATUS,
     STATUS_END_BIT,
-    BUSY_START_BIT,
+
     BUSY,
-    BUSY_END_BIT
+    DONE
   } dat_tx_state_e;
 
   dat_tx_state_e dat_tx_state_d, dat_tx_state_q;
@@ -56,12 +57,13 @@ module dat_write #(
       END_BIT:          dat_tx_state_d = BUS_SWITCH;
 
       BUS_SWITCH:       if (counter_q + 1 == 2) dat_tx_state_d = STATUS_START_BIT;
+
       STATUS_START_BIT: dat_tx_state_d = STATUS;
       STATUS:           if (counter_q + 1 == 3) dat_tx_state_d = STATUS_END_BIT;
-      STATUS_END_BIT:   dat_tx_state_d = BUSY_START_BIT;
-      BUSY_START_BIT:   dat_tx_state_d = BUSY;
-      BUSY:             if (dat0_i) dat_tx_state_d = BUSY_END_BIT;
-      BUSY_END_BIT:     dat_tx_state_d = READY;
+      STATUS_END_BIT:   dat_tx_state_d = BUSY;
+
+      BUSY:             if (dat0_i) dat_tx_state_d = DONE;
+      DONE:             dat_tx_state_d = READY;
       default:          dat_tx_state_d = READY;
     endcase
   end
@@ -106,7 +108,8 @@ module dat_write #(
 
         if (counter_q[2:0] == '0) begin
           // Don't request another word when we are at the last word to be sent
-          if (counter_q / 8 != (block_size_i - 1) / 4) next_word_o = 1'b1;
+          // if (counter_q / 8 != (block_size_i - 1) / 4)
+          next_word_o = 1'b1;
         end
 
         if (counter_q[2:0] == '1) begin
@@ -135,17 +138,17 @@ module dat_write #(
 
       BUS_SWITCH: counter_d = counter_q + 1;
 
-      STATUS_START_BIT, BUSY_START_BIT: if (dat0_i != '0) end_bit_err_d = '0;
-      STATUS_END_BIT:                   if (dat0_i != '1) end_bit_err_d = '1;
-
+      STATUS_START_BIT: if (dat0_i != '0) end_bit_err_d = '0;
       STATUS: begin
         counter_d = counter_q + 1;
         status_d = { status_q[1:0], dat0_i };
       end
-      BUSY_END_BIT: begin
-        done_o   = '1;
-        end_bit_err_o = end_bit_err_d;
-        crc_err_o     = status_q == 3'b010;
+      STATUS_END_BIT: if (dat0_i != '1) end_bit_err_d = '1;
+
+      DONE: begin
+        done_o        = '1;
+        end_bit_err_o = end_bit_err_q;
+        crc_err_o     = status_q != 3'b010;
       end
       default: ;
     endcase

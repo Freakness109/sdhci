@@ -88,7 +88,7 @@ module dat_read #(
             // Leave a few empty slots for the next 4 bits
             data_buildup_d = { dat_i, 4'b0, data_buildup_q[31:8] };
           end else begin
-            // Fill the zeroes
+            // Fill the empty slots
             data_buildup_d[27:24] = dat_i;
           end
         end
@@ -96,13 +96,8 @@ module dat_read #(
 
       CRC: begin
         counter_d = counter_q + 1;
-      end
-      END_BIT: begin
-        done_o = '1;
-        end_bit_err_o = dat_i != '1;
-        crc_err_o = crc_errors != '0;
 
-        if (block_size_i[1:0] != 0) begin
+        if (counter_q == 2*block_size_i && block_size_i[1:0] != 0) begin
           data_valid_o = '1;
           unique case (block_size_i[1:0])
             2'd0: ;
@@ -112,6 +107,11 @@ module dat_read #(
           endcase
           data_buildup_d = '0;
         end
+      end
+      END_BIT: begin
+        done_o = '1;
+        end_bit_err_o = dat_i != '1;
+        crc_err_o = crc_errors != '0;
       end
       default: ;
     endcase

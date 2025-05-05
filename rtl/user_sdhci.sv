@@ -99,16 +99,14 @@ module user_sdhci #(
     .interrupt_o
   );
 
-  logic sd_clk;
+  logic sd_clk, pause_sd_clk;
   sd_clk_generator i_sd_clk_generator (
     .clk_i,
     .rst_ni (sd_rst_n),
     .reg2hw_i (reg2hw),
-  `ifdef VERILATOR
-    .hw2reg_o (hw2reg),
-  `endif
-    
-    .sd_clk_o (sd_clk)
+
+    .pause_sd_clk_i (pause_sd_clk),
+    .sd_clk_o       (sd_clk)
   );
   logic cmd_write;
   logic cmd_write_en, cmd_read;
@@ -126,7 +124,7 @@ module user_sdhci #(
     .dat_o    (dat_read)
   );
 
-  logic sd_cmd_done, sd_rsp_done;
+  logic sd_cmd_done, sd_rsp_done, request_cmd12;
 
   cmd_wrap  i_cmd_wrap (
     .clk_i (clk_i),
@@ -137,7 +135,8 @@ module user_sdhci #(
     .sd_bus_cmd_en_o (cmd_write_en),
     .reg2hw (reg2hw),
 
-    .busy_dat0_i (dat_read[0]), //hook up to busy signal from dat_wrap
+    .busy_dat0_i     (~dat_read[0]),
+    .request_cmd12_i (request_cmd12),
 
     .sd_cmd_done_o (sd_cmd_done),
     .sd_rsp_done_o (sd_rsp_done),
@@ -172,8 +171,10 @@ module user_sdhci #(
     .dat_en_o (dat_write_en),
     .dat_o    (dat_write),
 
-    .sd_cmd_done_i (sd_cmd_done),
-    .sd_rsp_done_i (sd_rsp_done),
+    .sd_cmd_done_i   (sd_cmd_done),
+    .sd_rsp_done_i   (sd_rsp_done),
+    .request_cmd12_o (request_cmd12),
+    .pause_sd_clk_o  (pause_sd_clk),
 
     .reg2hw_i (reg2hw),
 

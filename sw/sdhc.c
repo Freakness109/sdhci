@@ -120,13 +120,14 @@ int main() {
     // state = *reg32(SDHCI_BASE_ADDR, SDHCI_PRESENT_STATE_OFFSET);
     // printf("Read Present State: '%x'\n", state);
 
-    int size = 31;
+    int size = 64;
+    int blocks = 5;
 
     debug_funcs = 0;
     int err = sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0);
     if (err) printf("sdhc_init errored: %x\n", err);
 
-// #define SDHC_INITIALIZED_MODEL
+#define SDHC_INITIALIZED_MODEL
 #ifdef SDHC_INITIALIZED_MODEL
     sc.sc_caps = SMC_CAPS_4BIT_MODE | SMC_CAPS_AUTO_STOP | SMC_CAPS_NONREMOVABLE;
     sc.sc_flags = SMF_SD_MODE | SMF_MEM_MODE | SMF_CARD_PRESENT | SMF_CARD_ATTACHED;
@@ -152,16 +153,33 @@ int main() {
 
     debug_funcs = 1;
 
+    size *= blocks;
     err = sdmmc_mem_write_block(&sc.sc_card, 0, (void*)text, size);
     if (err) printf("sdmmc_mem_write_block errored: %x\n", err);
 
     err = sdmmc_mem_read_block(&sc.sc_card, 0, data, size);
     if (err) printf("sdmmc_mem_read_block errored: %x\n", err);
-
-    for (int i = 0; i < size; i++) {
-        printf("%x", data[i]);
-        printf(i % 4 == 3 || i == size - 1 ? "\n" : " ");
+    for (int i = 0; i < (size + 3) / 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            if (i * 4 + j < size) {
+                int n = data[i * 4 + j];
+                if (n < 16) putchar('0');
+                printf("%x ", n);
+            } else
+                printf("  ");
+        }
+        printf("   ");
+        for (int j = 0; j < 4; j++) {
+            if (i * 4 + j < size) {
+                char c = data[i * 4 + j];
+                putchar(c >= 32 && c <= 126 ? c : '.');
+            }
+        }
+        printf("\n");
     }
+
+    printf("\n");
+    uart_write_flush();
 
 
     // // Single block RW

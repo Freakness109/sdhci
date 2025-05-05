@@ -6,11 +6,11 @@
 module rsp_read (
   input logic sd_clk_i,         //should be synchronous with clk line of Sd card
   input logic rst_ni,
-  input logic cmd_i, 
+  input logic cmd_i,
 
   input logic long_rsp_i,        //high if response is of type R2 (136 bit)
   input logic start_listening_i,  //should be asserted 2nd cycle after end bit of CMD
-  
+
   output  logic receiving_o,       //start bit was observed
   output  logic rsp_valid_o,     //write response, end_bit_err and crc_corr to register
   output  logic end_bit_err_o,    //valid at the same time as response
@@ -18,7 +18,7 @@ module rsp_read (
   output  logic crc_corr_o       //active if crc7 was correct, valid when rsp_valid_o is active
 );
   //state transition
-  typedef enum logic  [2:0] { 
+  typedef enum logic  [2:0] {
     INACTIVE,
     WAIT_FOR_START_BIT,
     SHIFT_IN,
@@ -32,9 +32,9 @@ module rsp_read (
     rx_state_d  = rx_state_q;
 
     unique case (rx_state_q)
-      
+
       INACTIVE:           rx_state_d  = (start_listening_i) ? WAIT_FOR_START_BIT  : INACTIVE;
-      
+
       WAIT_FOR_START_BIT: rx_state_d  = (start_bit_observed)? SHIFT_IN  : WAIT_FOR_START_BIT;
 
       SHIFT_IN:           rx_state_d  = (all_bits_received) ? FINISHED  : SHIFT_IN;
@@ -56,7 +56,7 @@ module rsp_read (
   logic start_bit_observed, all_bits_received;
 
   logic shift_reg_shift_in_en, shift_reg_par_output_en;
-  
+
   logic crc_start, crc_end_output;
   logic [6:0] crc7_calc;
 

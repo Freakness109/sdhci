@@ -13,6 +13,7 @@ module cmd_wrap (
   input   sdhci_reg2hw_t reg2hw,
 
   input   logic busy_dat0_i,    //busy signal on dat0 line
+  input   logic request_cmd12_i,
 
   // These 2 signals are updated on the sd clock edge
   output  logic sd_cmd_done_o,
@@ -110,7 +111,7 @@ module cmd_wrap (
     unique case (cmd_seq_state_q)
       READY:;   
 
-      WRITE_CMD: hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
+      WRITE_CMD: if (!running_cmd12_d) hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
 
       BUS_SWITCH:     begin
         sd_cmd_done_o   = 1'b1;
@@ -172,19 +173,50 @@ module cmd_wrap (
     end 
   end
   `FF (cmd_phase_q, cmd_phase_d, 1'b1, sd_clk_i, rst_ni);
-  
-  logic tx_done, start_tx_d, start_tx_q, start_tx_rst_n;
+
+  logic tx_done;
+
+  // TODO only reset this once command is done, not when its stats
+  logic running_cmd12_q, running_cmd12_d;
+  `FF (running_cmd12_q, running_cmd12_d, '0, sd_clk_i, rst_ni);
+
+  logic cmd12_requested_q, cmd12_requested_d;
+  `FF (cmd12_requested_q, cmd12_requested_d, '0, clk_i, rst_ni);
+
+  logic driver_cmd_requested_q, driver_cmd_requested_d;
+  `FF (driver_cmd_requested_q, driver_cmd_requested_d, '0, clk_i, rst_ni);
+
+  logic start_tx_q, start_tx_d;
+  `FF (start_tx_q, start_tx_d, 1'b0, clk_i, rst_ni);
+
+  logic [5:0] command_index;
+  assign command_index = running_cmd12_q ? 6'd12 : reg2hw.command.command_index.q;
 
   always_comb begin : start_tx_cdc  //assumes clock edges are simultaneous
-    start_tx_d = start_tx_q; //default assignment
+    // write to command index starts transmission
+    // extend pulse for slower sd clock
+    driver_cmd_requested_d = driver_cmd_requested_q | reg2hw.command.command_index.qe;
+    cmd12_requested_d      = cmd12_requested_q      | request_cmd12_i;
 
-    start_tx_d = reg2hw.command.command_index.qe | start_tx_q;  //write to command index starts transmission
-                                                                //extend one cycle pulse for slower sd clock
-    start_tx_rst_n = tx_done & rst_ni; //reset register when module has agnowledged that tx is ongoing. Sequence: (-> next cycle)
-                                      //start_tx high->tx_done low, start_tx_rst_n low, start_tx low. tx_done_high, start_tx_rst_n high
+    start_tx_d      = '0;
+    running_cmd12_d = running_cmd12_q;
+
+    if (cmd_seq_state_q == READY) begin
+      running_cmd12_d = '0;
+      if (cmd12_requested_q) begin
+        start_tx_d      = '1;
+        running_cmd12_d = '1;
+      end else if (driver_cmd_requested_q) begin
+        start_tx_d      = '1;
+      end
+    end else if (start_tx_q) begin
+      if (cmd12_requested_q) begin
+        cmd12_requested_d = '0;
+      end else if (driver_cmd_requested_q) begin
+        driver_cmd_requested_d = '0;
+      end
+    end
   end
-  
-  `FF (start_tx_q, start_tx_d, 1'b0, clk_i, start_tx_rst_n); 
 
 
   cmd_write i_cmd_write (
@@ -193,8 +225,8 @@ module cmd_wrap (
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
     .start_tx_i     (start_tx_q), //need to buffer when registers run faster than sd cmd_write
-    .cmd_argument_i (reg2hw.argument.q),
-    .cmd_nr_i       (reg2hw.command.command_index.q),
+    .cmd_argument_i (running_cmd12_q ? '0 : reg2hw.argument.q),
+    .cmd_nr_i       (command_index),
     .cmd_phase_i    (cmd_phase_d),
     .tx_done_o      (tx_done)
   );
@@ -265,7 +297,7 @@ module cmd_wrap (
     hw2reg_response3_de = (update_rsp_reg & rsp_valid);
   end 
 
-  assign index_err = (rsp [37:32] != reg2hw.command.command_index.q);
+  assign index_err = (rsp [37:32] != command_index);
 
   counter #(
     .WIDTH            (3'd6), //6 bit counter 
