@@ -9,7 +9,6 @@ module sd_card(
     input  logic [3:0] dat_i,
     output logic [3:0] dat_o
 );
-`ifdef WITH_SD_MODEL
   tri1 cmd;
   assign cmd = cmd_en_i ? cmd_i : 'z;
   assign cmd_o = cmd;
@@ -23,9 +22,4 @@ module sd_card(
     .cmd   (cmd),
     .dat   (dat)
   );
-`else
-  // TODO gpio?
-  assign cmd_io = 'bz;
-  assign dat_io = 'bz;
-`endif
 endmodule

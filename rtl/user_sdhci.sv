@@ -14,9 +14,21 @@ module user_sdhci #(
   input  logic rst_ni,
 
   input  obi_req_t obi_req_i,
-  output obi_rsp_t obi_rsp_o,
+  output obi_rsp_t obi_rsp_o, 
+
+  `ifndef WITH_SD_MODEL
+    output  logic sd_clk_o,
+
+    inout   logic sd_cmd_io,
+
+    inout logic sd_dat0_io,
+    inout logic sd_dat1_io,
+    inout logic sd_dat2_io,
+    inout logic sd_dat3_io,
+  `endif
 
   output logic interrupt_o
+  
 );
   logic sd_rst_n, sd_rst_cmd_n, sd_rst_dat_n;
   sdhci_reg_pkg::sdhci_reg2hw_t reg2hw;
@@ -107,17 +119,22 @@ module user_sdhci #(
 
   logic dat_write_en;
   logic [3:0] dat_write, dat_read;
-
-  sd_card i_sd_card(
-    .sd_clk_i (sd_clk),
-    .cmd_en_i (cmd_write_en),
-    .cmd_i    (cmd_write),
-    .cmd_o    (cmd_read),
-    .dat_en_i (dat_write_en),
-    .dat_i    (dat_write),
-    .dat_o    (dat_read)
-  );
-
+  
+  `ifdef WITH_SD_MODEL
+    sd_card i_sd_card(
+      .sd_clk_i (sd_clk),
+      .cmd_en_i (cmd_write_en),
+      .cmd_i    (cmd_write),
+      .cmd_o    (cmd_read),
+      .dat_en_i (dat_write_en),
+      .dat_i    (dat_write),
+      .dat_o    (dat_read)
+    );
+  `else 
+    assign sd_clk_o = sd_clk;
+    assign sd_cmd_io = 
+  `endif
+  
   assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: dat_read };
   assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: cmd_read };
 
