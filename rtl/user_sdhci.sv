@@ -130,9 +130,18 @@ module user_sdhci #(
       .dat_i    (dat_write),
       .dat_o    (dat_read)
     );
-  `else 
+  `else //assignment for physical sd card bus
     assign sd_clk_o = sd_clk;
-    assign sd_cmd_io = 
+    assign sd_cmd_io = (cmd_write_en) ? cmd_write : 1'bz;
+    assign sd_dat0_io = (dat_write_en) ? dat_write[0] : 1'bz;  
+    assign sd_dat1_io = (dat_write_en) ? dat_write[1] : 1'bz;  
+    assign sd_dat2_io = (dat_write_en) ? dat_write[2] : 1'bz;  
+    assign sd_dat3_io = (dat_write_en) ? dat_write[3] : 1'bz;
+    assign cmd_read = sd_cmd_io;
+    assign dat_read[0] = sd_dat0_io;
+    assign dat_read[1] = sd_dat1_io;
+    assign dat_read[2] = sd_dat2_io;
+    assign dat_read[3] = sd_dat3_io;
   `endif
   
   assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: dat_read };
