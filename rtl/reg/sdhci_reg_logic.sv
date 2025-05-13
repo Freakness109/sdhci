@@ -1,14 +1,11 @@
 `include "common_cells/registers.svh"
-
-`define writable_reg_t(size) \
-  struct packed {            \
-    logic size d;            \
-    logic de;                \
-  }
+`include "defines.svh"
 
 module sdhci_reg_logic (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic rst_cmd_ni,
+  input  logic rst_dat_ni,
 
   input sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
   input sdhci_reg_pkg::sdhci_hw2reg_t hw2reg_i,
@@ -89,6 +86,7 @@ module sdhci_reg_logic (
   // Automatically write to AutoCMD12 Error Interrupt Status
   assign auto_cmd12_error_o.d = '1;
   assign auto_cmd12_error_o.de = rst_ni &
+    reg2hw_i.error_interrupt_status_enable.auto_cmd12_error_status_enable.q &
     (`did_get_set(auto_cmd12_error_status, command_not_issued_by_auto_cmd12_error) |
      `did_get_set(auto_cmd12_error_status, auto_cmd12_index_error                ) |
      `did_get_set(auto_cmd12_error_status, auto_cmd12_end_bit_error              ) |
@@ -97,13 +95,13 @@ module sdhci_reg_logic (
      `did_get_set(auto_cmd12_error_status, auto_cmd12_not_executed               ));
 
   assign buffer_read_ready_o.d = '1;
-  assign buffer_read_ready_o.de = rst_ni & `did_get_set(present_state, buffer_read_enable);
+  assign buffer_read_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_read_enable);
 
   assign buffer_write_ready_o.d = '1;
-  assign buffer_write_ready_o.de = rst_ni & `did_get_set(present_state, buffer_write_enable);
+  assign buffer_write_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_write_enable);
     
   assign command_inhibit_dat.de = '1;
-  assign command_inhibit_dat.d = rst_ni &
+  assign command_inhibit_dat.d = rst_dat_ni &
     `instant_reg_value(present_state, dat_line_active) |
     `instant_reg_value(present_state, read_transfer_active);
   
@@ -112,13 +110,12 @@ module sdhci_reg_logic (
   assign reading = reg2hw_i.transfer_mode.data_transfer_direction_select.q;
 
   assign transfer_complete_o.d = '1;
-  assign transfer_complete_o.de = rst_ni &
+  assign transfer_complete_o.de = rst_dat_ni &
     (`did_get_unset(present_state, read_transfer_active) |
      (~reading & `did_get_unset(present_state, dat_line_active)));
 
   assign command_complete_o.d = '1;
-  // TODO rst_cmd_ni
-  assign command_complete_o.de = rst_ni & /* TODO rst_cmd_ni & */ `did_get_unset(present_state, command_inhibit_cmd);
+  assign command_complete_o.de = rst_cmd_ni & `did_get_unset(present_state, command_inhibit_cmd);
   
   // TODO ignore writes to transfer mode if command_inhibit_cmd is set
 endmodule

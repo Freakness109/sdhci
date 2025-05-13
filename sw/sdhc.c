@@ -15,6 +15,7 @@
 #include "sdmmcvar.h"
 #include "sdhcvar.h"
 
+extern int sdhcdebug;
 int debug_funcs;
 struct sdmmc_softc sc = { 0 };
 struct sdhc_host hp = { 0 };
@@ -23,39 +24,53 @@ char text[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec so
 u_char data[2048] = { 0 };
 
 void test_rw(int size) {
+    printf("Running read write test with size %d\n", size);
+
+    bzero((void*) data, size);
 
     // Reset Block
     int err = sdmmc_mem_write_block(&sc.sc_card, 0, data, size);
-    if (err) printf("sdmmc_mem_write_block errored: %x\n", err);
-
-    // To make sure the read actually reads
-    bzero((void*) data, size);
+    if (err) {
+        printf("sdmmc_mem_write_block errored: %x\n", err);
+        return;
+    }
 
     err = sdmmc_mem_read_block(&sc.sc_card, 0, data, size);
-    if (err) printf("sdmmc_mem_read_block errored: %x\n", err);
+    if (err) {
+        printf("sdmmc_mem_read_block errored: %x\n", err);
+        return;
+    }
 
     for (size_t i = 0; i < size; ++i) {
         if (data[i] != 0) {
-            printf("data[%x] not as expected, should be 0, got %x\n", data[i]);
+            printf("data[%d] not as expected, should be zeroed, got %x\n", i, data[i]);
+            err = 1;
         }
     }
-
-    if (err) printf("sdhc_bus_clock errored: %x\n", err);
+    if (err) return;
 
     err = sdmmc_mem_write_block(&sc.sc_card, 0, (u_char*)text, size);
-    if (err) printf("sdmmc_mem_write_block errored: %x\n", err);
+    if (err) {
+        printf("sdmmc_mem_write_block errored: %x\n", err);
+        return;
+    }
 
     err = sdmmc_mem_read_block(&sc.sc_card, 0, data, size);
-    if (err) printf("sdmmc_mem_read_block errored: %x\n", err);
+    if (err) {
+        printf("sdmmc_mem_read_block errored: %x\n", err);
+        return;
+    }
 
-    for (size_t i = 0; i < sizeof(data); ++i) {
+    for (size_t i = 0; i < size; ++i) {
         if (data[i] != text[i]) {
-            printf("data[%x] not as expected, should be %x, got %x\n", text[i], data[i]);
+            printf("data[%d] not as expected, should be %x, got %x\n", i, text[i], data[i]);
+            err = 1;
         }
     }
-}
+    if (err) return;
 
-extern int sdhcdebug;
+    printf("Succesfuly ran read write test\n");
+}
 
 int main() {
     uart_init(); // setup the uart peripheral
@@ -120,8 +135,8 @@ int main() {
     // state = *reg32(SDHCI_BASE_ADDR, SDHCI_PRESENT_STATE_OFFSET);
     // printf("Read Present State: '%x'\n", state);
 
-    int size = 64;
-    int blocks = 5;
+    int size = 512;
+    int blocks = 4;
 
     debug_funcs = 0;
     int err = sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0);
@@ -151,42 +166,43 @@ int main() {
     err = sdmmc_mem_set_blocklen(&sc, &sc.sc_card);
     if (err) printf("sdmmc_mem_set_blocklen errored: %x\n", err);
 
-    debug_funcs = 1;
+    // debug_funcs = 1;
 
-    size *= blocks;
-    err = sdmmc_mem_write_block(&sc.sc_card, 0, (void*)text, size);
-    if (err) printf("sdmmc_mem_write_block errored: %x\n", err);
+    // size *= blocks;
+    // err = sdmmc_mem_write_block(&sc.sc_card, 0, (void*)text, size);
+    // if (err) printf("sdmmc_mem_write_block errored: %x\n", err);
 
-    err = sdmmc_mem_read_block(&sc.sc_card, 0, data, size);
-    if (err) printf("sdmmc_mem_read_block errored: %x\n", err);
-    for (int i = 0; i < (size + 3) / 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            if (i * 4 + j < size) {
-                int n = data[i * 4 + j];
-                if (n < 16) putchar('0');
-                printf("%x ", n);
-            } else
-                printf("  ");
-        }
-        printf("   ");
-        for (int j = 0; j < 4; j++) {
-            if (i * 4 + j < size) {
-                char c = data[i * 4 + j];
-                putchar(c >= 32 && c <= 126 ? c : '.');
-            }
-        }
-        printf("\n");
-    }
+    // err = sdmmc_mem_read_block(&sc.sc_card, 0, data, size);
+    // if (err) printf("sdmmc_mem_read_block errored: %x\n", err);
+    // for (int i = 0; i < (size + 3) / 4; i++) {
+    //     for (int j = 0; j < 4; j++) {
+    //         if (i * 4 + j < size) {
+    //             int n = data[i * 4 + j];
+    //             if (n < 16) putchar('0');
+    //             printf("%x ", n);
+    //         } else
+    //             printf("  ");
+    //     }
+    //     printf("   ");
+    //     for (int j = 0; j < 4; j++) {
+    //         if (i * 4 + j < size) {
+    //             char c = data[i * 4 + j];
+    //             putchar(c >= 32 && c <= 126 ? c : '.');
+    //         }
+    //     }
+    //     printf("\n");
+    // }
+
+
+
+    // Single block RW
+    test_rw(size);
+    // Multiple block RW
+    test_rw(blocks*size);
+    // TODO half block rw?
 
     printf("\n");
     uart_write_flush();
-
-
-    // // Single block RW
-    // test_rw(512);
-    // // Multiple block RW
-    // test_rw(2048);
-    // // TODO half block rw?
 
     return 1;
 }

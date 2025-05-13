@@ -1712,7 +1712,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RO"),
-    .RESVAL  (1'h0)
+    .RESVAL  (1'h1)
   ) u_clock_control_internal_clock_stable (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),

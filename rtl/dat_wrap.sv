@@ -1,10 +1,5 @@
 `include "common_cells/registers.svh"
-
-`define writable_reg_t(size) \
-  struct packed {            \
-    logic size d;            \
-    logic de;                \
-  }
+`include "defines.svh"
 
 module dat_wrap #(
   // TODO change this if we want to support 1bit buswidth
@@ -38,11 +33,9 @@ module dat_wrap #(
   output `writable_reg_t()        write_transfer_active_o,
   output `writable_reg_t()        dat_line_active_o,
 
-  output `writable_reg_t([15:0])  block_count_o,
-
-  output sdhci_reg_pkg::sdhci_hw2reg_auto_cmd12_error_status_reg_t auto_cmd12_errors_o
+  output `writable_reg_t([15:0])  block_count_o
 );
-  localparam int RegisterWordCount = 32;
+  localparam int RegisterWordCount = 128;
   localparam int RegisterByteCount = RegisterWordCount * 4;
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -187,10 +180,10 @@ module dat_wrap #(
     data_timeout_error_o.de = '0;
     data_timeout_error_o.d  = '1;
 
-    read_transfer_active_o.de  = '0;
-    read_transfer_active_o.d   = 'X;
-    write_transfer_active_o.de = '0;
-    write_transfer_active_o.d  = 'X;
+    read_transfer_active_o.de  = '1;
+    read_transfer_active_o.d   = '0;
+    write_transfer_active_o.de = '1;
+    write_transfer_active_o.d  = '0;
     dat_line_active_o.de       = '0;
     dat_line_active_o.d        = 'X;
 
@@ -214,16 +207,18 @@ module dat_wrap #(
         start_d = '0;
       end
       START_READING: begin
+        read_transfer_active_o.d  = '1;
+
         dat_line_active_o.de      = '1;
         dat_line_active_o.d       = '1;
-        read_transfer_active_o.de = '1;
-        read_transfer_active_o.d  = '1;
 
         start_d.read         = '1;
         start_d.wait_for_cmd = first_block_q;
         start_d.block_size   = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
       end
+      STARTING_READING: read_transfer_active_o.d  = '1;
       READING: begin
+        read_transfer_active_o.d = '1;
         read_run_timeout = '1;
 
         // Have to do it here already because of strict timing
@@ -237,18 +232,20 @@ module dat_wrap #(
         read_reg_start_length_d = read_reg_length;
       end
       READING_BUSY: begin
-        read_reg_start_length_d = read_reg_start_length_q;
-        buffer_read_enable_o.de = '1;
-        buffer_read_enable_o.d  = '1;
+        read_transfer_active_o.d = '1;
+        read_reg_start_length_d  = read_reg_start_length_q;
+        buffer_read_enable_o.de  = '1;
+        buffer_read_enable_o.d   = '1;
 
         if (read_reg_length * 4 + start_q.block_size <= read_reg_start_length_q * 4) begin
-          buffer_read_enable_o.d = '0;
+          buffer_read_enable_o.d  = '0;
           read_reg_start_length_d = read_reg_length;
         end
 
         pause_sd_clk_o          = '1;
       end
       DONE_READING_BLOCK: begin
+        read_transfer_active_o.d = '1;
         first_block_d = '0;
 
         if (reg2hw_i.transfer_mode.multi_single_block_select.q) begin
@@ -261,32 +258,36 @@ module dat_wrap #(
         sd_rst_n = '0;
       end
       DONE_READING: begin
-        read_transfer_active_o.de = '1;
-        read_transfer_active_o.d  = '0;
+        read_transfer_active_o.d = '1;
 
         if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) request_cmd12_o = '1;
       end
       
       START_WRITING: begin
-        buffer_write_enable_o.de = '1;
-        buffer_write_enable_o.d =  '1;
+        write_transfer_active_o.d  = '1;
+
+        buffer_write_enable_o.de   = '1;
+        buffer_write_enable_o.d    = '1;
 
         dat_line_active_o.de       = '1;
         dat_line_active_o.d        = '1;
-        write_transfer_active_o.de = '1;
-        write_transfer_active_o.d  = '1;
 
         start_d.write        = '1;
         start_d.wait_for_cmd = first_block_q;
         start_d.block_size   = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
       end
+      WAIT_FOR_WRITE_DATA: write_transfer_active_o.d  = '1;
       SEND_FIRST_WORD: begin
-        buffer_write_enable_o.de = '1;
-        buffer_write_enable_o.d  = '0;
+        write_transfer_active_o.d  = '1;
+
+        buffer_write_enable_o.de   = '1;
+        buffer_write_enable_o.d    = '0;
         
         write_valid = '1;
       end
       WRITING: begin
+        write_transfer_active_o.d = '1;
+
         if (sd_write_ready) pop_write_buffer = '1;
 
         if (sd_done_valid) begin
@@ -295,6 +296,7 @@ module dat_wrap #(
         end
       end
       DONE_WRITING_BLOCK: begin
+        write_transfer_active_o.d = '1;
         first_block_d = '0;
 
         if (reg2hw_i.transfer_mode.multi_single_block_select.q) begin
@@ -303,8 +305,7 @@ module dat_wrap #(
         end
       end
       DONE_WRITING: begin
-        write_transfer_active_o.de = '1;
-        write_transfer_active_o.d  = '0;
+        write_transfer_active_o.d = '1;
 
         if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) request_cmd12_o = '1;
       end

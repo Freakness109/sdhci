@@ -557,7 +557,7 @@
               name: "internal_clock_stable"
               desc: ""
               swaccess: "ro"
-              resval: "0"
+              resval: "1"
             }
             {
               bits: "0"

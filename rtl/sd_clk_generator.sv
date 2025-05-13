@@ -1,4 +1,5 @@
 `include "common_cells/registers.svh"
+`include "defines.svh"
 
 module sd_clk_generator (
   input  logic clk_i,
@@ -7,7 +8,9 @@ module sd_clk_generator (
   input  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
 
   input  logic pause_sd_clk_i,
-  output logic sd_clk_o
+  output logic sd_clk_o,
+
+  output `writable_reg_t() sd_clk_stable_o
 );
   localparam int DivWidth = 9;
 
@@ -27,13 +30,17 @@ module sd_clk_generator (
     div_valid_d = div_valid_q;
     div_d = div_q;
 
+    sd_clk_stable_o = '{ de: '0, d: 'X };
+
     if (div_valid_q) begin
       if (div_ready_q) begin
         div_valid_d = '0;
+        sd_clk_stable_o = '{ de: '1, d: '0 };
       end
     end else if (div_q != div_reg) begin
       div_d = div_reg;
       div_valid_d = '1;
+      sd_clk_stable_o = '{ de: '1, d: '1 };
     end
   end
 

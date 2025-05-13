@@ -38,7 +38,9 @@ module cmd_wrap (
   output  logic hw2reg_error_interrupt_status_command_index_error_d,
   output  logic hw2reg_error_interrupt_status_command_index_error_de,
   output  logic hw2reg_error_interrupt_status_command_timeout_error_d,
-  output  logic hw2reg_error_interrupt_status_command_timeout_error_de
+  output  logic hw2reg_error_interrupt_status_command_timeout_error_de,
+
+  output  sdhci_reg_pkg::sdhci_hw2reg_auto_cmd12_error_status_reg_t auto_cmd12_errors_o
 );
   //cmd sequence state machine
   typedef enum logic  [2:0] { //more states for timeout detection?
@@ -72,7 +74,7 @@ module cmd_wrap (
 
       READ_RSP:       cmd_seq_state_d = (rsp_valid) ? RSP_RECEIVED : READ_RSP;
 
-      READ_RSP_BUSY:  cmd_seq_state_d = (rsp_valid & ~busy_dat0_i) ? RSP_RECEIVED  : READ_RSP_BUSY;
+      READ_RSP_BUSY:  cmd_seq_state_d = (~busy_dat0_i) ? RSP_RECEIVED : READ_RSP_BUSY;
       
       RSP_RECEIVED:   cmd_seq_state_d = (cnt == 3'd7) ? READY : RSP_RECEIVED;
 
@@ -84,18 +86,17 @@ module cmd_wrap (
 
   `FF (cmd_seq_state_q, cmd_seq_state_d, READY, sd_clk_i, rst_ni);
 
-  logic check_end_bit_err, check_crc_err, check_index_err;
+  logic check_end_bit_err, check_crc_err, check_index_err, check_timeout_error;
   
-  assign check_end_bit_err  = reg2hw.error_interrupt_status_enable.command_end_bit_error_status_enable.q;
-  assign check_crc_err  = reg2hw.error_interrupt_status_enable.command_crc_error_status_enable.q & reg2hw.command.command_crc_check_enable.q;
-  assign check_index_err  = reg2hw.error_interrupt_status_enable.command_index_error_status_enable.q & reg2hw.command.command_index_check_enable.q;
+  assign check_end_bit_err   = reg2hw.error_interrupt_status_enable.command_end_bit_error_status_enable.q;
+  assign check_crc_err       = reg2hw.error_interrupt_status_enable.command_crc_error_status_enable.q & reg2hw.command.command_crc_check_enable.q;
+  assign check_index_err     = reg2hw.error_interrupt_status_enable.command_index_error_status_enable.q & reg2hw.command.command_index_check_enable.q;
+  assign check_timeout_error = reg2hw.error_interrupt_status_enable.command_timeout_error_status_enable.q;
 
   always_comb begin : cmd_seq_ctrl
     start_listening = 1'b0;
     cnt_en  = 1'b0;
     cnt_clr = 1'b1;
-    hw2reg_present_state_command_inhibit_cmd_d  = 1'b1;
-    hw2reg_present_state_command_inhibit_cmd_de = 1'b0;
     hw2reg_error_interrupt_status_command_end_bit_error_d = 1'b1;
     hw2reg_error_interrupt_status_command_end_bit_error_de = 1'b0;
     hw2reg_error_interrupt_status_command_crc_error_d = 1'b1;
@@ -105,13 +106,19 @@ module cmd_wrap (
     hw2reg_error_interrupt_status_command_timeout_error_d = 1'b1;
     hw2reg_error_interrupt_status_command_timeout_error_de = 1'b0;
 
+    auto_cmd12_errors_o.auto_cmd12_timeout_error = '{ de: '0, d: '1 };
+    auto_cmd12_errors_o.auto_cmd12_end_bit_error = '{ de: '0, d: '1 };
+    auto_cmd12_errors_o.auto_cmd12_crc_error     = '{ de: '0, d: '1 };
+    auto_cmd12_errors_o.auto_cmd12_index_error   = '{ de: '0, d: '1 };
+
+    // auto_cmd12_errors_o = '0;
+
     sd_rsp_done_o = 1'b0;
     sd_cmd_done_o = 1'b0;
 
     unique case (cmd_seq_state_q)
-      READY:;   
-
-      WRITE_CMD: if (!running_cmd12_d) hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
+      READY:;
+      WRITE_CMD:;
 
       BUS_SWITCH:     begin
         sd_cmd_done_o   = 1'b1;
@@ -122,44 +129,44 @@ module cmd_wrap (
         cnt_en  = 1'b1;
         cnt_clr = receiving;  //reset counter when we are receiving
 
-        if  (cnt >= 62) hw2reg_error_interrupt_status_command_timeout_error_de = 1'b1;  //timeout interrupt if resonse didn't start within 64 clock cycles
+        if  (cnt >= 62) begin
+          //timeout interrupt if response didn't start within 64 clock cycles
+
+          if (running_cmd12_q) auto_cmd12_errors_o.auto_cmd12_timeout_error.de = '1;
+          else hw2reg_error_interrupt_status_command_timeout_error_de = check_timeout_error;
+        end
 
         if (rsp_valid) begin
-          hw2reg_error_interrupt_status_command_end_bit_error_de = (check_end_bit_err & end_bit_err);
-          hw2reg_error_interrupt_status_command_crc_error_de = (check_crc_err & ~crc_corr);
-          hw2reg_error_interrupt_status_command_index_error_de = (check_index_err & index_err);
+          if (running_cmd12_q) begin
+            auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = end_bit_err;
+            auto_cmd12_errors_o.auto_cmd12_crc_error.de = ~crc_corr;
+            auto_cmd12_errors_o.auto_cmd12_index_error.de = index_err;
+          end else begin
+            hw2reg_error_interrupt_status_command_end_bit_error_de = (check_end_bit_err & end_bit_err);
+            hw2reg_error_interrupt_status_command_crc_error_de = (check_crc_err & ~crc_corr);
+            hw2reg_error_interrupt_status_command_index_error_de = (check_index_err & index_err);
+          end
         end
       end
 
       READ_RSP_BUSY:  begin
-        cnt_en  = 1'b1;
-        cnt_clr = receiving;  //reset counter when we are receiving
+        // TODO is this timeout still needed?
+        // cnt_en  = 1'b1;
+        // cnt_clr = receiving;  //reset counter when we are receiving
 
-        if  (cnt >= 62) hw2reg_error_interrupt_status_command_timeout_error_de = 1'b1;  //timeout interrupt if resonse didn't start within 64 clock cycles
-        
-        if(rsp_valid) begin
-          hw2reg_error_interrupt_status_command_end_bit_error_de = (check_end_bit_err & end_bit_err);
-          hw2reg_error_interrupt_status_command_crc_error_de = (check_crc_err & ~crc_corr);
-          hw2reg_error_interrupt_status_command_index_error_de = (check_index_err & index_err);
-        end
+        // if  (cnt >= 62) hw2reg_error_interrupt_status_command_timeout_error_de = 1'b1;  //timeout interrupt if resonse didn't start within 64 clock cycles
       end
 
       RSP_RECEIVED:   begin
         cnt_en        = 1'b1;
         cnt_clr       = 1'b0;
         sd_rsp_done_o = 1'b1;
-        if (cnt == 6'd7) begin
-          hw2reg_present_state_command_inhibit_cmd_d  = 1'b0;
-          hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
-        end
       end
 
       ERROR: ;
     endcase
 
     if (!rst_ni) begin  : cmd_soft_reset
-      hw2reg_present_state_command_inhibit_cmd_d = 1'b0;
-      hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
     end 
   end
 
@@ -193,10 +200,27 @@ module cmd_wrap (
   assign command_index = running_cmd12_q ? 6'd12 : reg2hw.command.command_index.q;
 
   always_comb begin : start_tx_cdc  //assumes clock edges are simultaneous
-    // write to command index starts transmission
+    hw2reg_present_state_command_inhibit_cmd_de = '0;
+    hw2reg_present_state_command_inhibit_cmd_d  = 'X;
+
+    auto_cmd12_errors_o.auto_cmd12_not_executed                = '{ de: '0, d: '1 };
+    auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error = '{ de: '0, d: '1 };
+
+    if (!rst_ni) begin
+      hw2reg_present_state_command_inhibit_cmd_de = '1;
+      hw2reg_present_state_command_inhibit_cmd_d  = '0;
+    end
+
     // extend pulse for slower sd clock
-    driver_cmd_requested_d = driver_cmd_requested_q | reg2hw.command.command_index.qe;
-    cmd12_requested_d      = cmd12_requested_q      | request_cmd12_i;
+    cmd12_requested_d      = cmd12_requested_q | request_cmd12_i;
+    driver_cmd_requested_d = driver_cmd_requested_q;
+
+    // write to command index starts transmission
+    if (reg2hw.command.command_index.qe) begin
+      driver_cmd_requested_d = '1;
+      hw2reg_present_state_command_inhibit_cmd_de = '1;
+      hw2reg_present_state_command_inhibit_cmd_d  = '1;
+    end
 
     start_tx_d      = '0;
     running_cmd12_d = running_cmd12_q;
@@ -204,12 +228,36 @@ module cmd_wrap (
     if (cmd_seq_state_q == READY) begin
       running_cmd12_d = '0;
       if (cmd12_requested_q) begin
-        start_tx_d      = '1;
-        running_cmd12_d = '1;
+        if (
+          reg2hw.error_interrupt_status.command_index_error.q ||
+          reg2hw.error_interrupt_status.command_end_bit_error.q ||
+          reg2hw.error_interrupt_status.command_crc_error.q ||
+          reg2hw.error_interrupt_status.command_timeout_error.q
+        ) begin
+          cmd12_requested_d = '0;
+          auto_cmd12_errors_o.auto_cmd12_not_executed.de = '1;
+        end else begin
+          start_tx_d      = '1;
+          running_cmd12_d = '1;
+        end
       end else if (driver_cmd_requested_q) begin
-        start_tx_d      = '1;
+        if (
+          reg2hw.auto_cmd12_error_status.auto_cmd12_index_error.q ||
+          reg2hw.auto_cmd12_error_status.auto_cmd12_end_bit_error.q ||
+          reg2hw.auto_cmd12_error_status.auto_cmd12_crc_error.q ||
+          reg2hw.auto_cmd12_error_status.auto_cmd12_timeout_error.q
+        ) begin
+          driver_cmd_requested_d = '0;
+          auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error.de = '1;
+        end else begin
+          start_tx_d      = '1;
+        end
+      end else if (!reg2hw.command.command_index.qe) begin
+        hw2reg_present_state_command_inhibit_cmd_de = '1;
+        hw2reg_present_state_command_inhibit_cmd_d  = '0;
       end
     end else if (start_tx_q) begin
+      // Request received by sdclk domain
       if (cmd12_requested_q) begin
         cmd12_requested_d = '0;
       end else if (driver_cmd_requested_q) begin
@@ -261,30 +309,33 @@ module cmd_wrap (
     rsp_3 = reg2hw.response3.q;
     update_rsp_reg  = 1'b0; //only update response register when there was a response
 
-    //TODO: integrate auto cmd12 response written to rsp_4
-    unique case (reg2hw.command.response_type_select.q)
-      2'b00:;      //no response
+    if (running_cmd12_q) begin
+        rsp_3 = rsp [31:0];
+    end else begin
+      unique case (reg2hw.command.response_type_select.q)
+        2'b00:;      //no response
 
-      2'b01:  begin //long response
-        rsp_0 = rsp [31:0];
-        rsp_1 = rsp [63:32];
-        rsp_2 = rsp [95:64];
-        rsp_3 [23:0]  = rsp [119:96]; //save bits 31:24 of rsp_3
-        update_rsp_reg = 1'b1;
-      end 
+        2'b01:  begin //long response
+          rsp_0 = rsp [31:0];
+          rsp_1 = rsp [63:32];
+          rsp_2 = rsp [95:64];
+          rsp_3 [23:0]  = rsp [119:96]; //save bits 31:24 of rsp_3
+          update_rsp_reg = 1'b1;
+        end 
 
-      2'b10:  begin //short response without busy signalling
-        rsp_0 = rsp [31:0];
-        update_rsp_reg = 1'b1;
-      end
+        2'b10:  begin //short response without busy signalling
+          rsp_0 = rsp [31:0];
+          update_rsp_reg = 1'b1;
+        end
 
-      2'b11:  begin //short response with busy signalling
-        rsp_0 = rsp [31:0];
-        update_rsp_reg = 1'b1;
-      end
+        2'b11:  begin //short response with busy signalling
+          rsp_0 = rsp [31:0];
+          update_rsp_reg = 1'b1;
+        end
 
-      default:; 
-    endcase
+        default:; 
+      endcase
+    end
 
     hw2reg_response0_d  = rsp_0;
     hw2reg_response1_d  = rsp_1;

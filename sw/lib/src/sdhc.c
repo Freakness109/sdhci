@@ -358,7 +358,7 @@ sdhc_bus_clock(struct sdhc_host* hp, int freq, int timing)
 	}
 	if (timo == 0) {
 		error = ETIMEDOUT;
-		printf("Timed out!");
+		printf("Timed out!\n");
 		goto ret;
 	}
 
@@ -829,9 +829,10 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 	while ((status & mask) == 0) {
 
 		status = HREAD2(hp, SDHC_NINTR_STATUS);
-		printf("sdhc_wait_intr status: %x\n", status);
+		printf("sdhc_wait_intr status: %x, mask: %x\n", status, mask);
 		if (ISSET(status, SDHC_NINTR_STATUS_MASK)) {
 			HWRITE2(hp, SDHC_NINTR_STATUS, status);
+
 			if (ISSET(status, SDHC_ERROR_INTERRUPT)) {
 				uint16_t error;
 				error = HREAD2(hp, SDHC_EINTR_STATUS);
@@ -848,7 +849,6 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 			    SDHC_BUFFER_WRITE_READY | SDHC_COMMAND_COMPLETE |
 			    SDHC_TRANSFER_COMPLETE)) {
 				hp->intr_status |= status;
-				break;
 			}
 
 			if (ISSET(status, SDHC_CARD_INTERRUPT)) {
@@ -863,6 +863,7 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 		sdmmc_delay(1000);
 		if (usecs-- == 0) {
 			status |= SDHC_ERROR_INTERRUPT;
+			printf("sdhc_wait_intr timeoud out\n");
 			break;
 		}
 	}

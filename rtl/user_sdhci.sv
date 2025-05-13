@@ -14,22 +14,13 @@ module user_sdhci #(
   input  logic rst_ni,
 
   input  obi_req_t obi_req_i,
-  output obi_rsp_t obi_rsp_o, 
+  output obi_rsp_t obi_rsp_o,
 
   output logic interrupt_o
 );
-  logic sd_rst_n;
+  logic sd_rst_n, sd_rst_cmd_n, sd_rst_dat_n;
   sdhci_reg_pkg::sdhci_reg2hw_t reg2hw;
   sdhci_reg_pkg::sdhci_hw2reg_t hw2reg;
-  
-  assign hw2reg.present_state.card_inserted.d = '1;
-  assign hw2reg.present_state.card_inserted.de = '1;
-  assign hw2reg.present_state.card_state_stable.d = '1;
-  assign hw2reg.present_state.card_state_stable.de = '1;
-  assign hw2reg.present_state.card_detect_pin_level.d = '1;
-  assign hw2reg.present_state.card_detect_pin_level.de = '1;
-  assign hw2reg.clock_control.internal_clock_stable.d = '1;
-  assign hw2reg.clock_control.internal_clock_stable.de = '1;
 
   //Soft Reset Logic/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   logic software_reset_all_q, software_reset_all_d, software_reset_cmd_q, software_reset_cmd_d, software_reset_dat_q, software_reset_dat_d;
@@ -37,25 +28,24 @@ module user_sdhci #(
   assign software_reset_all_d = reg2hw.software_reset.software_reset_for_all.q;
   `FF(software_reset_all_q, software_reset_all_d, '0, clk_i, rst_ni);
   
-  assign software_reset_cmd_d = rst_ni && !reg2hw.software_reset.software_reset_for_cmd_line.q;  //comand circuit soft reset
+  assign software_reset_cmd_d = reg2hw.software_reset.software_reset_for_cmd_line.q;  //comand circuit soft reset
   `FF(software_reset_cmd_q, software_reset_cmd_d, '1, clk_i, rst_ni);
 
-  assign software_reset_dat_d = rst_ni && !reg2hw.software_reset.software_reset_for_dat_line.q;  //dat circuit soft reset
+  assign software_reset_dat_d = reg2hw.software_reset.software_reset_for_dat_line.q;  //dat circuit soft reset
   `FF(software_reset_dat_q, software_reset_dat_d, '1, clk_i, rst_ni);
 
   assign sd_rst_n = rst_ni && !software_reset_all_q;
+  assign sd_rst_cmd_n = sd_rst_n && !software_reset_cmd_q;
+  assign sd_rst_dat_n = sd_rst_n && !software_reset_dat_q;
   
   always_comb begin : reset_reset_bits
-    hw2reg.software_reset.software_reset_for_all.d  = 1'b0;
-    hw2reg.software_reset.software_reset_for_all.de = 1'b0;
     hw2reg.software_reset.software_reset_for_dat_line.d   = 1'b0;
     hw2reg.software_reset.software_reset_for_dat_line.de  = 1'b0;
     hw2reg.software_reset.software_reset_for_cmd_line.d   = 1'b0;
     hw2reg.software_reset.software_reset_for_cmd_line.de  = 1'b0;
 
-    if(software_reset_all_q) hw2reg.software_reset.software_reset_for_all.de = 1'b1;
-    if(!software_reset_dat_q) hw2reg.software_reset.software_reset_for_dat_line.de = 1'b1;
-    if(!software_reset_cmd_q) hw2reg.software_reset.software_reset_for_cmd_line.de = 1'b1;
+    if(software_reset_dat_q) hw2reg.software_reset.software_reset_for_dat_line.de = 1'b1;
+    if(software_reset_cmd_q) hw2reg.software_reset.software_reset_for_cmd_line.de = 1'b1;
 
     `ifdef CMD_RESET_ON_TIMEOUT
       if(reg2hw.error_interrupt_status.command_timeout_error.q) begin //evtl noch error status resetten?
@@ -81,7 +71,10 @@ module user_sdhci #(
 
   sdhci_reg_logic i_sdhci_reg_logic (
     .clk_i,
-    .rst_ni (sd_rst_n),
+    .rst_ni     (sd_rst_n),
+    .rst_cmd_ni (sd_rst_cmd_n),
+    .rst_dat_ni (sd_rst_dat_n),
+
     .reg2hw_i (reg2hw),
     .hw2reg_i (hw2reg),
 
@@ -105,8 +98,9 @@ module user_sdhci #(
     .rst_ni (sd_rst_n),
     .reg2hw_i (reg2hw),
 
-    .pause_sd_clk_i (pause_sd_clk),
-    .sd_clk_o       (sd_clk)
+    .pause_sd_clk_i  (pause_sd_clk),
+    .sd_clk_o        (sd_clk),
+    .sd_clk_stable_o (hw2reg.clock_control.internal_clock_stable)
   );
   logic cmd_write;
   logic cmd_write_en, cmd_read;
@@ -124,16 +118,25 @@ module user_sdhci #(
     .dat_o    (dat_read)
   );
 
+  assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: dat_read };
+  assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: cmd_read };
+
+  assign hw2reg.present_state.write_protect_switch_pin_level = '{ de: '1, d: '1 };
+  assign hw2reg.present_state.card_inserted                  = '{ de: '1, d: '1 }; // TODO ?
+  assign hw2reg.present_state.card_state_stable              = '{ de: '1, d: '1 };
+  assign hw2reg.present_state.card_detect_pin_level          = '{ de: '1, d: '1 }; // TODO ?
+
+
   logic sd_cmd_done, sd_rsp_done, request_cmd12;
 
   cmd_wrap  i_cmd_wrap (
-    .clk_i (clk_i),
-    .sd_clk_i (sd_clk),
-    .rst_ni (software_reset_cmd_q),
-    .sd_bus_cmd_i (cmd_read),
-    .sd_bus_cmd_o (cmd_write),
+    .clk_i           (clk_i),
+    .sd_clk_i        (sd_clk),
+    .rst_ni          (sd_rst_cmd_n),
+    .sd_bus_cmd_i    (cmd_read),
+    .sd_bus_cmd_o    (cmd_write),
     .sd_bus_cmd_en_o (cmd_write_en),
-    .reg2hw (reg2hw),
+    .reg2hw          (reg2hw),
 
     .busy_dat0_i     (~dat_read[0]),
     .request_cmd12_i (request_cmd12),
@@ -158,14 +161,16 @@ module user_sdhci #(
     .hw2reg_error_interrupt_status_command_index_error_d (hw2reg.error_interrupt_status.command_index_error.d),
     .hw2reg_error_interrupt_status_command_index_error_de (hw2reg.error_interrupt_status.command_index_error.de),
     .hw2reg_error_interrupt_status_command_timeout_error_d (hw2reg.error_interrupt_status.command_timeout_error.d),
-    .hw2reg_error_interrupt_status_command_timeout_error_de (hw2reg.error_interrupt_status.command_timeout_error.de)
+    .hw2reg_error_interrupt_status_command_timeout_error_de (hw2reg.error_interrupt_status.command_timeout_error.de),
+
+    .auto_cmd12_errors_o     (hw2reg.auto_cmd12_error_status)
   );
 
-  
+
   dat_wrap i_dat_wrap (
     .clk_i,
     .sd_clk_i (sd_clk),
-    .rst_ni,
+    .rst_ni   (sd_rst_dat_n),
 
     .dat_i    (dat_read),
     .dat_en_o (dat_write_en),
@@ -190,8 +195,7 @@ module user_sdhci #(
     .write_transfer_active_o (hw2reg.present_state.write_transfer_active),
     .dat_line_active_o       (hw2reg.present_state.dat_line_active),
 
-    .block_count_o           (hw2reg.block_count),
-    .auto_cmd12_errors_o     (hw2reg.auto_cmd12_error_status)
+    .block_count_o           (hw2reg.block_count)
   );
   
 endmodule

@@ -244,7 +244,6 @@ sdmmc_scan(struct sdmmc_softc *sc)
 void
 sdmmc_delay(u_int usecs)
 {
-	// TODO sleep_ms from croc
 	sleep_ms(usecs / 1000);
 }
 
