@@ -53,19 +53,7 @@ module sram_shift_reg #(
   `ASSERT_NEVER(Underflow, pop_front_i && empty_o);
   `ASSERT_NEVER(Overflow,  push_back_i && full_o);
 
-  // // To make writes instantly appear in reads
-  // logic first_push_q, first_push_d;
-  // `FF(first_push_q, first_push_d, '0, clk_i, rst_ni);
-  // assign first_push_d = empty_o && req_i && we_i;
-
-  // logic [DataWidth-1:0] back_data_q, back_data_d;
-  // `FF(back_data_q, back_data_d, '0, clk_i, rst_ni);
-  // assign back_data_d = back_data_i;
-
-  // logic [DataWidth-1:0] read_data;
-  // assign front_data_o = first_push_q ? back_data_q : read_data;
-
-  tc_sram #(
+  tc_sram_impl #(
     .NumWords  ( NumWords ),
     .DataWidth ( DataWidth ),
     .NumPorts  ( 1 ),
@@ -73,6 +61,9 @@ module sram_shift_reg #(
   ) i_sram (
     .clk_i,
     .rst_ni,
+
+    .impl_i  ('1),
+    .impl_o  ( ),
 
     .req_i   (push_back_i | pop_front_i | pop_front_q),
     .we_i    (push_back_i),
