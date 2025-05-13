@@ -686,7 +686,6 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	 * RTS5229 host controller if it is running at a low clock
 	 * frequency.  Reading the SCR requires a data transfer.
 	 */
-#ifndef WITH_SD_MODEL
 	error = sdhc_bus_clock(sc->sch, SDMMC_SDCLK_25MHZ,
 	    SDMMC_TIMING_LEGACY);
 	if (error) {
@@ -702,7 +701,6 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	error = sdmmc_mem_decode_scr(sc, raw_scr, sf);
 	if (error)
 		return error;
-#endif
 
 	if (ISSET(sc->sc_caps, SMC_CAPS_4BIT_MODE) &&
 	    ISSET(sf->scr.bus_width, SCR_SD_BUS_WIDTHS_4BIT)) {
