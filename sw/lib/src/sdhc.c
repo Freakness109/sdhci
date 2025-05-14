@@ -65,6 +65,7 @@
 
 #ifdef SDHC_DEBUG
 int sdhcdebug = 2;
+int debug_funcs = 0;
 #define DPRINTF(n,s)	do { if ((n) <= sdhcdebug) printf s; } while (0)
 void	sdhc_dump_regs(struct sdhc_host *);
 #else

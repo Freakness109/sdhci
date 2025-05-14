@@ -16,7 +16,7 @@
 #include "sdhcvar.h"
 
 extern int sdhcdebug;
-int debug_funcs;
+extern int debug_funcs;
 struct sdmmc_softc sc = { 0 };
 struct sdhc_host hp = { 0 };
 
