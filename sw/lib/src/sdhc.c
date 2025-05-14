@@ -358,7 +358,7 @@ sdhc_bus_clock(struct sdhc_host* hp, int freq, int timing)
 	}
 	if (timo == 0) {
 		error = ETIMEDOUT;
-		printf("Timed out!\n");
+		printf("sdhc_bus_clock timed out!");
 		goto ret;
 	}
 

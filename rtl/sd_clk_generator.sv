@@ -35,12 +35,12 @@ module sd_clk_generator (
     if (div_valid_q) begin
       if (div_ready_q) begin
         div_valid_d = '0;
-        sd_clk_stable_o = '{ de: '1, d: '0 };
+        sd_clk_stable_o = '{ de: '1, d: '1 };
       end
     end else if (div_q != div_reg) begin
       div_d = div_reg;
       div_valid_d = '1;
-      sd_clk_stable_o = '{ de: '1, d: '1 };
+      sd_clk_stable_o = '{ de: '1, d: '0 };
     end
   end
 
