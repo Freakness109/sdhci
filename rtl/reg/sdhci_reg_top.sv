@@ -3654,7 +3654,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (6),
     .SWACCESS("RO"),
-    .RESVAL  (6'h32)
+    .RESVAL  (6'h19)
   ) u_capabilities_timeout_clock_frequency (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -3709,7 +3709,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (6),
     .SWACCESS("RO"),
-    .RESVAL  (6'h32)
+    .RESVAL  (6'h19)
   ) u_capabilities_base_clock_frequency_for_sd_clock (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),

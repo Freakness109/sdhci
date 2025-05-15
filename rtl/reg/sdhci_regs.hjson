@@ -1194,7 +1194,7 @@
           bits: "13:8"
           name: "base_clock_frequency_for_sd_clock"
           desc: ""
-          resval: "0b110010" // 50Mhz
+          resval: "0b011001" // 25Mhz
         }
         {
           bits: "7"
@@ -1214,7 +1214,7 @@
           bits: "5:0"
           name: "timeout_clock_frequency"
           desc: ""
-          resval: "0b110010" // 50Mhz
+          resval: "0b011001" // 25Mhz
         }
       ]
     }
