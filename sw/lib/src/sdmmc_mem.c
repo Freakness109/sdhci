@@ -98,7 +98,7 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 {
 	DFUNC(sdmmc_mem_enable);
 
-	uint32_t card_ocr;
+	uint32_t card_ocr, host_ocr, ocr;
 	int error;
 
 	/* Set host mode to SD "combo" card or SD memory-only. */
@@ -146,6 +146,23 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 	if (!(card_ocr & (MMC_OCR_2_9V_3_0V | MMC_OCR_3_0V_3_1V))) {
 		DPRINTF(("%s: can't supply voltage requested by card\n",
 		    DEVNAME(sc)));
+		return 1;
+	}
+
+	/* Tell the card(s) to enter the idle state (again). */
+	sdmmc_go_idle_state(sc);
+
+	host_ocr &= card_ocr; /* only allow the common voltages */
+
+	if (ISSET(sc->sc_flags, SMF_SD_MODE)) {
+		if (sdmmc_send_if_cond(sc, card_ocr) == 0)
+			SET(ocr, MMC_OCR_HCS);
+	}
+	host_ocr |= ocr;
+
+	/* Send the new OCR value until all cards are ready. */
+	if (sdmmc_mem_send_op_cond(sc, host_ocr, &ocr) != 0) {
+		DPRINTF(("%s: can't send memory OCR\n", DEVNAME(sc)));
 		return 1;
 	}
 

@@ -142,7 +142,7 @@ int main() {
     int err = sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0);
     if (err) printf("sdhc_init errored: %x\n", err);
 
-// #define SDHC_INITIALIZED_MODEL
+
 #ifdef SDHC_INITIALIZED_MODEL
     sc.sc_caps = SMC_CAPS_4BIT_MODE | SMC_CAPS_AUTO_STOP | SMC_CAPS_NONREMOVABLE;
     sc.sc_flags = SMF_SD_MODE | SMF_MEM_MODE | SMF_CARD_PRESENT | SMF_CARD_ATTACHED;
@@ -157,11 +157,6 @@ int main() {
 #endif
 
     // sdmmc_discover_cards(sc);
-
-
-    err = sdhc_bus_clock(sc.sch, SDMMC_SDCLK_50MHZ,
-        SDMMC_TIMING_LEGACY);
-    if (err) printf("sdhc_bus_clock errored: %x\n", err);
 
     err = sdmmc_mem_set_blocklen(&sc, &sc.sc_card);
     if (err) printf("sdmmc_mem_set_blocklen errored: %x\n", err);

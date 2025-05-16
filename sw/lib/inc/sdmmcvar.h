@@ -54,7 +54,7 @@ struct sdmmc_softc;
 struct sdmmc_command {
 	u_int16_t	 c_opcode;	/* SD or MMC command index */
 	u_int32_t	 c_arg;		/* SD/MMC command argument */
-	sdmmc_response	 c_resp;	/* response buffer */
+	sdmmc_response	 	c_resp;	/* response buffer */
 	bus_dmamap_t	 c_dmamap;
 	void		*c_data;	/* buffer to send or read into */
 	int		 c_datalen;	/* length of data buffer */
@@ -192,5 +192,9 @@ int	sdmmc_mem_read_block(struct sdmmc_function *, int, u_char *, size_t);
 int	sdmmc_mem_write_block(struct sdmmc_function *, int, u_char *, size_t);
 int	sdmmc_mem_set_blocklen(struct sdmmc_softc *, struct sdmmc_function *);
 int sdmmc_select_card(struct sdmmc_softc *, struct sdmmc_function *);
+
+int	sdmmc_mem_send_scr(struct sdmmc_softc *, uint32_t *);
+int	sdmmc_mem_decode_scr(struct sdmmc_softc *, uint32_t *,
+	    struct sdmmc_function *);
 
 #endif
