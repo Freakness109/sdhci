@@ -143,7 +143,7 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 			DEVNAME(sc)));
 	}
 
-	if (!(card_ocr & (MMC_OCR_2_9V_3_0V | MMC_OCR_3_0V_3_1V))) {
+	if (!(card_ocr & (MMC_OCR_3_2V_3_3V | MMC_OCR_3_3V_3_4V))) {
 		DPRINTF(("%s: can't supply voltage requested by card\n",
 		    DEVNAME(sc)));
 		return 1;
@@ -152,6 +152,7 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 	/* Tell the card(s) to enter the idle state (again). */
 	sdmmc_go_idle_state(sc);
 
+	host_ocr = MMC_OCR_3_2V_3_3V | MMC_OCR_3_3V_3_4V;
 	host_ocr &= card_ocr; /* only allow the common voltages */
 
 	if (ISSET(sc->sc_flags, SMF_SD_MODE)) {
