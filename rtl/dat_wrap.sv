@@ -242,7 +242,7 @@ module dat_wrap #(
           read_reg_start_length_d = read_reg_length;
         end
 
-        pause_sd_clk_o          = '1;
+        if (!last_block) pause_sd_clk_o = '1;
       end
       DONE_READING_BLOCK: begin
         read_transfer_active_o.d = '1;
