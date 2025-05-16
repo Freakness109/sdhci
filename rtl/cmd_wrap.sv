@@ -143,8 +143,8 @@ module cmd_wrap (
             auto_cmd12_errors_o.auto_cmd12_index_error.de = index_err;
           end else begin
             hw2reg_error_interrupt_status_command_end_bit_error_de = (check_end_bit_err & end_bit_err);
-            hw2reg_error_interrupt_status_command_crc_error_de = (check_crc_err & ~crc_corr);
-            hw2reg_error_interrupt_status_command_index_error_de = (check_index_err & index_err);
+            hw2reg_error_interrupt_status_command_crc_error_de     = (check_crc_err & ~crc_corr);
+            hw2reg_error_interrupt_status_command_index_error_de   = (check_index_err & index_err);
           end
         end
       end
@@ -283,7 +283,7 @@ module cmd_wrap (
   logic [119:0] rsp;
   logic receiving, rsp_valid, end_bit_err, crc_corr, long_rsp, start_listening;
 
-  assign long_rsp = (reg2hw.command.response_type_select == 2'b01); //response type is "Response Length 136"
+  assign long_rsp = (reg2hw.command.response_type_select.q == 2'b01); //response type is "Response Length 136"
 
   rsp_read  i_rsp_read (
     .sd_clk_i           (sd_clk_i),
