@@ -166,8 +166,8 @@ sdhc_init(struct sdhc_host *hp, u_int mmio, uint64_t capmask, uint64_t capset)
 		break;
 	}
 
-	printf("%s: SDHC %d.%02d, %d MHz base clock\n", DEVNAME(sc),
-	    major, minor, hp->clkbase / 1000);
+	DPRINTF(0, ("%s: SDHC %d.%02d, %d MHz base clock\n", DEVNAME(sc),
+	    major, minor, hp->clkbase / 1000));
 
 	/*
 	 * XXX Set the data timeout counter value according to
@@ -359,7 +359,7 @@ sdhc_bus_clock(struct sdhc_host* hp, int freq, int timing)
 	}
 	if (timo == 0) {
 		error = ETIMEDOUT;
-		printf("sdhc_bus_clock timed out!");
+		DPRINTF(0, ("sdhc_bus_clock timed out!\n"));
 		goto ret;
 	}
 
@@ -564,15 +564,15 @@ sdhc_start_command(struct sdhc_host *hp, struct sdmmc_command *cmd)
 		blkcount = cmd->c_datalen / blksize;
 		if (cmd->c_datalen % blksize > 0) {
 			/* XXX: Split this command. (1.7.4) */
-			printf("%s: data not a multiple of %d bytes\n",
-			    DEVNAME(hp->sc), blksize);
+			DPRINTF(0, ("%s: data not a multiple of %d bytes\n",
+			    DEVNAME(hp->sc), blksize));
 			return EINVAL;
 		}
 	}
 
 	/* Check limit imposed by 9-bit block count. (1.7.2) */
 	if (blkcount > SDHC_BLOCK_COUNT_MAX) {
-		printf("%s: too much data\n", DEVNAME(hp->sc));
+		DPRINTF(0, ("%s: too much data\n", DEVNAME(hp->sc)));
 		return EINVAL;
 	}
 
@@ -588,9 +588,6 @@ sdhc_start_command(struct sdhc_host *hp, struct sdmmc_command *cmd)
 				mode |= SDHC_AUTO_CMD12_ENABLE;
 		}
 	}
-	if (cmd->c_dmamap && cmd->c_datalen > 0 &&
-	    ISSET(hp->flags, SHF_USE_DMA))
-		mode |= SDHC_DMA_ENABLE;
 
 	/*
 	 * Prepare command register value. (2.2.6)
@@ -830,7 +827,7 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 	while ((status & mask) == 0) {
 
 		status = HREAD2(hp, SDHC_NINTR_STATUS);
-		printf("sdhc_wait_intr status: %x, mask: %x\n", status, mask);
+		DPRINTF(0, ("sdhc_wait_intr status: %x, mask: %x\n", status, mask));
 		if (ISSET(status, SDHC_NINTR_STATUS_MASK)) {
 			HWRITE2(hp, SDHC_NINTR_STATUS, status);
 
@@ -840,7 +837,7 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 				HWRITE2(hp, SDHC_EINTR_STATUS, error);
 				hp->intr_status |= status;
 
-				printf("sdhc_wait_intr error: %x\n", error);
+				DPRINTF(0, ("sdhc_wait_intr error: %x\n", error));
 				if (ISSET(error, SDHC_CMD_TIMEOUT_ERROR|
 				    SDHC_DATA_TIMEOUT_ERROR))
 					break;
@@ -864,14 +861,14 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 		sdmmc_delay(1000);
 		if (usecs-- == 0) {
 			status |= SDHC_ERROR_INTERRUPT;
-			printf("sdhc_wait_intr timeoud out\n");
+			DPRINTF(0, ("sdhc_wait_intr timeoud out\n"));
 			break;
 		}
 	}
 
 	hp->intr_status &= ~(status & mask);
 
-	// printf("sdhc_wait_intr: %x\n", (status & mask));
+	// DPRINTF(("sdhc_wait_intr: %x\n", (status & mask)));
 	return (status & mask);
 }
 

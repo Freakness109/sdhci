@@ -37,7 +37,6 @@ void sdmmc_card_detach(struct sdmmc_softc *sc, int flags);
 
 #ifdef SDMMC_DEBUG
 int sdmmcdebug = 2;
-extern int sdhcdebug;	/* XXX should have a sdmmc_chip_debug() function */
 void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #define DPRINTF(n,s)	do { if ((n) <= sdmmcdebug) printf s; } while (0)
 #else
@@ -46,19 +45,22 @@ void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 
 
 void
-sdmmc_init(struct sdmmc_softc *sc, struct sdhc_host *hp)
+sdmmc_init(struct sdmmc_softc *sc, struct sdhc_host *hp, uint8_t* scratch_buffer)
 {
 	DFUNC(sdmmc_init);
 
 	sc->sch = hp;
 	sc->sc_flags = SMF_MEM_MODE;
 	sc->sc_caps = SMC_CAPS_4BIT_MODE;
+	sc->scratch_buffer = scratch_buffer;
 
 	if (ISSET(hp->flags, SDHC_F_NONREMOVABLE))
 		sc->sc_caps |= SMC_CAPS_NONREMOVABLE;
 	
 	SET(sc->sc_flags, SMF_CONFIG_PENDING);
 	sdmmc_discover_cards(sc);
+
+	sc->scratch_buffer = NULL;
 }
 
 int
@@ -110,7 +112,7 @@ sdmmc_card_attach(struct sdmmc_softc *sc)
 	 * Power up the card (or card stack).
 	 */
 	if (sdmmc_enable(sc) != 0) {
-		printf("%s: can't enable card\n", DEVNAME(sc));
+		DPRINTF(0, ("%s: can't enable card\n", DEVNAME(sc)));
 		goto err;
 	}
 
@@ -124,7 +126,7 @@ sdmmc_card_attach(struct sdmmc_softc *sc)
 	 * Initialize the I/O functions and memory cards.
 	 */
 	if (sdmmc_mem_init(sc, &sc->sc_card) != 0) {
-		printf("%s: mem init failed\n", DEVNAME(sc));
+		DPRINTF(0, ("%s: mem init failed\n", DEVNAME(sc)));
 		goto err;
 	}
 
@@ -171,7 +173,7 @@ sdmmc_enable(struct sdmmc_softc *sc)
 	error = sdhc_bus_clock(sc->sch,
 	    SDMMC_SDCLK_400KHZ, SDMMC_TIMING_LEGACY);
 	if (error != 0) {
-		printf("%s: can't supply clock\n", DEVNAME(sc));
+		DPRINTF(0, ("%s: can't supply clock\n", DEVNAME(sc)));
 		goto err;
 	}
 

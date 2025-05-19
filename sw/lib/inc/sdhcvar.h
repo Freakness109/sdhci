@@ -31,7 +31,6 @@ struct sdhc_host {
 #define SDHC_F_NOPWR0		(1 << 0)
 #define SDHC_F_NONREMOVABLE	(1 << 1)
 #define SDHC_F_NO_HS_BIT	(1 << 3)
-	u_int8_t regs[14];		/* host controller state */
 	u_int16_t intr_status;		/* soft interrupt status */
 	u_int16_t intr_error_status;	/* soft error status */
 

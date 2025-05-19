@@ -41,20 +41,14 @@ struct sdmmc_command;
 #define SDMMC_TIMING_MMC_DDR52	4
 #define SDMMC_TIMING_MMC_HS200	5
 
-#define SDMMC_MAX_FUNCTIONS	8
-
 struct sdmmcbus_attach_args {
 	const char *saa_busname;
 	struct sdhc_host* sch;
 
-	bus_dma_tag_t dmat;
-	bus_dmamap_t dmap;
 	int	flags;
 	int	caps;
 	long	max_seg;
 	long	max_xfer;
-	bus_size_t dma_boundary;
-	void	*cookies[SDMMC_MAX_FUNCTIONS];
 };
 
 struct device;

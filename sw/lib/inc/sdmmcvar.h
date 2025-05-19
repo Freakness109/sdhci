@@ -33,15 +33,6 @@ struct sdmmc_csd {
 	/* ... */
 };
 
-struct sdmmc_cid {
-	int	mid;		/* manufacturer identification number */
-	int	oid;		/* OEM/product identification number */
-	char	pnm[8];		/* product name (MMC v1 has the longest) */
-	int	rev;		/* product revision */
-	int	psn;		/* product serial number */
-	int	mdt;		/* manufacturing date */
-};
-
 struct sdmmc_scr {
 	int	sd_spec;
 	int	bus_width;
@@ -55,7 +46,6 @@ struct sdmmc_command {
 	u_int16_t	 c_opcode;	/* SD or MMC command index */
 	u_int32_t	 c_arg;		/* SD/MMC command argument */
 	sdmmc_response	 	c_resp;	/* response buffer */
-	bus_dmamap_t	 c_dmamap;
 	void		*c_data;	/* buffer to send or read into */
 	int		 c_datalen;	/* length of data buffer */
 	int		 c_blklen;	/* block length */
@@ -84,27 +74,6 @@ struct sdmmc_command {
 #define SCF_RSP_R6	 (SCF_RSP_PRESENT|SCF_RSP_CRC|SCF_RSP_IDX)
 #define SCF_RSP_R7	 (SCF_RSP_PRESENT|SCF_RSP_CRC|SCF_RSP_IDX)
 	int		 c_error;	/* errno value on completion */
-
-	/* Host controller owned fields for data xfer in progress */
-	int c_resid;			/* remaining I/O */
-	u_char *c_buf;			/* remaining data */
-};
-
-/*
- * Decoded PC Card 16 based Card Information Structure (CIS),
- * per card (function 0) and per function (1 and greater).
- */
-struct sdmmc_cis {
-	u_int16_t	 manufacturer;
-#define SDMMC_VENDOR_INVALID	0xffff
-	u_int16_t	 product;
-#define SDMMC_PRODUCT_INVALID	0xffff
-	u_int8_t	 function;
-#define SDMMC_FUNCTION_INVALID	0xff
-	u_char		 cis1_major;
-	u_char		 cis1_minor;
-	char		 cis1_info_buf[256];
-	char		*cis1_info[4];
 };
 
 /*
@@ -123,8 +92,6 @@ struct sdmmc_function {
 	unsigned int cur_blklen;	/* current block length */
 	/* SD/MMC memory card members */
 	struct sdmmc_csd csd;		/* decoded CSD value */
-	struct sdmmc_cid cid;		/* decoded CID value */
-	sdmmc_response raw_cid;		/* temp. storage for decoding */
 	struct sdmmc_scr scr;		/* decoded SCR value */
 };
 
@@ -168,13 +135,15 @@ struct sdmmc_softc {
 #define SMC_CAPS_NONREMOVABLE	0x10000	/* non-removable devices */
 
 	struct sdmmc_function sc_card;	/* selected card */
+
+	uint8_t* scratch_buffer; /* Buffer that is atleast 512 Bytes to use for temporary storage, only used during initialization */
 };
 
 #define	SDMMC_ASSERT_LOCKED(sc) \
 	rw_assert_wrlock(&(sc)->sc_lock)
 
 
-void sdmmc_init(struct sdmmc_softc *, struct sdhc_host *);
+void sdmmc_init(struct sdmmc_softc *, struct sdhc_host *, uint8_t*);
 struct	sdmmc_function *sdmmc_function_alloc(struct sdmmc_softc *);
 int	sdmmc_mmc_command(struct sdmmc_softc *, struct sdmmc_command *);
 int	sdmmc_app_command(struct sdmmc_softc *, struct sdmmc_command *);

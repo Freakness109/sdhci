@@ -32,7 +32,6 @@ int	sdmmc_decode_csd(struct sdmmc_softc *, sdmmc_response,
 	    struct sdmmc_function *);
 int	sdmmc_decode_cid(struct sdmmc_softc *, sdmmc_response,
 	    struct sdmmc_function *);
-void	sdmmc_print_cid(struct sdmmc_cid *);
 
 int	sdmmc_mem_send_op_cond(struct sdmmc_softc *, u_int32_t, u_int32_t *);
 
@@ -49,12 +48,8 @@ int	sdmmc_mem_sd_init(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_mem_mmc_init(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_mem_single_read_block(struct sdmmc_function *, int, u_char *,
 	size_t);
-int	sdmmc_mem_read_block_subr(struct sdmmc_function *, bus_dmamap_t,
-	int, u_char *, size_t);
 int	sdmmc_mem_single_write_block(struct sdmmc_function *, int, u_char *,
 	size_t);
-int	sdmmc_mem_write_block_subr(struct sdmmc_function *, bus_dmamap_t,
-	int, u_char *, size_t);
 
 #ifdef SDMMC_DEBUG
 #define DPRINTF(s)	printf s
@@ -248,17 +243,11 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 	sc->sc_card.rca = 1;
 
 	/*
-	 * Remember the CID returned in the CMD2 response for
-	 * later decoding.
-	 */
-	bcopy(cmd.c_resp, sc->sc_card.raw_cid, sizeof sc->sc_card.raw_cid);
-
-	/*
 	 * Silence the card by assigning it a unique RCA, or
 	 * querying it for its RCA in the case of SD.
 	 */
 	if ((error = sdmmc_set_relative_addr(sc, &sc->sc_card)) != 0) {
-		printf("%s: can't set mem RCA\n", DEVNAME(sc));
+		DPRINTF(("%s: can't set mem RCA\n", DEVNAME(sc)));
 		return error;
 	}
 
@@ -275,15 +264,9 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		return 1;
 	}
 
-	if ((error = sdmmc_decode_csd(sc, cmd.c_resp, &sc->sc_card)) != 0 ||
-		(error = sdmmc_decode_cid(sc, sc->sc_card.raw_cid, &sc->sc_card)) != 0) {
+	if ((error = sdmmc_decode_csd(sc, cmd.c_resp, &sc->sc_card)) != 0) {
 		return error;
 	}
-
-#ifdef SDMMC_DEBUG
-	printf("%s: CID: ", DEVNAME(sc));
-	sdmmc_print_cid(&sc->sc_card.cid);
-#endif
 	
 	return 0;
 }
@@ -304,23 +287,23 @@ sdmmc_decode_csd(struct sdmmc_softc *sc, sdmmc_response resp,
 		csd->csdver = SD_CSD_CSDVER(resp);
 		switch (csd->csdver) {
 		case SD_CSD_CSDVER_2_0:
-			printf("CSD v2\n");
+			DPRINTF(("CSD v2\n"));
 			sf->flags |= SFF_SDHC;
 			csd->capacity = SD_CSD_V2_CAPACITY(resp);
 			csd->read_bl_len = SD_CSD_V2_BL_LEN;
-			printf("  csd->capacity = %x\n", csd->capacity);
-			printf("  csd->read_bl_len = %x\n", csd->read_bl_len);
+			DPRINTF(("  csd->capacity = %x\n", csd->capacity));
+			DPRINTF(("  csd->read_bl_len = %x\n", csd->read_bl_len));
 			break;
 		case SD_CSD_CSDVER_1_0:
-			printf("CSD v1\n");
+			DPRINTF(("CSD v1\n"));
 			csd->capacity = SD_CSD_CAPACITY(resp);
 			csd->read_bl_len = SD_CSD_READ_BL_LEN(resp);
-			printf("  csd->capacity = %x\n", csd->capacity);
-			printf("  csd->read_bl_len = %x\n", csd->read_bl_len);
+			DPRINTF(("  csd->capacity = %x\n", csd->capacity));
+			DPRINTF(("  csd->read_bl_len = %x\n", csd->read_bl_len));
 			break;
 		default:
-			printf("%s: unknown SD CSD structure version 0x%x\n",
-			    DEVNAME(sc), csd->csdver);
+			DPRINTF(("%s: unknown SD CSD structure version 0x%x\n",
+			    DEVNAME(sc), csd->csdver));
 			return 1;
 			break;
 		}
@@ -334,14 +317,13 @@ sdmmc_decode_csd(struct sdmmc_softc *sc, sdmmc_response resp,
 			csd->capacity = MMC_CSD_CAPACITY(resp);
 			csd->read_bl_len = MMC_CSD_READ_BL_LEN(resp);
 		} else {
-			printf("%s: unknown MMC CSD structure version 0x%x\n",
-			    DEVNAME(sc), csd->csdver);
+			DPRINTF(("%s: unknown MMC CSD structure version 0x%x\n",
+			    DEVNAME(sc), csd->csdver));
 			return 1;
 		}
 	}
 	csd->sector_size = MIN(1 << csd->read_bl_len,
 	    sdhc_host_maxblklen(sc->sch));
-	csd->sector_size = 7;
 	if (csd->sector_size < (1<<csd->read_bl_len))
 		csd->capacity *= (1<<csd->read_bl_len) /
 		    csd->sector_size;
@@ -350,86 +332,23 @@ sdmmc_decode_csd(struct sdmmc_softc *sc, sdmmc_response resp,
 }
 
 int
-sdmmc_decode_cid(struct sdmmc_softc *sc, sdmmc_response resp,
-    struct sdmmc_function *sf)
-{
-	DFUNC(sdmmc_decode_cid);
-
-	struct sdmmc_cid *cid = &sf->cid;
-
-	if (ISSET(sc->sc_flags, SMF_SD_MODE)) {
-		cid->mid = SD_CID_MID(resp);
-		cid->oid = SD_CID_OID(resp);
-		SD_CID_PNM_CPY(resp, cid->pnm);
-		cid->rev = SD_CID_REV(resp);
-		cid->psn = SD_CID_PSN(resp);
-		cid->mdt = SD_CID_MDT(resp);
-	} else {
-		switch(sf->csd.mmcver) {
-		case MMC_CSD_MMCVER_1_0:
-		case MMC_CSD_MMCVER_1_4:
-			cid->mid = MMC_CID_MID_V1(resp);
-			MMC_CID_PNM_V1_CPY(resp, cid->pnm);
-			cid->rev = MMC_CID_REV_V1(resp);
-			cid->psn = MMC_CID_PSN_V1(resp);
-			cid->mdt = MMC_CID_MDT_V1(resp);
-			break;
-		case MMC_CSD_MMCVER_2_0:
-		case MMC_CSD_MMCVER_3_1:
-		case MMC_CSD_MMCVER_4_0:
-			cid->mid = MMC_CID_MID_V2(resp);
-			cid->oid = MMC_CID_OID_V2(resp);
-			MMC_CID_PNM_V2_CPY(resp, cid->pnm);
-			cid->psn = MMC_CID_PSN_V2(resp);
-			break;
-		default:
-			printf("%s: unknown MMC version %d\n",
-			    DEVNAME(sc), sf->csd.mmcver);
-			return 1;
-		}
-	}
-	return 0;
-}
-
-#ifdef SDMMC_DEBUG
-void
-sdmmc_print_cid(struct sdmmc_cid *cid)
-{
-	DFUNC(sdmmc_print_cid);
-
-	printf("mid=0x%02x oid=0x%04x pnm=\"%s\" rev=0x%02x psn=0x%08x"
-	    " mdt=%03x\n", cid->mid, cid->oid, cid->pnm, cid->rev, cid->psn,
-	    cid->mdt);
-}
-#endif
-
-int
 sdmmc_mem_send_scr(struct sdmmc_softc *sc, uint32_t *scr)
 {
 	DFUNC(sdmmc_mem_send_scr);
 
 	struct sdmmc_command cmd;
-	void *ptr = NULL;
 	const int datalen = 8;
-	int error = 0;
-	uint8_t data[datalen];
-
-	ptr = data;
-	bzero(ptr, datalen);
+	bzero(scr, datalen);
 
 	memset(&cmd, 0, sizeof(cmd));
-	cmd.c_data = ptr;
+	cmd.c_data = scr;
 	cmd.c_datalen = datalen;
 	cmd.c_blklen = datalen;
 	cmd.c_arg = 0;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_CMD_READ | SCF_RSP_R1;
 	cmd.c_opcode = SD_APP_SEND_SCR;
 
-	error = sdmmc_app_command(sc, &cmd);
-	if (error == 0)
-		memcpy(scr, ptr, datalen);
-
-	return error;
+	return sdmmc_app_command(sc, &cmd);
 }
 
 int
@@ -531,10 +450,8 @@ sdmmc_mem_sd_switch(struct sdmmc_function *sf, int mode, int group,
 
 	struct sdmmc_softc *sc = sf->sc;
 	struct sdmmc_command cmd;
-	void *ptr = NULL;
 	int gsft, error = 0;
 	const int statlen = 64;
-	uint8_t data[statlen];
 
 	if (sf->scr.sd_spec >= SCR_SD_SPEC_VER_1_10 &&
 	    !ISSET(sf->csd.ccc, SD_CSD_CCC_SWITCH))
@@ -546,11 +463,10 @@ sdmmc_mem_sd_switch(struct sdmmc_function *sf, int mode, int group,
 
 	gsft = (group - 1) << 2;
 
-	ptr = data;
-	bzero(ptr, statlen);
+	bzero(status, statlen);
 
 	memset(&cmd, 0, sizeof(cmd));
-	cmd.c_data = ptr;
+	cmd.c_data = status;
 	cmd.c_datalen = statlen;
 	cmd.c_blklen = statlen;
 	cmd.c_opcode = SD_SEND_SWITCH_FUNC;
@@ -560,7 +476,6 @@ sdmmc_mem_sd_switch(struct sdmmc_function *sf, int mode, int group,
 
 	error = sdmmc_mmc_command(sc, &cmd);
 	if (error == 0) {
-		memcpy(status, ptr, statlen);
 		sdmmc_be512_to_bitfield512(status);
 	}
 
@@ -694,8 +609,6 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	DFUNC(sdmmc_mem_sd_init);
 
 	int support_func, best_func, error, i;
-	sdmmc_bitfield512_t status; /* Switch Function Status */
-	uint32_t raw_scr[2];
 
 	/*
 	 * All SD cards are supposed to support Default Speed mode
@@ -707,13 +620,14 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	error = sdhc_bus_clock(sc->sch, SDMMC_SDCLK_25MHZ,
 	    SDMMC_TIMING_LEGACY);
 	if (error) {
-		printf("%s: can't change bus clock\n", DEVNAME(sc));
+		DPRINTF(("%s: can't change bus clock\n", DEVNAME(sc)));
 		return error;
 	}
 
+	uint32_t* raw_scr = (uint32_t*) sc->scratch_buffer;
 	error = sdmmc_mem_send_scr(sc, raw_scr);
 	if (error) {
-		printf("%s: SD_SEND_SCR send failed\n", DEVNAME(sc));
+		DPRINTF(("%s: SD_SEND_SCR send failed\n", DEVNAME(sc)));
 		return error;
 	}
 	error = sdmmc_mem_decode_scr(sc, raw_scr, sf);
@@ -725,18 +639,19 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		DPRINTF(("%s: change bus width\n", DEVNAME(sc)));
 		error = sdmmc_mem_set_bus_width(sf, 4);
 		if (error) {
-			printf("%s: can't change bus width\n", DEVNAME(sc));
+			DPRINTF(("%s: can't change bus width\n", DEVNAME(sc)));
 			return error;
 		}
 	}
 
+	sdmmc_bitfield512_t* status = (sdmmc_bitfield512_t*) sc->scratch_buffer;
 	best_func = 0;
 	if (sf->scr.sd_spec >= SCR_SD_SPEC_VER_1_10 &&
 	    ISSET(sf->csd.ccc, SD_CSD_CCC_SWITCH)) {
 		DPRINTF(("%s: switch func mode 0\n", DEVNAME(sc)));
-		error = sdmmc_mem_sd_switch(sf, 0, 1, 0, &status);
+		error = sdmmc_mem_sd_switch(sf, 0, 1, 0, status);
 		if (error) {
-			printf("%s: switch func mode 0 failed\n", DEVNAME(sc));
+			DPRINTF(("%s: switch func mode 0 failed\n", DEVNAME(sc)));
 			return error;
 		}
 
@@ -750,7 +665,7 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			error = sdmmc_mem_signal_voltage(sc,
 			    SDMMC_SIGNAL_VOLTAGE_180);
 			if (error) {
-				printf("%s: failed to recover UHS card\n", DEVNAME(sc));
+				DPRINTF(("%s: failed to recover UHS card\n", DEVNAME(sc)));
 				return error;
 			}
 			SET(sc->sc_flags, SMF_UHS_MODE);
@@ -774,11 +689,11 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		DPRINTF(("%s: switch func mode 1(func=%d)\n",
 		    DEVNAME(sc), best_func));
 		error =
-		    sdmmc_mem_sd_switch(sf, 1, 1, best_func, &status);
+		    sdmmc_mem_sd_switch(sf, 1, 1, best_func, status);
 		if (error) {
-			printf("%s: switch func mode 1 failed:"
+			DPRINTF(("%s: switch func mode 1 failed:"
 			    " group 1 function %d(0x%2x)\n",
-			    DEVNAME(sc), best_func, support_func);
+			    DEVNAME(sc), best_func, support_func));
 			return error;
 		}
 		sf->csd.tran_speed =
@@ -793,14 +708,14 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		error = sdhc_bus_clock(sc->sch,
 		    sf->csd.tran_speed, SDMMC_TIMING_HIGHSPEED);
 		if (error) {
-			printf("%s: can't change bus clock\n", DEVNAME(sc));
+			DPRINTF(("%s: can't change bus clock\n", DEVNAME(sc)));
 			return error;
 		}
 
 		/* execute tuning (UHS) */
 		error = sdmmc_mem_execute_tuning(sc, sf);
 		if (error) {
-			printf("%s: can't execute SD tuning\n", DEVNAME(sc));
+			DPRINTF(("%s: can't execute SD tuning\n", DEVNAME(sc)));
 			return error;
 		}
 	}
@@ -816,23 +731,23 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	int width, value;
 	int card_type;
 	int error = 0;
-	u_int8_t ext_csd[512];
+	u_int8_t* ext_csd = sc->scratch_buffer;
 	int speed = 20000;
 	int timing = SDMMC_TIMING_LEGACY;
 	u_int32_t sectors = 0;
 
 	error = sdhc_bus_clock(sc->sch, speed, timing);
 	if (error) {
-		printf("%s: can't change bus clock\n", DEVNAME(sc));
+		DPRINTF(("%s: can't change bus clock\n", DEVNAME(sc)));
 		return error;
 	}
 
 	if (sf->csd.mmcver >= MMC_CSD_MMCVER_4_0) {
 		/* read EXT_CSD */
 		error = sdmmc_mem_send_cxd_data(sc,
-		    MMC_SEND_EXT_CSD, ext_csd, sizeof(ext_csd));
+		    MMC_SEND_EXT_CSD, ext_csd, 512);
 		if (error != 0) {
-			printf("%s: can't read EXT_CSD\n", DEVNAME(sc));
+			DPRINTF(("%s: can't read EXT_CSD\n", DEVNAME(sc)));
 			return error;
 		}
 
@@ -853,8 +768,8 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		} else if (card_type & EXT_CSD_CARD_TYPE_F_26M) {
 			speed = 26000;
 		} else {
-			printf("%s: unknown CARD_TYPE 0x%x\n", DEVNAME(sc),
-			    ext_csd[EXT_CSD_CARD_TYPE]);
+			DPRINTF(("%s: unknown CARD_TYPE 0x%x\n", DEVNAME(sc),
+			    ext_csd[EXT_CSD_CARD_TYPE]));
 		}
 
 		if (ISSET(sc->sc_caps, SMC_CAPS_8BIT_MODE)) {
@@ -898,8 +813,8 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			error = sdmmc_mem_mmc_switch(sf, EXT_CSD_CMD_SET_NORMAL,
 			    EXT_CSD_HS_TIMING, value);
 			if (error != 0) {
-				printf("%s: can't change timing\n",
-				    DEVNAME(sc));
+				DPRINTF(("%s: can't change timing\n",
+				    DEVNAME(sc)));
 				return error;
 			}
 
@@ -914,18 +829,18 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			error = sdmmc_mem_send_cxd_data(sc,
 			    MMC_SEND_EXT_CSD, ext_csd, sizeof(ext_csd));
 			if (error != 0) {
-				printf("%s: can't re-read EXT_CSD\n", DEVNAME(sc));
+				DPRINTF(("%s: can't re-read EXT_CSD\n", DEVNAME(sc)));
 				return error;
 			}
 			if (ext_csd[EXT_CSD_HS_TIMING] != value) {
-				printf("%s, HS_TIMING set failed\n", DEVNAME(sc));
+				DPRINTF(("%s, HS_TIMING set failed\n", DEVNAME(sc)));
 				return EINVAL;
 			}
 		}
 
 		error = sdhc_bus_clock(sc->sch, speed, SDMMC_TIMING_HIGHSPEED);
 		if (error != 0) {
-			printf("%s: can't change bus clock\n", DEVNAME(sc));
+			DPRINTF(("%s: can't change bus clock\n", DEVNAME(sc)));
 			return error;
 		}
 
@@ -942,8 +857,8 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			error = sdmmc_mem_mmc_switch(sf, EXT_CSD_CMD_SET_NORMAL,
 			    EXT_CSD_BUS_WIDTH, value);
 			if (error) {
-				printf("%s: can't switch to DDR\n",
-				    DEVNAME(sc));
+				DPRINTF(("%s: can't switch to DDR\n",
+				    DEVNAME(sc)));
 				return error;
 			}
 
@@ -952,14 +867,14 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			error = sdhc_signal_voltage(sc->sch,
 			    SDMMC_SIGNAL_VOLTAGE_180);
 			if (error) {
-				printf("%s: can't switch signalling voltage\n",
-				    DEVNAME(sc));
+				DPRINTF(("%s: can't switch signalling voltage\n",
+				    DEVNAME(sc)));
 				return error;
 			}
 
 			error = sdhc_bus_clock(sc->sch, speed, timing);
 			if (error != 0) {
-				printf("%s: can't change bus clock\n", DEVNAME(sc));
+				DPRINTF(("%s: can't change bus clock\n", DEVNAME(sc)));
 				return error;
 			}
 
@@ -980,7 +895,7 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			/* execute tuning (HS200) */
 			error = sdmmc_mem_execute_tuning(sc, sf);
 			if (error) {
-				printf("%s: can't execute MMC tuning\n", DEVNAME(sc));
+				DPRINTF(("%s: can't execute MMC tuning\n", DEVNAME(sc)));
 				return error;
 			}
 		}
@@ -1061,8 +976,7 @@ sdmmc_mem_set_blocklen(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 }
 
 int
-sdmmc_mem_read_block_subr(struct sdmmc_function *sf, bus_dmamap_t dmap,
-    int blkno, u_char *data, size_t datalen)
+sdmmc_mem_read_block_subr(struct sdmmc_function *sf, int blkno, u_char *data, size_t datalen)
 {
 	DFUNC(sdmmc_mem_read_block_subr);
 
@@ -1081,7 +995,6 @@ sdmmc_mem_read_block_subr(struct sdmmc_function *sf, bus_dmamap_t dmap,
 	else
 		cmd.c_arg = blkno << 9;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_CMD_READ | SCF_RSP_R1;
-	cmd.c_dmamap = dmap;
 
 	error = sdmmc_mmc_command(sc, &cmd);
 	if (error != 0)
@@ -1123,7 +1036,7 @@ sdmmc_mem_single_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	int i;
 
 	for (i = 0; i < datalen / sf->csd.sector_size; i++) {
-		error = sdmmc_mem_read_block_subr(sf, NULL,  blkno + i,
+		error = sdmmc_mem_read_block_subr(sf, blkno + i,
 		    data + i * sf->csd.sector_size, sf->csd.sector_size);
 		if (error)
 			break;
@@ -1149,7 +1062,7 @@ sdmmc_mem_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	}
 
 	if (!ISSET(sc->sc_caps, SMC_CAPS_DMA)) {
-		error = sdmmc_mem_read_block_subr(sf, NULL, blkno,
+		error = sdmmc_mem_read_block_subr(sf, blkno,
 		    data, datalen);
 		goto out;
 	}
@@ -1179,8 +1092,7 @@ out:
 }
 
 int
-sdmmc_mem_write_block_subr(struct sdmmc_function *sf, bus_dmamap_t dmap,
-    int blkno, u_char *data, size_t datalen)
+sdmmc_mem_write_block_subr(struct sdmmc_function *sf, int blkno, u_char *data, size_t datalen)
 {
 	DFUNC(sdmmc_mem_write_block_subr);
 
@@ -1199,7 +1111,6 @@ sdmmc_mem_write_block_subr(struct sdmmc_function *sf, bus_dmamap_t dmap,
 	else
 		cmd.c_arg = blkno << 9;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_RSP_R1;
-	cmd.c_dmamap = dmap;
 
 	error = sdmmc_mmc_command(sc, &cmd);
 	if (error != 0)
@@ -1240,7 +1151,7 @@ sdmmc_mem_single_write_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	int i;
 
 	for (i = 0; i < datalen / sf->csd.sector_size; i++) {
-		error = sdmmc_mem_write_block_subr(sf, NULL, blkno + i,
+		error = sdmmc_mem_write_block_subr(sf, blkno + i,
 		    data + i * sf->csd.sector_size, sf->csd.sector_size);
 		if (error)
 			break;
@@ -1266,7 +1177,7 @@ sdmmc_mem_write_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	}
 
 	if (!ISSET(sc->sc_caps, SMC_CAPS_DMA)) {
-		error = sdmmc_mem_write_block_subr(sf, NULL, blkno,
+		error = sdmmc_mem_write_block_subr(sf, blkno,
 		    data, datalen);
 		goto out;
 	}
