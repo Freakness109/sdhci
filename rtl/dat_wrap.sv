@@ -31,7 +31,6 @@ module dat_wrap #(
 
   output `writable_reg_t()        read_transfer_active_o,
   output `writable_reg_t()        write_transfer_active_o,
-  output `writable_reg_t()        dat_line_active_o,
 
   output `writable_reg_t([15:0])  block_count_o
 );
@@ -184,33 +183,22 @@ module dat_wrap #(
     read_transfer_active_o.d   = '0;
     write_transfer_active_o.de = '1;
     write_transfer_active_o.d  = '0;
-    dat_line_active_o.de       = '0;
-    dat_line_active_o.d        = 'X;
 
     block_count_o.de = '0;
     block_count_o.d  = 'X;
 
-    buffer_write_enable_o.de = '0;
-    buffer_write_enable_o.d  = 'X;
-
     read_reg_start_length_d = '0;
-    buffer_read_enable_o.de = '0;
-    buffer_read_enable_o.d  = 'X;
-    
+    buffer_write_enable_o = '{ de: '1, d: '0 };
+    buffer_read_enable_o  = '{ de: '1, d: '0 };
+
     unique case (state_q)
       READY: begin
         first_block_d = '1;
-
-        dat_line_active_o.de       = '1;
-        dat_line_active_o.d        = '0;
 
         start_d = '0;
       end
       START_READING: begin
         read_transfer_active_o.d  = '1;
-
-        dat_line_active_o.de      = '1;
-        dat_line_active_o.d       = '1;
 
         start_d.read         = '1;
         start_d.wait_for_cmd = first_block_q;
@@ -234,7 +222,6 @@ module dat_wrap #(
       READING_BUSY: begin
         read_transfer_active_o.d = '1;
         read_reg_start_length_d  = read_reg_start_length_q;
-        buffer_read_enable_o.de  = '1;
         buffer_read_enable_o.d   = '1;
 
         if (read_reg_length * 4 + start_q.block_size <= read_reg_start_length_q * 4) begin
@@ -265,24 +252,19 @@ module dat_wrap #(
       
       START_WRITING: begin
         write_transfer_active_o.d  = '1;
-
-        buffer_write_enable_o.de   = '1;
         buffer_write_enable_o.d    = '1;
-
-        dat_line_active_o.de       = '1;
-        dat_line_active_o.d        = '1;
 
         start_d.write        = '1;
         start_d.wait_for_cmd = first_block_q;
         start_d.block_size   = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
       end
-      WAIT_FOR_WRITE_DATA: write_transfer_active_o.d  = '1;
+      WAIT_FOR_WRITE_DATA: begin
+        write_transfer_active_o.d  = '1;
+        buffer_write_enable_o.d    = '1;
+      end
       SEND_FIRST_WORD: begin
         write_transfer_active_o.d  = '1;
 
-        buffer_write_enable_o.de   = '1;
-        buffer_write_enable_o.d    = '0;
-        
         write_valid = '1;
       end
       WRITING: begin

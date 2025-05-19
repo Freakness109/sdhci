@@ -12,12 +12,13 @@ module cmd_wrap (
 
   input   sdhci_reg2hw_t reg2hw,
 
-  input   logic busy_dat0_i,    //busy signal on dat0 line
+  input   logic dat0_i,    //busy signal on dat0 line
   input   logic request_cmd12_i,
 
   // These 2 signals are updated on the sd clock edge
   output  logic sd_cmd_done_o,
   output  logic sd_rsp_done_o,
+  output  logic sd_cmd_dat_busy_o,
 
   output  logic [31:0] hw2reg_response0_d, //hook up to hw2reg.response0.d etc.
   output  logic [31:0] hw2reg_response1_d,
@@ -74,7 +75,7 @@ module cmd_wrap (
 
       READ_RSP:       cmd_seq_state_d = (rsp_valid) ? RSP_RECEIVED : READ_RSP;
 
-      READ_RSP_BUSY:  cmd_seq_state_d = (~busy_dat0_i) ? RSP_RECEIVED : READ_RSP_BUSY;
+      READ_RSP_BUSY:  cmd_seq_state_d = (dat0_i) ? RSP_RECEIVED : READ_RSP_BUSY;
       
       RSP_RECEIVED:   cmd_seq_state_d = (cnt == 3'd7) ? READY : RSP_RECEIVED;
 
@@ -193,6 +194,10 @@ module cmd_wrap (
   logic driver_cmd_requested_q, driver_cmd_requested_d;
   `FF (driver_cmd_requested_q, driver_cmd_requested_d, '0, clk_i, rst_ni);
 
+  logic dat_busy_q, dat_busy_d;
+  `FF (dat_busy_q, dat_busy_d, '0, clk_i, rst_ni);
+  assign sd_cmd_dat_busy_o = dat_busy_q;
+
   logic start_tx_q, start_tx_d;
   `FF (start_tx_q, start_tx_d, 1'b0, clk_i, rst_ni);
 
@@ -215,11 +220,15 @@ module cmd_wrap (
     cmd12_requested_d      = cmd12_requested_q | request_cmd12_i;
     driver_cmd_requested_d = driver_cmd_requested_q;
 
+    dat_busy_d = dat_busy_q;
+
     // write to command index starts transmission
     if (reg2hw.command.command_index.qe) begin
       driver_cmd_requested_d = '1;
       hw2reg_present_state_command_inhibit_cmd_de = '1;
       hw2reg_present_state_command_inhibit_cmd_d  = '1;
+
+      if (reg2hw.command.response_type_select == 2'b11) dat_busy_d = '1;
     end
 
     start_tx_d      = '0;
@@ -255,6 +264,7 @@ module cmd_wrap (
       end else if (!reg2hw.command.command_index.qe) begin
         hw2reg_present_state_command_inhibit_cmd_de = '1;
         hw2reg_present_state_command_inhibit_cmd_d  = '0;
+        dat_busy_d = '0;
       end
     end else if (start_tx_q) begin
       // Request received by sdclk domain

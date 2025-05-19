@@ -10,13 +10,16 @@ module sdhci_reg_logic (
   input sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
   input sdhci_reg_pkg::sdhci_hw2reg_t hw2reg_i,
 
+  input logic sd_cmd_dat_busy_i,
+
   output `writable_reg_t() error_interrupt_o,
   output `writable_reg_t() auto_cmd12_error_o,
 
   output `writable_reg_t() buffer_read_ready_o,
   output `writable_reg_t() buffer_write_ready_o,
 
-  output `writable_reg_t() command_inhibit_dat,
+  output `writable_reg_t() dat_line_active_o,
+  output `writable_reg_t() command_inhibit_dat_o,
 
   output `writable_reg_t() transfer_complete_o,
   output `writable_reg_t() command_complete_o,
@@ -43,6 +46,7 @@ module sdhci_reg_logic (
         reg2hw_i.register``_signal_enable.field``_signal_enable.q))) // Should interrupt \
     
   // Send interrupt if any interupt status went from 0 to 1
+  // The interrupt has to go through a FF because should_interrupt uses .d and .de
   logic interrupt_q, interrupt_d;
   `FF(interrupt_q, interrupt_d, '0, clk_i, rst_ni);
   assign interrupt_d =
@@ -100,10 +104,15 @@ module sdhci_reg_logic (
   assign buffer_write_ready_o.d = '1;
   assign buffer_write_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_write_enable);
     
-  assign command_inhibit_dat.de = '1;
-  assign command_inhibit_dat.d = rst_dat_ni &
-    `instant_reg_value(present_state, dat_line_active) |
-    `instant_reg_value(present_state, read_transfer_active);
+
+  assign dat_line_active_o.de = '1;
+  assign dat_line_active_o.d = rst_dat_ni & (sd_cmd_dat_busy_i |
+    `instant_reg_value(present_state, write_transfer_active) |
+    `instant_reg_value(present_state, read_transfer_active));
+
+  assign command_inhibit_dat_o.de = '1;
+  assign command_inhibit_dat_o.d = rst_dat_ni &
+    `instant_reg_value(present_state, dat_line_active);
   
     
   logic reading;
@@ -118,4 +127,5 @@ module sdhci_reg_logic (
   assign command_complete_o.de = rst_cmd_ni & `did_get_unset(present_state, command_inhibit_cmd);
   
   // TODO ignore writes to transfer mode if command_inhibit_cmd is set
+  // TODO ignore writes to block count and transfer block size when dat_line_ative is set
 endmodule

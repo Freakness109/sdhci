@@ -90,13 +90,16 @@ module user_sdhci #(
     .reg2hw_i (reg2hw),
     .hw2reg_i (hw2reg),
 
+    .sd_cmd_dat_busy_i (sd_cmd_dat_busy),
+
     .error_interrupt_o  (hw2reg.normal_interrupt_status.error_interrupt),
     .auto_cmd12_error_o (hw2reg.error_interrupt_status.auto_cmd12_error),
 
     .buffer_read_ready_o  (hw2reg.normal_interrupt_status.buffer_read_ready),
     .buffer_write_ready_o (hw2reg.normal_interrupt_status.buffer_write_ready),
 
-    .command_inhibit_dat (hw2reg.present_state.command_inhibit_dat),
+    .dat_line_active_o     (hw2reg.present_state.dat_line_active),
+    .command_inhibit_dat_o (hw2reg.present_state.command_inhibit_dat),
 
     .transfer_complete_o (hw2reg.normal_interrupt_status.transfer_complete),
     .command_complete_o  (hw2reg.normal_interrupt_status.command_complete),
@@ -133,9 +136,9 @@ module user_sdhci #(
   `else //assignment for physical sd card bus
     assign sd_clk_o = sd_clk;
     assign sd_cmd_io = (cmd_write_en) ? cmd_write : 1'bz;
-    assign sd_dat0_io = (dat_write_en) ? dat_write[0] : 1'bz;  
-    assign sd_dat1_io = (dat_write_en) ? dat_write[1] : 1'bz;  
-    assign sd_dat2_io = (dat_write_en) ? dat_write[2] : 1'bz;  
+    assign sd_dat0_io = (dat_write_en) ? dat_write[0] : 1'bz;
+    assign sd_dat1_io = (dat_write_en) ? dat_write[1] : 1'bz;
+    assign sd_dat2_io = (dat_write_en) ? dat_write[2] : 1'bz;
     assign sd_dat3_io = (dat_write_en) ? dat_write[3] : 1'bz;
     assign cmd_read = sd_cmd_io;
     assign dat_read[0] = sd_dat0_io;
@@ -153,7 +156,7 @@ module user_sdhci #(
   assign hw2reg.present_state.card_detect_pin_level          = '{ de: '1, d: '1 }; // TODO ?
 
 
-  logic sd_cmd_done, sd_rsp_done, request_cmd12;
+  logic sd_cmd_done, sd_rsp_done, sd_cmd_dat_busy, request_cmd12;
 
   cmd_wrap  i_cmd_wrap (
     .clk_i           (clk_i),
@@ -164,29 +167,30 @@ module user_sdhci #(
     .sd_bus_cmd_en_o (cmd_write_en),
     .reg2hw          (reg2hw),
 
-    .busy_dat0_i     (~dat_read[0]),
+    .dat0_i          (dat_read[0]),
     .request_cmd12_i (request_cmd12),
 
-    .sd_cmd_done_o (sd_cmd_done),
-    .sd_rsp_done_o (sd_rsp_done),
+    .sd_cmd_done_o     (sd_cmd_done),
+    .sd_rsp_done_o     (sd_rsp_done),
+    .sd_cmd_dat_busy_o (sd_cmd_dat_busy),
 
-    .hw2reg_response0_d (hw2reg.response0.d),
-    .hw2reg_response1_d (hw2reg.response1.d),
-    .hw2reg_response2_d (hw2reg.response2.d),
-    .hw2reg_response3_d (hw2reg.response3.d),
+    .hw2reg_response0_d  (hw2reg.response0.d),
+    .hw2reg_response1_d  (hw2reg.response1.d),
+    .hw2reg_response2_d  (hw2reg.response2.d),
+    .hw2reg_response3_d  (hw2reg.response3.d),
     .hw2reg_response0_de (hw2reg.response0.de),
     .hw2reg_response1_de (hw2reg.response1.de),
     .hw2reg_response2_de (hw2reg.response2.de),
     .hw2reg_response3_de (hw2reg.response3.de),
-    .hw2reg_present_state_command_inhibit_cmd_d (hw2reg.present_state.command_inhibit_cmd.d),
-    .hw2reg_present_state_command_inhibit_cmd_de (hw2reg.present_state.command_inhibit_cmd.de),
-    .hw2reg_error_interrupt_status_command_end_bit_error_d (hw2reg.error_interrupt_status.command_end_bit_error.d),
+    .hw2reg_present_state_command_inhibit_cmd_d             (hw2reg.present_state.command_inhibit_cmd.d),
+    .hw2reg_present_state_command_inhibit_cmd_de            (hw2reg.present_state.command_inhibit_cmd.de),
+    .hw2reg_error_interrupt_status_command_end_bit_error_d  (hw2reg.error_interrupt_status.command_end_bit_error.d),
     .hw2reg_error_interrupt_status_command_end_bit_error_de (hw2reg.error_interrupt_status.command_end_bit_error.de),
-    .hw2reg_error_interrupt_status_command_crc_error_d (hw2reg.error_interrupt_status.command_crc_error.d),
-    .hw2reg_error_interrupt_status_command_crc_error_de (hw2reg.error_interrupt_status.command_crc_error.de),
-    .hw2reg_error_interrupt_status_command_index_error_d (hw2reg.error_interrupt_status.command_index_error.d),
-    .hw2reg_error_interrupt_status_command_index_error_de (hw2reg.error_interrupt_status.command_index_error.de),
-    .hw2reg_error_interrupt_status_command_timeout_error_d (hw2reg.error_interrupt_status.command_timeout_error.d),
+    .hw2reg_error_interrupt_status_command_crc_error_d      (hw2reg.error_interrupt_status.command_crc_error.d),
+    .hw2reg_error_interrupt_status_command_crc_error_de     (hw2reg.error_interrupt_status.command_crc_error.de),
+    .hw2reg_error_interrupt_status_command_index_error_d    (hw2reg.error_interrupt_status.command_index_error.d),
+    .hw2reg_error_interrupt_status_command_index_error_de   (hw2reg.error_interrupt_status.command_index_error.de),
+    .hw2reg_error_interrupt_status_command_timeout_error_d  (hw2reg.error_interrupt_status.command_timeout_error.d),
     .hw2reg_error_interrupt_status_command_timeout_error_de (hw2reg.error_interrupt_status.command_timeout_error.de),
 
     .auto_cmd12_errors_o     (hw2reg.auto_cmd12_error_status)
@@ -204,6 +208,7 @@ module user_sdhci #(
 
     .sd_cmd_done_i   (sd_cmd_done),
     .sd_rsp_done_i   (sd_rsp_done),
+
     .request_cmd12_o (request_cmd12),
     .pause_sd_clk_o  (pause_sd_clk),
 
@@ -219,7 +224,6 @@ module user_sdhci #(
 
     .read_transfer_active_o  (hw2reg.present_state.read_transfer_active),
     .write_transfer_active_o (hw2reg.present_state.write_transfer_active),
-    .dat_line_active_o       (hw2reg.present_state.dat_line_active),
 
     .block_count_o           (hw2reg.block_count)
   );

@@ -9,14 +9,13 @@ module sd_clk_generator (
 
   input  logic pause_sd_clk_i,
   output logic sd_clk_o,
+  // output logic clk_edge_o,
 
   output `writable_reg_t() sd_clk_stable_o
 );
   localparam int DivWidth = 9;
 
-  logic div_ready_q, div_ready_d;
-  `FF(div_ready_q, div_ready_d, '0, clk_i, rst_ni);
-
+  logic div_ready;
   logic div_valid_q, div_valid_d;
   `FF(div_valid_q, div_valid_d, '0, clk_i, rst_ni);
 
@@ -33,14 +32,13 @@ module sd_clk_generator (
     sd_clk_stable_o = '{ de: '0, d: 'X };
 
     if (div_valid_q) begin
-      if (div_ready_q) begin
-        div_valid_d = '0;
-        sd_clk_stable_o = '{ de: '1, d: '1 };
-      end
+      if (div_ready) div_valid_d = '0;
     end else if (div_q != div_reg) begin
       div_d = div_reg;
       div_valid_d = '1;
       sd_clk_stable_o = '{ de: '1, d: '0 };
+    end else begin
+      sd_clk_stable_o = '{ de: '1, d: '1 };
     end
   end
 
@@ -55,7 +53,7 @@ module sd_clk_generator (
 
     .div_i        (div_d),
     .div_valid_i  (div_valid_q),
-    .div_ready_o  (div_ready_d),
+    .div_ready_o  (div_ready),
 
     .clk_o        (sd_clk_o),
     .cycl_count_o ()
