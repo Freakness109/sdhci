@@ -66,9 +66,9 @@ module rsp_read (
   logic [8:0] shift_start_cnt, crc_done_cnt, done_cnt;
   logic [126:0] rsp_with_crc7;
 
-  assign shift_start_cnt= (long_rsp_i)  ? 8'd7    : 8'd1;      
-  assign crc_done_cnt  = (long_rsp_i)  ? 8'd126  : 8'd38;     //long could be wrong
-  assign done_cnt       = (long_rsp_i)  ? 8'd134  : 8'd46;     //long could be wrong
+  assign shift_start_cnt = (long_rsp_i)  ? 8'd7    : 8'd1;
+  assign crc_done_cnt    = (long_rsp_i)  ? 8'd126  : 8'd38;     //long could be wrong
+  assign done_cnt        = (long_rsp_i)  ? 8'd134  : 8'd46;     //long could be wrong
   assign rsp_o  = rsp_with_crc7 [126:7];
   always_comb begin : rsp_data_path
     start_bit_observed      = 1'b0;
@@ -99,9 +99,9 @@ module rsp_read (
         cnt_clear = 1'b0;
         cnt_en    = 1'b1;
         receiving_o = 1'b1;
-        if(bit_cnt >= 8'd4) crc_start = 1'b1; //start crc for long response, check!
+        if (bit_cnt >= 8'd6) crc_start = 1'b1; //start crc for long response, check!
 
-        if  (bit_cnt >= shift_start_cnt) begin
+        if (bit_cnt >= shift_start_cnt) begin
           shift_reg_shift_in_en = 1'b1;
         end
 
