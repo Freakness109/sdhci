@@ -71,7 +71,7 @@ module cmd_wrap (
           cmd_seq_state_d = (reg2hw.command.response_type_select.q == 2'b00) ? RSP_RECEIVED : BUS_SWITCH;
         end
       end
-      BUS_SWITCH:     cmd_seq_state_d = (reg2hw.command.response_type_select == 2'b11) ?  READ_RSP_BUSY : READ_RSP;
+      BUS_SWITCH:     cmd_seq_state_d = (reg2hw.command.response_type_select.q == 2'b11) ?  READ_RSP_BUSY : READ_RSP;
 
       READ_RSP:       cmd_seq_state_d = (rsp_valid) ? RSP_RECEIVED : READ_RSP;
 
@@ -228,7 +228,7 @@ module cmd_wrap (
       hw2reg_present_state_command_inhibit_cmd_de = '1;
       hw2reg_present_state_command_inhibit_cmd_d  = '1;
 
-      if (reg2hw.command.response_type_select == 2'b11) dat_busy_d = '1;
+      if (reg2hw.command.response_type_select.q == 2'b11) dat_busy_d = '1;
     end
 
     start_tx_d      = '0;
