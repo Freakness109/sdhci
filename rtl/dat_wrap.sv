@@ -2,8 +2,7 @@
 `include "defines.svh"
 
 module dat_wrap #(
-  // TODO change this if we want to support 1bit buswidth
-  parameter int MaxBlockBitSize = 10 // max_block_length = 512 in caps => max 1024 data + 16 crc
+  parameter int MaxBlockBitSize = 10 // max_block_length = 512 in caps
 ) (
   input  logic clk_i,
   input  logic sd_clk_i,
@@ -398,8 +397,9 @@ module dat_wrap #(
     .rst_ni        (sd_rst_n),
     .dat_i,
 
-    .start_i       (sd_start_read),
-    .block_size_i  (start_q.block_size),
+    .start_i          (sd_start_read),
+    .block_size_i     (start_q.block_size),
+    .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
     
     .data_valid_o  (sd_read_valid),
     .data_o        (sd_read_data),
@@ -418,8 +418,9 @@ module dat_wrap #(
     .dat_o,
     .dat_en_o,
 
-    .start_i       (sd_start_write),
-    .block_size_i  (start_q.block_size),
+    .start_i          (sd_start_write),
+    .block_size_i     (start_q.block_size),
+    .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
 
     // Not using sd_write_valid signal here because the data has to always arrive on time
     .data_i        (write_data),

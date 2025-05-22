@@ -13,6 +13,7 @@ module dat_write #(
 
   input  logic                       start_i,
   input  logic [MaxBlockBitSize-1:0] block_size_i, // In bytes
+  input  logic                       bus_width_is_4_i,
 
   input  logic [31:0] data_i,
   output logic        next_word_o, //active for one cycle when next data word should be made available. Got time for 7 sd clock cycles after to provide data
@@ -21,7 +22,8 @@ module dat_write #(
   output logic crc_err_o,
   output logic end_bit_err_o
 );
-  localparam int CounterWidth = MaxBlockBitSize + 2;
+  // Need space for block_size_i * 8 + 16
+  localparam int CounterWidth = MaxBlockBitSize + 4;
 
   typedef enum logic [3:0] {
     READY,
@@ -46,14 +48,17 @@ module dat_write #(
   logic [CounterWidth-1:0] counter_q, counter_d;
   `FF (counter_q, counter_d, 0, sd_clk_i, rst_ni);
 
+  logic [CounterWidth-1:0] required_clock_count;
+  assign required_clock_count = bus_width_is_4_i ? 2*block_size_i : 8*block_size_i;
+
   always_comb begin : dat_write_state_transition
     dat_tx_state_d  =   dat_tx_state_q;
 
     unique case (dat_tx_state_q)
       READY:            if (start_i) dat_tx_state_d = START_BIT;
       START_BIT:        dat_tx_state_d = DAT;
-      DAT:              if (counter_q + 1 == 2*block_size_i) dat_tx_state_d = CRC;
-      CRC:              if (counter_q + 1 == 2*block_size_i + 16) dat_tx_state_d = END_BIT;
+      DAT:              if (counter_q + 1 == required_clock_count) dat_tx_state_d = CRC;
+      CRC:              if (counter_q + 1 == required_clock_count + 16) dat_tx_state_d = END_BIT;
       END_BIT:          dat_tx_state_d = BUS_SWITCH;
 
       BUS_SWITCH:       if (counter_q + 1 == 2) dat_tx_state_d = STATUS_START_BIT;
@@ -96,7 +101,8 @@ module dat_write #(
     unique case (dat_tx_state_q)
       START_BIT: begin
         dat_en_o = '1;
-        dat_o    = '0;
+        if (bus_width_is_4_i) dat_o = '0;
+        else                  dat_o = 4'b1110;
 
         buffered_data_d = data_i;
         end_bit_err_d   = '0;
@@ -105,31 +111,54 @@ module dat_write #(
       DAT: begin
         counter_d = counter_q + 1;
         shift_out_crc = 1'b0;
-
-        if (counter_q[2:0] == '0) begin
-          // Don't request another word when we are at the last word to be sent
-          // if (counter_q / 8 != (block_size_i - 1) / 4)
-          next_word_o = 1'b1;
-        end
-
-        if (counter_q[2:0] == '1) begin
-          buffered_data_d = data_i;
-        end else if (counter_q[0] == '1) begin
-          buffered_data_d = { 8'b0, buffered_data_q[31:8] };
-        end
-
         dat_en_o = '1;
-        if (counter_q[0] == '0) begin
-          dat_o = buffered_data_q[7:4];
+
+        if (bus_width_is_4_i) begin
+          // Bus width = 4
+          if (counter_q[2:0] == '0) begin
+            next_word_o = 1'b1;
+          end
+
+          if (counter_q[2:0] == '1) begin
+            buffered_data_d = data_i;
+          end else if (counter_q[0] == '1) begin
+            buffered_data_d = { 8'b0, buffered_data_q[31:8] };
+          end
+
+          if (counter_q[0] == '0) begin
+            dat_o = buffered_data_q[7:4];
+          end else begin
+            dat_o = buffered_data_q[3:0];
+          end
         end else begin
-          dat_o = buffered_data_q[3:0];
+          // Bus width = 1
+          dat_o[3:1] = '1;
+
+          if (counter_q[4:0] == '0) begin
+            next_word_o = 1'b1;
+          end
+
+          if (counter_q[4:0] == '1) begin
+            buffered_data_d = data_i;
+          end else if (counter_q[2:0] == '1) begin
+            buffered_data_d = { 8'b0, buffered_data_q[31:8] };
+          end else begin
+            buffered_data_d[7:0] = { buffered_data_q[6:0], 1'b0 };
+          end
+
+          dat_o[0] = buffered_data_q[7];
         end
       end
       CRC: begin
         counter_d = counter_q + 1;
 
         dat_en_o = '1;
-        dat_o    = crc;
+        if (bus_width_is_4_i) begin
+          dat_o = crc;
+        end else begin
+          dat_o[3:1] = '1;
+          dat_o[0] = crc[0];
+        end
       end
       END_BIT: begin
         dat_en_o = '1;
