@@ -9,53 +9,74 @@ module sd_clk_generator (
 
   input  logic pause_sd_clk_i,
   output logic sd_clk_o,
-  // output logic clk_edge_o,
 
+  output logic clk_en_o, //high when next rising clk edge coincides with sd_clk edge
   output `writable_reg_t() sd_clk_stable_o
 );
-  localparam int DivWidth = 9;
-
-  logic div_ready;
-  logic div_valid_q, div_valid_d;
-  `FF(div_valid_q, div_valid_d, '0, clk_i, rst_ni);
-
-  logic [DivWidth-1:0] div_q, div_d;
-  `FF(div_q, div_d, '0, clk_i, rst_ni);
-
-  logic [DivWidth-1:0] div_reg;
-  assign div_reg = reg2hw_i.clock_control.sdclk_frequency_select.q << 1;
-
-  always_comb begin
-    div_valid_d = div_valid_q;
+  logic[7:0] div_d, div_q;
+  always_comb begin : clk_divider_logic
     div_d = div_q;
+    if (!reg2hw_i.clock_control.sd_clock_enable.q) div_d = reg2hw_i.clock_control.sdclk_frequency_select.q;
+  end  
+  `FF(div_q, div_d, 8'b0, clk_i, rst_ni);
 
-    sd_clk_stable_o = '{ de: '0, d: 'X };
-
-    if (div_valid_q) begin
-      if (div_ready) div_valid_d = '0;
-    end else if (div_q != div_reg) begin
-      div_d = div_reg;
-      div_valid_d = '1;
-      sd_clk_stable_o = '{ de: '1, d: '0 };
-    end else begin
-      sd_clk_stable_o = '{ de: '1, d: '1 };
-    end
+  //counter
+  logic[7:0]  cnt_d, cnt_q;
+  always_comb begin : counter
+    cnt_d = cnt_q + 1;
   end
+  `FF(cnt_q, cnt_d, 8'b0, clk_i, rst_ni);
 
-  clk_int_div # (
-    // MAX 256
-    .DIV_VALUE_WIDTH (DivWidth)
-  ) i_sd_clk_div (
-    .clk_i,
-    .rst_ni,
-    .en_i           (reg2hw_i.clock_control.sd_clock_enable.q && !pause_sd_clk_i),
-    .test_mode_en_i ('0),
+  logic clk_en_d, clk_en_q;
+  `FF(clk_en_q, clk_en_d, '0, clk_i, rst_ni);
 
-    .div_i        (div_d),
-    .div_valid_i  (div_valid_q),
-    .div_ready_o  (div_ready),
+  //clk source multiplexer
+  logic clk_div_d, clk_div_q, clk_o_ungated;
+  always_comb begin : clk_div_mux
+    clk_en_d  = clk_en_q;
 
-    .clk_o        (sd_clk_o),
-    .cycl_count_o ()
-  );
+    unique case (div_q)
+      8'h01:  begin 
+        clk_div_d = cnt_q[0];
+        clk_en_d  = !cnt_q[0];
+      end
+      8'h02:  begin
+        clk_div_d = cnt_q[1];
+        clk_en_d  = cnt_q[1:0] == 2'b01;
+      end
+      8'h04:  begin
+        clk_div_d = cnt_q[2];
+        clk_en_d  = cnt_q[2:0] == 3'b011;   
+      end
+      8'h08:  begin
+        clk_div_d = cnt_q[3];    
+        clk_en_d  = cnt_q[3:0] == 4'b0111;
+      end
+      8'h10:  begin
+        clk_div_d = cnt_q[4];
+        clk_en_d  = cnt_q[4:0] == 5'b01111;
+      end
+      8'h20:  begin
+        clk_div_d = cnt_q[5];
+        clk_en_d  = cnt_q[5:0] == 6'b011111;
+      end
+      8'h40:  begin
+        clk_div_d = cnt_q[6];
+        clk_en_d  = cnt_q[6:0] == 7'b0111111;
+      end
+      8'h80:  begin
+        clk_div_d = cnt_q[7];
+        clk_en_d  = cnt_q[7:0] == 8'b01111111;
+      end
+      
+      default: clk_div_d = 1'b1;
+    endcase
+
+    clk_o_ungated = (div_q == 8'h00) ?  clk_i : clk_div_q;
+    clk_en_o      = (div_q == 8'h00) ?  '1 : clk_en_q;
+    sd_clk_o =  (reg2hw_i.clock_control.sd_clock_enable.q && !pause_sd_clk_i) ? clk_o_ungated : 1'b1;
+  end
+  `FF(clk_div_q, clk_div_d, 1'b1, clk_i, rst_ni);
+
+  assign sd_clk_stable_o = '{ de: '1, d: reg2hw_i.clock_control.internal_clock_enable.q};
 endmodule
