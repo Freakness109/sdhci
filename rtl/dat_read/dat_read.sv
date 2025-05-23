@@ -6,7 +6,8 @@
 module dat_read #(
   parameter int MaxBlockBitSize
 ) (
-  input  logic       sd_clk_i,
+  input  logic       clk_i,
+  input  logic       sd_clk_en_i,
   input  logic       rst_ni,
   input  logic [3:0] dat_i,
 
@@ -33,10 +34,10 @@ module dat_read #(
   } dat_rx_state_e;
 
   dat_rx_state_e state_q, state_d;
-  `FF (state_q, state_d, IDLE, sd_clk_i, rst_ni);
+  `FF (state_q, state_d, IDLE, clk_i, rst_ni);
 
   logic [CounterWidth-1:0] counter_q, counter_d;
-  `FF (counter_q, counter_d, 0, sd_clk_i, rst_ni);
+  `FF (counter_q, counter_d, 0, clk_i, rst_ni);
 
   logic [CounterWidth-1:0] required_clock_count;
   assign required_clock_count = bus_width_is_4_i ? 2*block_size_i : 8*block_size_i;
@@ -44,102 +45,107 @@ module dat_read #(
   always_comb begin
     state_d = state_q;
 
-    unique case (state_q)
-      IDLE:    if (start_i) state_d = READY;
-      READY:   if (bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) state_d = DAT;
-      DAT:     if (counter_q + 1 == required_clock_count) state_d = CRC;
-      CRC:     if (counter_q + 1 == required_clock_count + 16) state_d = END_BIT;
-      END_BIT: state_d = IDLE;
-      default: state_d = IDLE;
-    endcase
+    if (sd_clk_en_i) begin
+      unique case (state_q)
+        IDLE:    if (start_i) state_d = READY;
+        READY:   if (bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) state_d = DAT;
+        DAT:     if (counter_q + 1 == required_clock_count) state_d = CRC;
+        CRC:     if (counter_q + 1 == required_clock_count + 16) state_d = END_BIT;
+        END_BIT: state_d = IDLE;
+        default: state_d = IDLE;
+      endcase
+    end
   end
 
   logic clear_crc;
   logic [3:0] crc_errors;
   logic [31:0] data_buildup_q, data_buildup_d;
-  `FF (data_buildup_q, data_buildup_d, 0, sd_clk_i, rst_ni);
+  `FF (data_buildup_q, data_buildup_d, 0, clk_i, rst_ni);
 
   always_comb begin
-    counter_d = counter_q;
-    data_valid_o = '0;
-    data_o = '0;
+    counter_d      = counter_q;
     data_buildup_d = data_buildup_q;
 
-    clear_crc = '0;
+    data_valid_o = '0;
+    data_o       = '0;
+
+    clear_crc     = '0;
     done_o        = '0;
     crc_err_o     = 'X;
     end_bit_err_o = 'X;
 
-    unique case (state_q)
-      READY: begin
-        counter_d = '0;
-        clear_crc = '1;
-      end
-      DAT: begin
-        counter_d = counter_q + 1;
+    if (sd_clk_en_i) begin
+      unique case (state_q)
+        READY: begin
+          counter_d = '0;
+          clear_crc = '1;
+        end
+        DAT: begin
+          counter_d = counter_q + 1;
 
-        if (bus_width_is_4_i) begin
-          // Bus width = 4
-          // Every 8 cycles (8 * 4lines = 32)
-          if (counter_q[2:0] == '1) begin
-            data_valid_o = '1;
-            data_o = { data_buildup_q[31:28], dat_i, data_buildup_q[23:0] };
-            data_buildup_d = '0;
-          end else begin
-            // dat 0: 4, 0
-            // dat 1: 5, 1
-            // dat 2: 6, 2
-            // dat 3: 7, 3
-            if (counter_q[0] == '0) begin
-              // Leave a few empty slots for the next 4 bits
-              data_buildup_d = { dat_i, 4'b0, data_buildup_q[31:8] };
+          if (bus_width_is_4_i) begin
+            // Bus width = 4
+            // Every 8 cycles (8 * 4lines = 32)
+            if (counter_q[2:0] == '1) begin
+              data_valid_o = '1;
+              data_o = { data_buildup_q[31:28], dat_i, data_buildup_q[23:0] };
+              data_buildup_d = '0;
             end else begin
-              // Fill the empty slots
-              data_buildup_d[27:24] = dat_i;
+              // dat 0: 4, 0
+              // dat 1: 5, 1
+              // dat 2: 6, 2
+              // dat 3: 7, 3
+              if (counter_q[0] == '0) begin
+                // Leave a few empty slots for the next 4 bits
+                data_buildup_d = { dat_i, 4'b0, data_buildup_q[31:8] };
+              end else begin
+                // Fill the empty slots
+                data_buildup_d[27:24] = dat_i;
+              end
             end
-          end
-        end else begin
-          // Bus width = 1
-          // Every 32 cycles flush buildup
-          if (counter_q[4:0] == '1) begin
-            data_valid_o = '1;
-            data_o = { data_buildup_q[30:24], dat_i[0], data_buildup_q[23:0] };
-            data_buildup_d = '0;
           end else begin
-            // dat 0: 7, 6, 5, 4, 3, 2, 1, 0
-            // Every 8 cycles shift by 1 byte
-            if (counter_q[2:0] == '0) begin
-              // Leave a few empty slots for the next 7 bits
-              data_buildup_d = { 7'b0, dat_i[0], data_buildup_q[31:8] };
+            // Bus width = 1
+            // Every 32 cycles flush buildup
+            if (counter_q[4:0] == '1) begin
+              data_valid_o = '1;
+              data_o = { data_buildup_q[30:24], dat_i[0], data_buildup_q[23:0] };
+              data_buildup_d = '0;
             end else begin
-              // Fill the empty slots
-              data_buildup_d[31:24] = { data_buildup_q[30:24], dat_i[0] };
+              // dat 0: 7, 6, 5, 4, 3, 2, 1, 0
+              // Every 8 cycles shift by 1 byte
+              if (counter_q[2:0] == '0) begin
+                // Leave a few empty slots for the next 7 bits
+                data_buildup_d = { 7'b0, dat_i[0], data_buildup_q[31:8] };
+              end else begin
+                // Fill the empty slots
+                data_buildup_d[31:24] = { data_buildup_q[30:24], dat_i[0] };
+              end
             end
           end
         end
-      end
 
-      CRC: begin
-        counter_d = counter_q + 1;
+        CRC: begin
+          counter_d = counter_q + 1;
 
-        if (counter_q == required_clock_count && block_size_i[1:0] != 0) begin
-          data_valid_o = '1;
-          unique case (block_size_i[1:0])
-            2'd0: ;
-            2'd1: data_o = { 24'b0, data_buildup_q[31:24] };
-            2'd2: data_o = { 16'b0, data_buildup_q[31:16] };
-            2'd3: data_o = {  8'b0, data_buildup_q[31: 8] };
-          endcase
-          data_buildup_d = '0;
+          if (counter_q == required_clock_count && block_size_i[1:0] != 0) begin
+            data_valid_o = '1;
+            unique case (block_size_i[1:0])
+              2'd0: ;
+              2'd1: data_o = { 24'b0, data_buildup_q[31:24] };
+              2'd2: data_o = { 16'b0, data_buildup_q[31:16] };
+              2'd3: data_o = {  8'b0, data_buildup_q[31: 8] };
+            endcase
+            data_buildup_d = '0;
+          end
         end
-      end
-      END_BIT: begin
-        done_o = '1;
-        end_bit_err_o = dat_i != '1;
-        crc_err_o = bus_width_is_4_i ? |(crc_errors) : crc_errors[0];
-      end
-      default: ;
-    endcase
+        END_BIT: begin
+          done_o = '1;
+          end_bit_err_o = dat_i != '1;
+          crc_err_o = bus_width_is_4_i ? |(crc_errors) : crc_errors[0];
+        end
+        default: ;
+      endcase
+    end
   end
 
   for (genvar i=0; i<4 ; i++) begin
@@ -147,7 +153,8 @@ module dat_read #(
     assign crc_errors[i] = crc_val != '0;
 
     crc16_read i_crc16_read (
-      .sd_clk_i,
+      .clk_i,
+      .sd_clk_en_i,
       .rst_ni,
 
       .start_i      (clear_crc),
