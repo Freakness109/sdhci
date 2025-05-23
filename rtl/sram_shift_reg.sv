@@ -22,6 +22,7 @@ module sram_shift_reg #(
   input  logic clk_i,
   input  logic rst_ni,
 
+  input  logic                 clear_i,
   input  logic                 pop_front_i,
   output logic [DataWidth-1:0] front_data_o,
   input  logic                 push_back_i,
@@ -40,11 +41,23 @@ module sram_shift_reg #(
 
   logic [AddrWidth-1:0] back_addr_q, back_addr_d;
   `FF(back_addr_q, back_addr_d, '0, clk_i, rst_ni);
-  assign back_addr_d = push_back_i ? AddrWidth'((back_addr_q + 1) % NumWords) : back_addr_q;
 
   logic [LengthWidth-1:0] length_q, length_d;
   `FF(length_q, length_d, '0, clk_i, rst_ni);
-  assign length_d = push_back_i ? length_q + 1 : pop_front_i | pop_front_q ? length_q - 1 : length_q;
+
+  always_comb begin
+    length_d = length_q;
+    back_addr_d = back_addr_q;
+
+    if (clear_i) begin
+      length_d = '0;
+    end else if (push_back_i) begin
+      length_d = length_q + 1;
+      back_addr_d = AddrWidth'((back_addr_q + 1) % NumWords);
+    end else if (pop_front_i || pop_front_q) begin
+      length_d = length_q - 1;
+    end
+  end
 
   assign empty_o  = length_q == '0;
   assign full_o   = length_q == NumWords;
@@ -72,6 +85,5 @@ module sram_shift_reg #(
     .wdata_i (back_data_i),
     .be_i    ('1),
     .rdata_o (front_data_o)
-    // .rdata_o (read_data)
   );
 endmodule

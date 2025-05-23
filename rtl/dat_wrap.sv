@@ -190,11 +190,13 @@ module dat_wrap #(
     buffer_write_enable_o = '{ de: '1, d: '0 };
     buffer_read_enable_o  = '{ de: '1, d: '0 };
 
+    clear_regs  = '0;
     unique case (state_q)
       READY: begin
         first_block_d = '1;
 
-        start_d = '0;
+        start_d    = '0;
+        clear_regs = '1;
       end
       START_READING: begin
         read_transfer_active_o.d  = '1;
@@ -307,6 +309,8 @@ module dat_wrap #(
     .timeout_o      (read_timeout)
   );
 
+  logic clear_regs;
+
   logic [cf_math_pkg::idx_width(RegisterWordCount + 1)*4-1:0] read_reg_remaining_bytes;
   assign read_reg_remaining_bytes = {cf_math_pkg::idx_width(RegisterWordCount + 1)*4}'(RegisterByteCount - read_reg_length * 4);
 
@@ -316,8 +320,9 @@ module dat_wrap #(
     .NumWords (RegisterWordCount)
   ) i_shift_read (
     .clk_i,
-    .rst_ni,
+    .rst_ni (sd_rst_n),
   
+    .clear_i      (clear_regs),
     .pop_front_i  (reg2hw_i.buffer_data_port.re),
     .front_data_o (buffer_data_port_d_o),
   
@@ -335,8 +340,9 @@ module dat_wrap #(
     .NumWords (RegisterWordCount)
   ) i_shift_write (
     .clk_i,
-    .rst_ni,
+    .rst_ni (sd_rst_n),
 
+    .clear_i      (clear_regs),
     .pop_front_i  (pop_write_buffer),
     .front_data_o (write_data),
 
