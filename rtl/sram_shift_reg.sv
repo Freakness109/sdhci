@@ -63,7 +63,7 @@ module sram_shift_reg #(
   assign full_o   = length_q == NumWords;
   assign length_o = length_q;
 
-  `ASSERT_NEVER(Underflow, pop_front_i && empty_o);
+  `ASSERT_NEVER(Underflow, (pop_front_i || pop_front_q) && empty_o);
   `ASSERT_NEVER(Overflow,  push_back_i && full_o);
 
   tc_sram_impl #(
@@ -78,9 +78,9 @@ module sram_shift_reg #(
     .impl_i  ('1),
     .impl_o  ( ),
 
-    .req_i   (push_back_i | pop_front_i | pop_front_q),
+    .req_i   ('1),
     .we_i    (push_back_i),
-    .addr_i  (push_back_i ? back_addr_q : AddrWidth'((back_addr_q - length_q + 1) % NumWords)),
+    .addr_i  (push_back_i ? back_addr_q : AddrWidth'((back_addr_q - length_q) % NumWords)),
 
     .wdata_i (back_data_i),
     .be_i    ('1),
