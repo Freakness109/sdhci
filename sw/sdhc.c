@@ -23,7 +23,7 @@ unsigned int rand(void) {
     return s_Seed;
 }
 
-#define SIZE     103
+#define SIZE     512
 #define BLOCKS   5
 static u_char scratch[SIZE * BLOCKS] = { 0 };
 _Static_assert(sizeof(scratch) >= 512, "Scratch buffer needs to be atleast 512bytes");
@@ -34,7 +34,8 @@ void test_rw(int size, unsigned int seed) {
     bzero((void*) scratch, size);
 
     // Reset Block
-    int err = sdmmc_mem_write_block(&sc.sc_card, 0, scratch, size);
+    int err;
+    err = sdmmc_mem_write_block(&sc.sc_card, 0, scratch, size);
     if (err) {
         printf("sdmmc_mem_write_block errored: %x\n", err);
         return;
@@ -109,6 +110,11 @@ int main() {
     // sleep_ms(10);
     // return 1;
 
+#ifdef WITH_SD_MODEL
+    err = sdhc_bus_width(&hp, 4);
+    if (err) printf("sdhc_bus_width errored: %x\n", err);
+#endif
+
 #ifdef SDHC_INITIALIZED_MODEL
     sc.sc_caps = SMC_CAPS_4BIT_MODE | SMC_CAPS_AUTO_STOP | SMC_CAPS_NONREMOVABLE;
     sc.sc_flags = SMF_SD_MODE | SMF_MEM_MODE | SMF_CARD_PRESENT | SMF_CARD_ATTACHED;
@@ -117,12 +123,13 @@ int main() {
     sc.sc_card.sc = &sc;
     sc.sc_card.rca = 1;
     sc.sc_card.csd.capacity = 20000000;
+
+    err = sdhc_bus_clock(sc.sch, SDMMC_SDCLK_400KHZ, SDMMC_TIMING_LEGACY);
+    // err = sdhc_bus_clock(sc.sch, SDMMC_SDCLK_25MHZ, SDMMC_TIMING_LEGACY);
+    if (err) printf("sdhc_bus_clock errored: %x\n", err);
 #else
     sdmmc_init(&sc, &hp, scratch);
 #endif
-
-    // err = sdhc_bus_clock(sc.sch, SDMMC_SDCLK_50MHZ, SDMMC_TIMING_LEGACY);
-    // if (err) printf("sdhc_bus_clock errored: %x\n", err);
 
     sc.sc_card.csd.sector_size = SIZE;
     err = sdmmc_mem_set_blocklen(&sc, &sc.sc_card);
