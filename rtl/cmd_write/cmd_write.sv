@@ -4,7 +4,8 @@
 
 //untested!
 module cmd_write (
-  input   logic         sd_freq_clk_i,  //clock at sd frequency, should be active independantly of sd clock
+  input   logic         clk_i,
+  input   logic         clk_en_i,
   input   logic         rst_ni,
   output  logic         cmd_o, 
   output  logic         cmd_en_o, 
@@ -48,7 +49,7 @@ module cmd_write (
     endcase
   end
   
-  `FF (tx_state_q, tx_state_d, READY, sd_freq_clk_i, rst_ni);
+  `FFL (tx_state_q, tx_state_d, clk_en_i, READY, clk_i, rst_ni);
 
   //data path////////////////////////////////////////////////////////////////////////////////////////////
   logic [39:0] cmd_bits_47_to_8; //cmd without crc7 and end bit
@@ -61,7 +62,8 @@ module cmd_write (
   logic tx_ongoing_d, tx_ongoing_q;
 
   
-  assign cmd_o = (cmd_phase_i) ?  sd_cmd_delayed  : sd_cmd;
+  //assign cmd_o = (cmd_phase_i) ?  sd_cmd_delayed  : sd_cmd;
+  assign cmd_o = sd_cmd;
   assign cmd_en_o = ~highz;
   
   always_comb begin : cmd_tx_datapath
@@ -106,17 +108,19 @@ module cmd_write (
     endcase
   end 
 
-  `FF (tx_ongoing_q, tx_ongoing_d, 0, sd_freq_clk_i, rst_ni);
+  `FFL (tx_ongoing_q, tx_ongoing_d, clk_en_i, '0, clk_i, rst_ni);
 
+  /*TODO: Implement High speed Timing
   //delay to negative edge
   logic inv_clock = ~sd_freq_clk_i;
   `FF (sd_cmd_delayed ,sd_cmd, '1, inv_clock, rst_ni);
-
+*/
   par_ser_shift_reg #(
     .NumBits    (40), //start bit + transmission bit + 6 cmd bits + 32 argument bits
     .ShiftInVal (0)
   ) i_cmd_shift_reg (
-    .clk_i          (sd_freq_clk_i),
+    .clk_i          (clk_i),
+    .clk_en_i       (clk_en_i),
     .rst_ni         (rst_ni),
     .par_write_en_i (par_write_en),
     .shift_en_i     (shift_en),
@@ -126,7 +130,8 @@ module cmd_write (
 
   crc7_write #( 
   ) i_crc7_write (
-    .clk_i            (sd_freq_clk_i),
+    .clk_i            (clk_i),
+    .clk_en_i         (clk_en_i),
     .rst_ni           (rst_ni),
     .shift_out_crc7_i (crc7_shift_en),
     .dat_ser_i        (shift_reg_out),
@@ -137,10 +142,10 @@ module cmd_write (
     .WIDTH            (3'd6), //6 bit counter (48 bits to transmit)
     .STICKY_OVERFLOW  (1'b0)  //overflow not needed
   ) i_tx_bits_counter (
-    .clk_i      (sd_freq_clk_i),
+    .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .clear_i    (tx_done_o),  //clears to 0
-    .en_i       (tx_ongoing_q),
+    .en_i       (tx_ongoing_q && clk_en_i),
     .load_i     (1'b0), //always start at 0, no loading needed
     .down_i     (1'b0), //count up
     .d_i        (6'b0), //not needed

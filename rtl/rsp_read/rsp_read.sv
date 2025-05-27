@@ -4,7 +4,8 @@
 
 //Untested!
 module rsp_read (
-  input logic sd_clk_i,         //should be synchronous with clk line of Sd card
+  input logic clk_i,
+  input logic clk_en_i,
   input logic rst_ni,
   input logic cmd_i,
 
@@ -43,11 +44,11 @@ module rsp_read (
 
       FORMAT_ERROR:       rx_state_d  = INACTIVE;
 
-      default:            rx_state_d  = ERROR;
+      default:            rx_state_d  = INACTIVE;
     endcase
   end
 
-  `FF (rx_state_q, rx_state_d, INACTIVE, sd_clk_i, rst_ni);
+  `FFL (rx_state_q, rx_state_d, clk_en_i, INACTIVE, clk_i, rst_ni);
 
   //data path
   logic rsp_ser;
@@ -140,7 +141,8 @@ module rsp_read (
     .NumBits    (127), //r2 response, start, transmission, reserved and end bits not needed 
     .MaskOutput (1)    //to avoid large number of gates switching during shifting
   ) i_rsp_shift_reg (
-    .clk_i            (sd_clk_i),
+    .clk_i            (clk_i),
+    .clk_en_i         (clk_en_i),
     .rst_ni           (rst_ni),
     .shift_in_en_i    (shift_reg_shift_in_en),
     .par_output_en_i  (shift_reg_par_output_en),
@@ -149,7 +151,8 @@ module rsp_read (
   );
 
   crc7_read i_crc7_read (
-    .sd_clk_i     (sd_clk_i),
+    .clk_i        (clk_i),
+    .clk_en_i     (clk_en_i),
     .rst_ni       (rst_ni),
     .start_i      (crc_start),
     .end_output_i (crc_end_output),
@@ -161,10 +164,10 @@ module rsp_read (
     .WIDTH            (8), //longest response is 136 bits
     .STICKY_OVERFLOW  (1)
   ) i_rsp_counter (
-    .clk_i      (sd_clk_i),
+    .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .clear_i    (cnt_clear),
-    .en_i       (cnt_en),
+    .en_i       (cnt_en && clk_en_i),
     .load_i     (1'b0),
     .down_i     (1'b0),
     .d_i        (8'b0),

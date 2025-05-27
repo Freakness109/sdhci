@@ -9,6 +9,7 @@ module ser_par_shift_reg #(
   parameter bit           MaskOutput  = 0  //if output is masked with zeros during shifting, if 1, par_output_en_i is needed.
 ) (
   input   logic               clk_i,
+  input   logic               clk_en_i,
   input   logic               rst_ni,
 
   input   logic               shift_in_en_i,
@@ -28,7 +29,7 @@ module ser_par_shift_reg #(
     end
   end
 
-  `FF (dat_q, dat_d, 0, clk_i, rst_ni);
+  `FFL (dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
 
   generate
     if (MaskOutput) begin

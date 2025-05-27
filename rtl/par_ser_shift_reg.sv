@@ -9,6 +9,7 @@ module par_ser_shift_reg #(
   parameter bit           ShiftInVal  = 0     //value to be shifted in, unimportant
 ) (
   input   logic clk_i,
+  input   logic clk_en_i,
   input   logic rst_ni,
 
   input   logic par_write_en_i, //write data in parallel to shift register
@@ -31,7 +32,7 @@ module par_ser_shift_reg #(
     end
   end
   
-  `FF (dat_q, dat_d, 0, clk_i, rst_ni);
+  `FFL (dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
 
   //output assignment
   assign dat_ser_o = dat_q[NumBits-1];

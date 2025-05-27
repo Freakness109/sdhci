@@ -3,7 +3,7 @@ import sdhci_reg_pkg::*;
 
 module cmd_wrap (
   input   logic clk_i,
-  input   logic sd_clk_i,
+  input   logic clk_en_i, //high before next sd_clk posedge
   input   logic rst_ni,
 
   input   logic sd_bus_cmd_i,
@@ -20,7 +20,7 @@ module cmd_wrap (
   output  logic sd_rsp_done_o,
   output  logic sd_cmd_dat_busy_o,
 
-  output  logic [31:0] hw2reg_response0_d, //hook up to hw2reg.response0.d etc.
+  output  logic [31:0] hw2reg_response0_d,
   output  logic [31:0] hw2reg_response1_d,
   output  logic [31:0] hw2reg_response2_d,
   output  logic [31:0] hw2reg_response3_d,
@@ -67,7 +67,7 @@ module cmd_wrap (
 
       WRITE_CMD:      begin
         cmd_seq_state_d = WRITE_CMD;
-        if (tx_done) begin  //possibly unstable, observe!
+        if (tx_done) begin 
           cmd_seq_state_d = (reg2hw.command.response_type_select.q == 2'b00) ? RSP_RECEIVED : BUS_SWITCH;
         end
       end
@@ -85,7 +85,7 @@ module cmd_wrap (
     endcase
   end
 
-  `FF (cmd_seq_state_q, cmd_seq_state_d, READY, sd_clk_i, rst_ni);
+  `FFL (cmd_seq_state_q, cmd_seq_state_d, clk_en_i, READY, clk_i, rst_ni);
 
   logic check_end_bit_err, check_crc_err, check_index_err, check_timeout_error;
   
@@ -134,7 +134,7 @@ module cmd_wrap (
           //timeout interrupt if response didn't start within 64 clock cycles
 
           if (running_cmd12_q) auto_cmd12_errors_o.auto_cmd12_timeout_error.de = '1;
-          else hw2reg_error_interrupt_status_command_timeout_error_de = check_timeout_error;
+          else hw2reg_error_interrupt_status_command_timeout_error_de = check_timeout_error & clk_en_i;
         end
 
         if (rsp_valid) begin
@@ -143,9 +143,9 @@ module cmd_wrap (
             auto_cmd12_errors_o.auto_cmd12_crc_error.de = ~crc_corr;
             auto_cmd12_errors_o.auto_cmd12_index_error.de = index_err;
           end else begin
-            hw2reg_error_interrupt_status_command_end_bit_error_de = (check_end_bit_err & end_bit_err);
-            hw2reg_error_interrupt_status_command_crc_error_de     = (check_crc_err & ~crc_corr);
-            hw2reg_error_interrupt_status_command_index_error_de   = (check_index_err & index_err);
+            hw2reg_error_interrupt_status_command_end_bit_error_de = (check_end_bit_err & end_bit_err & clk_en_i);
+            hw2reg_error_interrupt_status_command_crc_error_de     = (check_crc_err & ~crc_corr & clk_en_i);
+            hw2reg_error_interrupt_status_command_index_error_de   = (check_index_err & index_err & clk_en_i);
           end
         end
       end
@@ -180,13 +180,13 @@ module cmd_wrap (
       cmd_phase_d = ~reg2hw.host_control.high_speed_enable.q; 
     end 
   end
-  `FF (cmd_phase_q, cmd_phase_d, 1'b1, sd_clk_i, rst_ni);
+  `FFL (cmd_phase_q, cmd_phase_d, clk_en_i, 1'b1, clk_i, rst_ni);
 
   logic tx_done;
 
   // TODO only reset this once command is done, not when its stats
   logic running_cmd12_q, running_cmd12_d;
-  `FF (running_cmd12_q, running_cmd12_d, '0, sd_clk_i, rst_ni);
+  `FFL (running_cmd12_q, running_cmd12_d, clk_en_i, '0, clk_i, rst_ni);
 
   logic cmd12_requested_q, cmd12_requested_d;
   `FF (cmd12_requested_q, cmd12_requested_d, '0, clk_i, rst_ni);
@@ -218,14 +218,14 @@ module cmd_wrap (
 
     // extend pulse for slower sd clock
     cmd12_requested_d      = cmd12_requested_q | request_cmd12_i;
+   
     driver_cmd_requested_d = driver_cmd_requested_q;
-
     dat_busy_d = dat_busy_q;
 
     // write to command index starts transmission
     if (reg2hw.command.command_index.qe) begin
       driver_cmd_requested_d = '1;
-      hw2reg_present_state_command_inhibit_cmd_de = '1;
+      hw2reg_present_state_command_inhibit_cmd_de = '1; //check -Anton
       hw2reg_present_state_command_inhibit_cmd_d  = '1;
 
       if (reg2hw.command.response_type_select.q == 2'b11) dat_busy_d = '1;
@@ -278,14 +278,15 @@ module cmd_wrap (
 
 
   cmd_write i_cmd_write (
-    .sd_freq_clk_i  (sd_clk_i),
+    .clk_i          (clk_i),
+    .clk_en_i       (clk_en_i),
     .rst_ni         (rst_ni),
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
     .start_tx_i     (start_tx_q), //need to buffer when registers run faster than sd cmd_write
     .cmd_argument_i (running_cmd12_q ? '0 : reg2hw.argument.q),
     .cmd_nr_i       (command_index),
-    .cmd_phase_i    (cmd_phase_d),
+    .cmd_phase_i    (cmd_phase_q),
     .tx_done_o      (tx_done)
   );
 
@@ -296,7 +297,8 @@ module cmd_wrap (
   assign long_rsp = (reg2hw.command.response_type_select.q == 2'b01); //response type is "Response Length 136"
 
   rsp_read  i_rsp_read (
-    .sd_clk_i           (sd_clk_i),
+    .clk_i              (clk_i),
+    .clk_en_i           (clk_en_i),
     .rst_ni             (rst_ni),
     .cmd_i              (sd_bus_cmd_i),
     .long_rsp_i         (long_rsp),
@@ -352,10 +354,10 @@ module cmd_wrap (
     hw2reg_response2_d  = rsp_2;
     hw2reg_response3_d  = rsp_3;
 
-    hw2reg_response0_de = (update_rsp_reg & rsp_valid);
-    hw2reg_response1_de = (update_rsp_reg & rsp_valid);
-    hw2reg_response2_de = (update_rsp_reg & rsp_valid);
-    hw2reg_response3_de = (update_rsp_reg & rsp_valid);
+    hw2reg_response0_de = (update_rsp_reg & rsp_valid & clk_en_i);
+    hw2reg_response1_de = (update_rsp_reg & rsp_valid & clk_en_i);
+    hw2reg_response2_de = (update_rsp_reg & rsp_valid & clk_en_i);
+    hw2reg_response3_de = (update_rsp_reg & rsp_valid & clk_en_i);
   end 
 
   assign index_err = (rsp [37:32] != command_index);
@@ -364,10 +366,10 @@ module cmd_wrap (
     .WIDTH            (3'd6), //6 bit counter 
     .STICKY_OVERFLOW  (1'b0)  //overflow not needed
   ) i_counter (
-    .clk_i      (sd_clk_i),
+    .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .clear_i    (cnt_clr),  //clears to 0
-    .en_i       (cnt_en),
+    .en_i       (cnt_en & clk_en_i),
     .load_i     (1'b0), //always start at 0, no loading needed
     .down_i     (1'b0), //count up
     .d_i        (6'b0), //not needed

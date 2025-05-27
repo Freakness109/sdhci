@@ -162,7 +162,7 @@ module user_sdhci #(
 
   cmd_wrap  i_cmd_wrap (
     .clk_i           (clk_i),
-    .sd_clk_i        (sd_clk),
+    .clk_en_i        (sd_clk_en),
     .rst_ni          (sd_rst_cmd_n),
     .sd_bus_cmd_i    (cmd_read),
     .sd_bus_cmd_o    (cmd_write),

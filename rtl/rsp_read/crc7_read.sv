@@ -6,7 +6,8 @@
 
 //Untested!
 module crc7_read (
-  input   logic       sd_clk_i,
+  input   logic       clk_i,
+  input   logic       clk_en_i,
   input   logic       rst_ni,
       
   input   logic       start_i,  //start considering input next clock cycle
@@ -36,11 +37,11 @@ module crc7_read (
 
       CALCULATE: crc_state_d = (end_output_i) ? OUTPUT  : CALCULATE;
 
-      default:   crc_state_d = ERROR;
+      default:   crc_state_d = OUTPUT;
     endcase
   end
 
-  `FF (crc_state_q, crc_state_d, OUTPUT, sd_clk_i, rst_ni);
+  `FFL (crc_state_q, crc_state_d, clk_en_i, OUTPUT, clk_i, rst_ni);
 
   //data path///////////////////////////////////////////////////////////////////////////////
 
@@ -79,7 +80,7 @@ module crc7_read (
 
   assign  rst_n = (rst_ni & int_rst_n); //only for data, not for state
 
-  `FF (lower_3_q, lower_3_d, 3'b0, sd_clk_i, rst_n);
-  `FF (upper_4_q, upper_4_d, 4'b0, sd_clk_i, rst_n);
+  `FFL (lower_3_q, lower_3_d, clk_en_i, 3'b0, clk_i, rst_n);
+  `FFL (upper_4_q, upper_4_d, clk_en_i, 4'b0, clk_i, rst_n);
 
 endmodule
