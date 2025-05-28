@@ -115,7 +115,8 @@ module user_sdhci #(
 
     .pause_sd_clk_i  (pause_sd_clk),
     .sd_clk_o        (sd_clk),
-    .clk_en_o        (sd_clk_en),
+    .clk_en_p_o      (sd_clk_en),
+    .clk_en_n_o      (),
     .sd_clk_stable_o (hw2reg.clock_control.internal_clock_stable)
   );
   logic cmd_write;
