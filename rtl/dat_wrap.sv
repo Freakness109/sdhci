@@ -57,7 +57,6 @@ module dat_wrap #(
     WAIT_FOR_WRITE_DATA,
     WAIT_FOR_RSP,
     START_WRITING,
-    SEND_FIRST_WORD,
     WRITING,
     DONE_WRITING_BLOCK,
     DONE_WRITING
@@ -176,7 +175,9 @@ module dat_wrap #(
         rsp_done_d    = '0;
         clear_regs    = '1;
       end
-      WAIT_FOR_CMD: ;
+      WAIT_FOR_CMD: begin
+        read_transfer_active_o.d  = '1;
+      end
       START_READING: begin
         read_transfer_active_o.d  = '1;
 
@@ -215,7 +216,8 @@ module dat_wrap #(
         end
       end
       TIMEOUT_READING: begin
-        data_timeout_error_o.de   = '1;
+        read_transfer_active_o.d = '1;
+        data_timeout_error_o.de  = '1;
         sd_rst_n = '0;
       end
       DONE_READING: begin
@@ -228,7 +230,9 @@ module dat_wrap #(
         write_transfer_active_o.d  = '1;
         buffer_write_enable_o.d    = '1;
       end
-      WAIT_FOR_RSP: ;
+      WAIT_FOR_RSP: begin
+        write_transfer_active_o.d  = '1;
+      end
       START_WRITING: begin
         write_transfer_active_o.d  = '1;
         start_write  = '1;
