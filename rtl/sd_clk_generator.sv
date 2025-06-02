@@ -13,6 +13,8 @@ module sd_clk_generator (
   output logic clk_en_p_o, //high when next rising clk edge coincides with rising sd_clk edge
   output logic clk_en_n_o, //high when next rising clk edge coincides with falling sd_clk edge
 
+  output logic div_1_o,   //high if source clock isn't divided, needed for negative edge triggering
+
   output `writable_reg_t() sd_clk_stable_o
 );
   logic[7:0] div_d, div_q;
@@ -93,5 +95,6 @@ module sd_clk_generator (
   end
   `FF(clk_div_q, clk_div_d, 1'b1, clk_i, rst_ni);
 
+  assign div_1_o = (div_q == 8'h00);
   assign sd_clk_stable_o = '{ de: '1, d: reg2hw_i.clock_control.internal_clock_enable.q};
 endmodule

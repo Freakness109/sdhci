@@ -5,8 +5,12 @@
 //untested!
 module cmd_write (
   input   logic         clk_i,
-  input   logic         clk_en_i,
   input   logic         rst_ni,
+
+  input   logic         clk_en_p_i,
+  input   logic         clk_en_n_i,
+  input   logic         div_1_i,        //is SD CLK frequency same as clk_i frequency?
+
   output  logic         cmd_o, 
   output  logic         cmd_en_o, 
 
@@ -49,7 +53,7 @@ module cmd_write (
     endcase
   end
   
-  `FFL (tx_state_q, tx_state_d, clk_en_i, READY, clk_i, rst_ni);
+  `FFL (tx_state_q, tx_state_d, clk_en_p_i, READY, clk_i, rst_ni);
 
   //data path////////////////////////////////////////////////////////////////////////////////////////////
   logic [39:0] cmd_bits_47_to_8; //cmd without crc7 and end bit
@@ -58,12 +62,10 @@ module cmd_write (
   assign cmd_bits_47_to_8 [37:32] = cmd_nr_i;
   assign cmd_bits_47_to_8 [31:0]  = cmd_argument_i;
 
-  logic par_write_en, shift_en, crc7_shift_en, shift_reg_out, crc7_out, highz, sd_cmd, sd_cmd_delayed;
+  logic par_write_en, shift_en, crc7_shift_en, shift_reg_out, crc7_out, highz, sd_cmd, sd_cmd_div1, sd_cmd_divn;
   logic tx_ongoing_d, tx_ongoing_q;
 
   
-  //assign cmd_o = (cmd_phase_i) ?  sd_cmd_delayed  : sd_cmd;
-  assign cmd_o = sd_cmd;
   assign cmd_en_o = ~highz;
   
   always_comb begin : cmd_tx_datapath
@@ -108,19 +110,23 @@ module cmd_write (
     endcase
   end 
 
-  `FFL (tx_ongoing_q, tx_ongoing_d, clk_en_i, '0, clk_i, rst_ni);
+  `FFL (tx_ongoing_q, tx_ongoing_d, clk_en_p_i, '0, clk_i, rst_ni);
 
-  /*TODO: Implement High speed Timing
-  //delay to negative edge
-  logic inv_clock = ~sd_freq_clk_i;
-  `FF (sd_cmd_delayed ,sd_cmd, '1, inv_clock, rst_ni);
-*/
+  //delay to negative edge of sd clk
+  always_ff @( negedge clk_i or negedge rst_ni) begin
+    if(!rst_ni) sd_cmd_div1 <= 1'b1;
+    else sd_cmd_div1 <= sd_cmd;
+  end
+
+  `FFL(sd_cmd_divn, sd_cmd, clk_en_n_i, '1, clk_i, rst_ni);
+  assign cmd_o = (div_1_i)  ? sd_cmd_div1 : sd_cmd_divn;
+
   par_ser_shift_reg #(
     .NumBits    (40), //start bit + transmission bit + 6 cmd bits + 32 argument bits
     .ShiftInVal (0)
   ) i_cmd_shift_reg (
     .clk_i          (clk_i),
-    .clk_en_i       (clk_en_i),
+    .clk_en_i       (clk_en_p_i),
     .rst_ni         (rst_ni),
     .par_write_en_i (par_write_en),
     .shift_en_i     (shift_en),
@@ -131,7 +137,7 @@ module cmd_write (
   crc7_write #( 
   ) i_crc7_write (
     .clk_i            (clk_i),
-    .clk_en_i         (clk_en_i),
+    .clk_en_i         (clk_en_p_i),
     .rst_ni           (rst_ni),
     .shift_out_crc7_i (crc7_shift_en),
     .dat_ser_i        (shift_reg_out),
@@ -145,7 +151,7 @@ module cmd_write (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .clear_i    (tx_done_o),  //clears to 0
-    .en_i       (tx_ongoing_q && clk_en_i),
+    .en_i       (tx_ongoing_q && clk_en_p_i),
     .load_i     (1'b0), //always start at 0, no loading needed
     .down_i     (1'b0), //count up
     .d_i        (6'b0), //not needed

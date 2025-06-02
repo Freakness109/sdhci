@@ -6,7 +6,9 @@ module dat_write #(
   parameter int MaxBlockBitSize
 ) (
   input  logic       clk_i,
-  input  logic       sd_clk_en_i,
+  input  logic       sd_clk_en_p_i,
+  input  logic       sd_clk_en_n_i,
+  input  logic       div_1_i,
   input  logic       rst_ni,
   input  logic       dat0_i,
   output logic [3:0] dat_o,
@@ -55,7 +57,7 @@ module dat_write #(
   always_comb begin : dat_write_state_transition
     dat_tx_state_d  =   dat_tx_state_q;
 
-    if (sd_clk_en_i) begin
+    if (sd_clk_en_p_i) begin
       unique case (dat_tx_state_q)
         READY:            if (start_i) dat_tx_state_d = START_BIT;
         START_BIT:        dat_tx_state_d = DAT;
@@ -85,9 +87,21 @@ module dat_write #(
   logic [2:0] status_q, status_d;
   `FF (status_q, status_d, '0, clk_i, rst_ni);
 
+  logic [3:0] dat, dat_div1, dat_divn;
+  
+  //delay by half a clock cycle 
+  always_ff @( negedge clk_i or negedge rst_ni) begin
+    if(!rst_ni) dat_div1 <= 4'b1;
+    else dat_div1 <= dat;
+  end
+
+  `FFL(dat_divn, dat, sd_clk_en_n_i, clk_i, rst_ni);
+
+  assign dat_o = (div_1_i)  ? dat_div1 :  dat_divn; 
+
   always_comb begin : dat_write_datapath
     dat_en_o = '0;
-    dat_o    = 'X;
+    dat    = 'X;
 
     done_o        = '0;
     end_bit_err_o = 'X;
@@ -104,10 +118,10 @@ module dat_write #(
     unique case (dat_tx_state_q)
       START_BIT: begin
         dat_en_o = '1;
-        if (bus_width_is_4_i) dat_o = '0;
-        else                  dat_o = 4'b1110;
+        if (bus_width_is_4_i) dat = '0;
+        else                  dat = 4'b1110;
 
-        if (sd_clk_en_i) begin
+        if (sd_clk_en_p_i) begin
           counter_d       = '0;
           buffered_data_d = data_i;
           end_bit_err_d   = '0;
@@ -115,13 +129,13 @@ module dat_write #(
         end
       end
       DAT: begin
-        if (sd_clk_en_i) counter_d = counter_q + 1;
+        if (sd_clk_en_p_i) counter_d = counter_q + 1;
         shift_out_crc = 1'b0;
         dat_en_o = '1;
 
         if (bus_width_is_4_i) begin
           // Bus width = 4
-          if (sd_clk_en_i) begin
+          if (sd_clk_en_p_i) begin
             if (counter_q[2:0] == '0) begin
               next_word_o = 1'b1;
             end
@@ -134,14 +148,14 @@ module dat_write #(
           end
 
           if (counter_q[0] == '0) begin
-            dat_o = buffered_data_q[7:4];
+            dat = buffered_data_q[7:4];
           end else begin
-            dat_o = buffered_data_q[3:0];
+            dat = buffered_data_q[3:0];
           end
         end else begin
           // Bus width = 1
 
-          if (sd_clk_en_i) begin
+          if (sd_clk_en_p_i) begin
             if (counter_q[4:0] == '0) begin
               next_word_o = 1'b1;
             end
@@ -155,39 +169,39 @@ module dat_write #(
             end
           end
 
-          dat_o = { 3'b111, buffered_data_q[7] };
+          dat = { 3'b111, buffered_data_q[7] };
         end
       end
       CRC: begin
-        if (sd_clk_en_i) counter_d = counter_q + 1;
+        if (sd_clk_en_p_i) counter_d = counter_q + 1;
 
         dat_en_o = '1;
         if (bus_width_is_4_i) begin
-          dat_o = crc;
+          dat = crc;
         end else begin
-          dat_o = { 3'b111, crc[0] };
+          dat = { 3'b111, crc[0] };
         end
       end
       END_BIT: begin
         dat_en_o = '1;
-        dat_o    = '1;
+        dat    = '1;
 
         counter_d = '0;
       end
 
-      BUS_SWITCH: if (sd_clk_en_i) counter_d = counter_q + 1;
+      BUS_SWITCH: if (sd_clk_en_p_i) counter_d = counter_q + 1;
 
       STATUS_START_BIT: begin
-        if (sd_clk_en_i && dat0_i != '0) end_bit_err_d = '1;
+        if (sd_clk_en_p_i && dat0_i != '0) end_bit_err_d = '1;
         counter_d = '0;
       end
       STATUS: begin
-        if (sd_clk_en_i) begin
+        if (sd_clk_en_p_i) begin
           counter_d = counter_q + 1;
           status_d = { status_q[1:0], dat0_i };
         end
       end
-      STATUS_END_BIT: if (sd_clk_en_i && dat0_i != '1) end_bit_err_d = '1;
+      STATUS_END_BIT: if (sd_clk_en_p_i && dat0_i != '1) end_bit_err_d = '1;
 
       DONE: begin
         done_o        = '1;
@@ -203,10 +217,10 @@ module dat_write #(
   for (genvar i=0; i<4 ; i++) begin
     crc16_write i_crc16_write (
       .clk_i,
-      .sd_clk_en_i,
+      .sd_clk_en_i        (sd_clk_en_p_i),
       .rst_ni,
       .shift_out_crc16_i  (shift_out_crc),
-      .dat_ser_i          (dat_o[i]),
+      .dat_ser_i          (dat[i]),
       .crc_ser_o          (crc[i])
     );
   end

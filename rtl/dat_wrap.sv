@@ -5,7 +5,9 @@ module dat_wrap #(
   parameter int MaxBlockBitSize = 10 // max_block_length = 512 in caps
 ) (
   input  logic clk_i,
-  input  logic sd_clk_en_i,
+  input  logic sd_clk_en_p_i,
+  input  logic sd_clk_en_n_i,
+  input  logic div_1_i,
   input  logic rst_ni,
   
   input  logic [3:0] dat_i,
@@ -82,7 +84,7 @@ module dat_wrap #(
       end
 
       WAIT_FOR_CMD:  if (sd_cmd_done_i) state_d = START_READING;
-      START_READING: if (sd_clk_en_i)  state_d = READING;
+      START_READING: if (sd_clk_en_p_i)  state_d = READING;
       READING: begin
         if (read_timeout) begin
           state_d = TIMEOUT_READING;
@@ -102,7 +104,7 @@ module dat_wrap #(
 
       WAIT_FOR_WRITE_DATA: if (write_reg_length * 4 >= block_size) state_d = first_block_q ? WAIT_FOR_RSP : START_WRITING;
       WAIT_FOR_RSP:        if (rsp_done_q) state_d = START_WRITING;
-      START_WRITING:       if (sd_clk_en_i) state_d = WRITING;
+      START_WRITING:       if (sd_clk_en_p_i) state_d = WRITING;
       WRITING:             if (write_done) state_d = DONE_WRITING_BLOCK;
       DONE_WRITING_BLOCK:  begin
         // TODO Block Count Enable and Abort Operation
@@ -324,7 +326,7 @@ module dat_wrap #(
     .MaxBlockBitSize (MaxBlockBitSize)
   ) i_read (
     .clk_i,
-    .sd_clk_en_i,
+    .sd_clk_en_i   (sd_clk_en_p_i),
     .rst_ni        (sd_rst_n),
     .dat_i,
 
@@ -346,7 +348,9 @@ module dat_wrap #(
     .MaxBlockBitSize (MaxBlockBitSize)
   ) i_write (
     .clk_i,
-    .sd_clk_en_i,
+    .sd_clk_en_p_i  (sd_clk_en_p_i),
+    .sd_clk_en_n_i  (sd_clk_en_n_i),
+    .div_1_i        (div_1_i),
     .rst_ni        (sd_rst_n),
     .dat0_i        (dat_i[0]),
     .dat_o,

@@ -107,7 +107,7 @@ module user_sdhci #(
     .interrupt_o
   );
 
-  logic sd_clk, pause_sd_clk, sd_clk_en;
+  logic sd_clk, pause_sd_clk, sd_clk_en_p, sd_clk_en_n, div_1;
   sd_clk_generator i_sd_clk_generator (
     .clk_i,
     .rst_ni (sd_rst_n),
@@ -115,8 +115,9 @@ module user_sdhci #(
 
     .pause_sd_clk_i  (pause_sd_clk),
     .sd_clk_o        (sd_clk),
-    .clk_en_p_o      (sd_clk_en),
-    .clk_en_n_o      (),
+    .clk_en_p_o      (sd_clk_en_p),
+    .clk_en_n_o      (sd_clk_en_n),
+    .div_1_o         (div_1),
     .sd_clk_stable_o (hw2reg.clock_control.internal_clock_stable)
   );
   logic cmd_write;
@@ -162,8 +163,10 @@ module user_sdhci #(
 
   cmd_wrap  i_cmd_wrap (
     .clk_i           (clk_i),
-    .clk_en_i        (sd_clk_en),
     .rst_ni          (sd_rst_cmd_n),
+    .clk_en_p_i      (sd_clk_en_p),
+    .clk_en_n_i      (sd_clk_en_n),
+    .div_1_i         (div_1),
     .sd_bus_cmd_i    (cmd_read),
     .sd_bus_cmd_o    (cmd_write),
     .sd_bus_cmd_en_o (cmd_write_en),
@@ -201,7 +204,9 @@ module user_sdhci #(
 
   dat_wrap i_dat_wrap (
     .clk_i,
-    .sd_clk_en_i (sd_clk_en),
+    .sd_clk_en_p_i  (sd_clk_en_p),
+    .sd_clk_en_n_i  (sd_clk_en_n),
+    .div_1_i        (div_1),
     .rst_ni      (sd_rst_dat_n),
 
     .dat_i    (dat_read),
