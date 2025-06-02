@@ -95,7 +95,7 @@ module dat_write #(
     else dat_div1 <= dat;
   end
 
-  `FFL(dat_divn, dat, sd_clk_en_n_i, clk_i, rst_ni);
+  `FFL(dat_divn, dat, sd_clk_en_n_i, 4'b1, clk_i, rst_ni);
 
   assign dat_o = (div_1_i)  ? dat_div1 :  dat_divn; 
 
