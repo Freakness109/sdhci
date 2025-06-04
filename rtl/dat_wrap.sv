@@ -38,9 +38,6 @@ module dat_wrap #(
   localparam int RegisterWordCount = 128;
   localparam int RegisterByteCount = RegisterWordCount * 4;
 
- 
-  logic sd_rst_n; 
-
   typedef enum logic [3:0] {
     READY,
 
@@ -89,27 +86,19 @@ module dat_wrap #(
           state_d = TIMEOUT_READING;
           // Reset reader
         end else if (read_done) begin
-          state_d = last_block || read_reg_remaining_bytes < block_size ? READING_BUSY : DONE_READING_BLOCK;
+          state_d = last_block || reg_remaining_bytes < block_size ? READING_BUSY : DONE_READING_BLOCK;
         end
       end
-      READING_BUSY: if (read_reg_empty) state_d = DONE_READING_BLOCK;
-      DONE_READING_BLOCK:  begin
-        // TODO Block Count Enable and Abort Operation
-        // TODO stop writing when crc error happens
-        state_d = last_block ? DONE_READING : START_READING;
-      end
-      TIMEOUT_READING: state_d = DONE_READING;
-      DONE_READING:    state_d = READY;
+      READING_BUSY:       if (reg_empty) state_d = DONE_READING_BLOCK;
+      DONE_READING_BLOCK: state_d = last_block ? DONE_READING : START_READING;
+      TIMEOUT_READING:    state_d = DONE_READING;
+      DONE_READING:       state_d = READY;
 
-      WAIT_FOR_WRITE_DATA: if (write_reg_length * 4 >= block_size) state_d = first_block_q ? WAIT_FOR_RSP : START_WRITING;
+      WAIT_FOR_WRITE_DATA: if (reg_length * 4 >= block_size) state_d = first_block_q ? WAIT_FOR_RSP : START_WRITING;
       WAIT_FOR_RSP:        if (rsp_done_q) state_d = START_WRITING;
       START_WRITING:       if (sd_clk_en_p_i) state_d = WRITING;
       WRITING:             if (write_done) state_d = DONE_WRITING_BLOCK;
-      DONE_WRITING_BLOCK:  begin
-        // TODO Block Count Enable and Abort Operation
-        // TODO stop writing when crc error happens
-        state_d = last_block ? DONE_WRITING : WAIT_FOR_WRITE_DATA;
-      end
+      DONE_WRITING_BLOCK:  state_d = last_block ? DONE_WRITING : WAIT_FOR_WRITE_DATA;
       DONE_WRITING:        state_d = READY;
 
       default: state_d = READY;
@@ -119,25 +108,20 @@ module dat_wrap #(
   logic first_block_q, first_block_d;
   `FF (first_block_q, first_block_d, '0, clk_i, rst_ni);
 
-  logic software_reset_dat;
-  `FF(software_reset_dat, reg2hw_i.software_reset.software_reset_for_dat_line.q, '0, clk_i, rst_ni);
-
-  logic [MaxBlockBitSize-1:0] read_reg_start_length_q, read_reg_start_length_d;
-  `FF (read_reg_start_length_q, read_reg_start_length_d, '0, clk_i, rst_ni)
+  logic [MaxBlockBitSize-1:0] reg_start_length_q, reg_start_length_d;
+  `FF (reg_start_length_q, reg_start_length_d, '0, clk_i, rst_ni)
 
   logic [MaxBlockBitSize-1:0] block_size;
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
   logic rsp_done_q, rsp_done_d;
-  `FF (rsp_done_q, rsp_done_d, '0, clk_i, sd_rst_n);
+  `FF (rsp_done_q, rsp_done_d, '0, clk_i, rst_ni);
 
-  logic read_run_timeout, pop_write_buffer;
+  logic read_run_timeout;
   always_comb begin
-    sd_rst_n = rst_ni & ~software_reset_dat;
 
     first_block_d = first_block_q;
 
-    pop_write_buffer = '0;
     read_run_timeout = '0;
 
     request_cmd12_o  = '0;
@@ -158,50 +142,61 @@ module dat_wrap #(
     block_count_o.de = '0;
     block_count_o.d  = 'X;
 
-    read_reg_start_length_d = '0;
+    reg_start_length_d = '0;
     buffer_write_enable_o = '{ de: '1, d: '0 };
     buffer_read_enable_o  = '{ de: '1, d: '0 };
 
     rsp_done_d = rsp_done_q || sd_rsp_done_i;
 
-    start_write = '0;
     start_read  = '0;
+    start_write = '0;
+    write_data  = 'X;
 
-    clear_regs  = '0;
+    clear_reg     = '0;
+    reg_push      = '0;
+    reg_push_data = 'X;
+    reg_pop       = '0;
 
     unique case (state_q)
       READY: begin
         first_block_d = '1;
         rsp_done_d    = '0;
-        clear_regs    = '1;
+        clear_reg     = '1;
       end
       WAIT_FOR_CMD: begin
         read_transfer_active_o.d  = '1;
       end
       START_READING: begin
         read_transfer_active_o.d  = '1;
-
-        start_read   = '1;
+        start_read = '1;
       end
       READING: begin
         read_transfer_active_o.d = '1;
         read_run_timeout = '1;
+
+        if (read_valid) begin
+          reg_push      = '1;
+          reg_push_data = read_data;
+        end
 
         if (read_done) begin
           data_crc_error_o.de     = read_crc_err;
           data_end_bit_error_o.de = read_end_bit_err;
         end
 
-        read_reg_start_length_d = read_reg_length;
+        reg_start_length_d = reg_length;
       end
       READING_BUSY: begin
         read_transfer_active_o.d = '1;
-        read_reg_start_length_d  = read_reg_start_length_q;
+        reg_start_length_d       = reg_start_length_q;
         buffer_read_enable_o.d   = '1;
 
-        if (read_reg_length * 4 + block_size <= read_reg_start_length_q * 4) begin
+        reg_pop              = reg2hw_i.buffer_data_port.re;
+        buffer_data_port_d_o = reg_pop_data;
+
+        if (reg_length * 4 + block_size <= reg_start_length_q * 4) begin
           buffer_read_enable_o.d  = '0;
-          read_reg_start_length_d = read_reg_length;
+          reg_start_length_d = reg_length;
         end
 
         if (!last_block) pause_sd_clk_o = '1;
@@ -218,7 +213,6 @@ module dat_wrap #(
       TIMEOUT_READING: begin
         read_transfer_active_o.d = '1;
         data_timeout_error_o.de  = '1;
-        sd_rst_n = '0;
       end
       DONE_READING: begin
         read_transfer_active_o.d = '1;
@@ -229,6 +223,9 @@ module dat_wrap #(
       WAIT_FOR_WRITE_DATA: begin
         write_transfer_active_o.d  = '1;
         buffer_write_enable_o.d    = '1;
+
+        reg_push      = reg2hw_i.buffer_data_port.qe;
+        reg_push_data = reg2hw_i.buffer_data_port.q;
       end
       WAIT_FOR_RSP: begin
         write_transfer_active_o.d  = '1;
@@ -240,7 +237,8 @@ module dat_wrap #(
       WRITING: begin
         write_transfer_active_o.d = '1;
 
-        if (write_requests_next_word) pop_write_buffer = '1;
+        if (write_requests_next_word) reg_pop = '1;
+        write_data = reg_pop_data; 
 
         if (write_done) begin
           data_crc_error_o.de     = write_crc_err;
@@ -278,51 +276,30 @@ module dat_wrap #(
     .timeout_o      (read_timeout)
   );
 
-  logic clear_regs;
 
-  logic [cf_math_pkg::idx_width(RegisterWordCount + 1)*4-1:0] read_reg_remaining_bytes;
-  assign read_reg_remaining_bytes = {cf_math_pkg::idx_width(RegisterWordCount + 1)*4}'(RegisterByteCount - read_reg_length * 4);
+  logic [cf_math_pkg::idx_width(RegisterByteCount + 1)-1:0] reg_remaining_bytes;
+  assign reg_remaining_bytes = {cf_math_pkg::idx_width(RegisterByteCount + 1)}'(RegisterByteCount - reg_length * 4);
 
-  logic [cf_math_pkg::idx_width(RegisterWordCount + 1)-1:0] read_reg_length;
-  logic read_reg_empty;
+  logic [cf_math_pkg::idx_width(RegisterWordCount + 1)-1:0] reg_length;
+  logic clear_reg, reg_empty, reg_full, reg_push, reg_pop;
+  logic [31:0] reg_push_data, reg_pop_data;
   sram_shift_reg #(
     .NumWords (RegisterWordCount)
   ) i_shift_read (
     .clk_i,
-    .rst_ni (sd_rst_n),
+    .rst_ni,
   
-    .clear_i      (clear_regs),
-    .pop_front_i  (reg2hw_i.buffer_data_port.re),
-    .front_data_o (buffer_data_port_d_o),
+    .clear_i      (clear_reg),
+    .pop_front_i  (reg_pop),
+    .front_data_o (reg_pop_data),
   
-    .push_back_i  (read_valid),
-    .back_data_i  (read_data),
+    .push_back_i  (reg_push),
+    .back_data_i  (reg_push_data),
   
-    .full_o   (),
-    .empty_o  (read_reg_empty),
-    .length_o (read_reg_length)
+    .full_o   (reg_full),
+    .empty_o  (reg_empty),
+    .length_o (reg_length)
   );
-
-  logic [cf_math_pkg::idx_width(RegisterWordCount + 1)-1:0] write_reg_length;
-  logic write_reg_empty, write_reg_full, write_pop;
-  sram_shift_reg #(
-    .NumWords (RegisterWordCount)
-  ) i_shift_write (
-    .clk_i,
-    .rst_ni (sd_rst_n),
-
-    .clear_i      (clear_regs),
-    .pop_front_i  (pop_write_buffer),
-    .front_data_o (write_data),
-
-    .push_back_i  (reg2hw_i.buffer_data_port.qe),
-    .back_data_i  (reg2hw_i.buffer_data_port.q),
-
-    .full_o   (write_reg_full),
-    .empty_o  (write_reg_empty),
-    .length_o (write_reg_length)
-  );
-
 
   logic start_read, read_valid, read_done, read_crc_err, read_end_bit_err;
   logic [31:0] read_data;
@@ -331,7 +308,7 @@ module dat_wrap #(
   ) i_read (
     .clk_i,
     .sd_clk_en_i   (sd_clk_en_p_i),
-    .rst_ni        (sd_rst_n),
+    .rst_ni,
     .dat_i,
 
     .start_i          (start_read),
@@ -355,7 +332,7 @@ module dat_wrap #(
     .sd_clk_en_p_i  (sd_clk_en_p_i),
     .sd_clk_en_n_i  (sd_clk_en_n_i),
     .div_1_i        (div_1_i),
-    .rst_ni        (sd_rst_n),
+    .rst_ni,
     .dat0_i        (dat_i[0]),
     .dat_o,
     .dat_en_o,

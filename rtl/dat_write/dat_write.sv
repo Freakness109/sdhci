@@ -46,10 +46,10 @@ module dat_write #(
   } dat_tx_state_e;
 
   dat_tx_state_e dat_tx_state_d, dat_tx_state_q;
-  `FF (dat_tx_state_q, dat_tx_state_d, READY, clk_i, rst_ni);
+  `FFL (dat_tx_state_q, dat_tx_state_d, sd_clk_en_p_i, READY);
 
   logic [CounterWidth-1:0] counter_q, counter_d;
-  `FF (counter_q, counter_d, 0, clk_i, rst_ni);
+  `FFL (counter_q, counter_d, sd_clk_en_p_i, 0);
 
   logic [CounterWidth-1:0] required_clock_count;
   assign required_clock_count = bus_width_is_4_i ? 2*block_size_i : 8*block_size_i;
@@ -57,35 +57,33 @@ module dat_write #(
   always_comb begin : dat_write_state_transition
     dat_tx_state_d  =   dat_tx_state_q;
 
-    if (sd_clk_en_p_i) begin
-      unique case (dat_tx_state_q)
-        READY:            if (start_i) dat_tx_state_d = START_BIT;
-        START_BIT:        dat_tx_state_d = DAT;
-        DAT:              if (counter_q + 1 == required_clock_count) dat_tx_state_d = CRC;
-        CRC:              if (counter_q + 1 == required_clock_count + 16) dat_tx_state_d = END_BIT;
-        END_BIT:          dat_tx_state_d = BUS_SWITCH;
+    unique case (dat_tx_state_q)
+      READY:            if (start_i) dat_tx_state_d = START_BIT;
+      START_BIT:        dat_tx_state_d = DAT;
+      DAT:              if (counter_q + 1 == required_clock_count) dat_tx_state_d = CRC;
+      CRC:              if (counter_q + 1 == required_clock_count + 16) dat_tx_state_d = END_BIT;
+      END_BIT:          dat_tx_state_d = BUS_SWITCH;
 
-        BUS_SWITCH:       if (counter_q + 1 == 2) dat_tx_state_d = STATUS_START_BIT;
+      BUS_SWITCH:       if (counter_q + 1 == 2) dat_tx_state_d = STATUS_START_BIT;
 
-        STATUS_START_BIT: dat_tx_state_d = STATUS;
-        STATUS:           if (counter_q + 1 == 3) dat_tx_state_d = STATUS_END_BIT;
-        STATUS_END_BIT:   dat_tx_state_d = BUSY;
+      STATUS_START_BIT: dat_tx_state_d = STATUS;
+      STATUS:           if (counter_q + 1 == 3) dat_tx_state_d = STATUS_END_BIT;
+      STATUS_END_BIT:   dat_tx_state_d = BUSY;
 
-        BUSY:             if (dat0_i) dat_tx_state_d = DONE;
-        DONE:             dat_tx_state_d = READY;
-        default:          dat_tx_state_d = READY;
-      endcase
-    end
+      BUSY:             if (dat0_i) dat_tx_state_d = DONE;
+      DONE:             dat_tx_state_d = READY;
+      default:          dat_tx_state_d = READY;
+    endcase
   end
 
   logic [31:0] buffered_data_d, buffered_data_q;
-  `FF (buffered_data_q, buffered_data_d, '0, clk_i, rst_ni);
+  `FFL (buffered_data_q, buffered_data_d, sd_clk_en_p_i, '0);
 
   logic end_bit_err_q, end_bit_err_d;
-  `FF (end_bit_err_q, end_bit_err_d, '0, clk_i, rst_ni);
+  `FFL (end_bit_err_q, end_bit_err_d, sd_clk_en_p_i, '0);
 
   logic [2:0] status_q, status_d;
-  `FF (status_q, status_d, '0, clk_i, rst_ni);
+  `FFL (status_q, status_d, sd_clk_en_p_i, '0);
 
   logic [3:0] dat, dat_div1, dat_divn;
   
@@ -101,13 +99,13 @@ module dat_write #(
 
   always_comb begin : dat_write_datapath
     dat_en_o = '0;
-    dat    = 'X;
+    dat      = 'X;
 
     done_o        = '0;
     end_bit_err_o = 'X;
     crc_err_o     = 'X;
 
-    counter_d       = counter_q;
+    counter_d       = '0;
     buffered_data_d = buffered_data_q;
     end_bit_err_d   = end_bit_err_q;
     status_d        = status_q;
@@ -121,30 +119,25 @@ module dat_write #(
         if (bus_width_is_4_i) dat = '0;
         else                  dat = 4'b1110;
 
-        if (sd_clk_en_p_i) begin
-          counter_d       = '0;
-          buffered_data_d = data_i;
-          end_bit_err_d   = '0;
-          status_d        = 0;
-        end
+        buffered_data_d = data_i;
+        end_bit_err_d   = '0;
+        status_d        = 0;
       end
       DAT: begin
-        if (sd_clk_en_p_i) counter_d = counter_q + 1;
-        shift_out_crc = 1'b0;
-        dat_en_o = '1;
+        counter_d     = counter_q + 1;
+        shift_out_crc = '0;
 
+        dat_en_o = '1;
         if (bus_width_is_4_i) begin
           // Bus width = 4
-          if (sd_clk_en_p_i) begin
-            if (counter_q[2:0] == '0) begin
-              next_word_o = 1'b1;
-            end
+          if (counter_q[2:0] == '0) begin
+            next_word_o = sd_clk_en_p_i;
+          end
 
-            if (counter_q[2:0] == '1) begin
-              buffered_data_d = data_i;
-            end else if (counter_q[0] == '1) begin
-              buffered_data_d = { 8'b0, buffered_data_q[31:8] };
-            end
+          if (counter_q[2:0] == '1) begin
+            buffered_data_d = data_i;
+          end else if (counter_q[0] == '1) begin
+            buffered_data_d = { 8'b0, buffered_data_q[31:8] };
           end
 
           if (counter_q[0] == '0) begin
@@ -155,25 +148,24 @@ module dat_write #(
         end else begin
           // Bus width = 1
 
-          if (sd_clk_en_p_i) begin
-            if (counter_q[4:0] == '0) begin
-              next_word_o = 1'b1;
-            end
+          if (counter_q[4:0] == '0) begin
+            next_word_o = sd_clk_en_p_i;
+          end
 
-            if (counter_q[4:0] == '1) begin
-              buffered_data_d = data_i;
-            end else if (counter_q[2:0] == '1) begin
-              buffered_data_d = { 8'b0, buffered_data_q[31:8] };
-            end else begin
-              buffered_data_d[7:0] = { buffered_data_q[6:0], 1'b0 };
-            end
+          if (counter_q[4:0] == '1) begin
+            buffered_data_d = data_i;
+          end else if (counter_q[2:0] == '1) begin
+            buffered_data_d = { 8'b0, buffered_data_q[31:8] };
+          end else begin
+            buffered_data_d[7:0] = { buffered_data_q[6:0], 1'b0 };
           end
 
           dat = { 3'b111, buffered_data_q[7] };
         end
       end
       CRC: begin
-        if (sd_clk_en_p_i) counter_d = counter_q + 1;
+        counter_d = counter_q + 1;
+        shift_out_crc = '1;
 
         dat_en_o = '1;
         if (bus_width_is_4_i) begin
@@ -184,27 +176,20 @@ module dat_write #(
       end
       END_BIT: begin
         dat_en_o = '1;
-        dat    = '1;
-
-        counter_d = '0;
+        dat      = '1;
       end
 
-      BUS_SWITCH: if (sd_clk_en_p_i) counter_d = counter_q + 1;
+      BUS_SWITCH: counter_d = counter_q + 1;
 
-      STATUS_START_BIT: begin
-        if (sd_clk_en_p_i && dat0_i != '0) end_bit_err_d = '1;
-        counter_d = '0;
-      end
+      STATUS_START_BIT: if (dat0_i != '0) end_bit_err_d = '1;
       STATUS: begin
-        if (sd_clk_en_p_i) begin
-          counter_d = counter_q + 1;
-          status_d = { status_q[1:0], dat0_i };
-        end
+        counter_d = counter_q + 1;
+        status_d = { status_q[1:0], dat0_i };
       end
-      STATUS_END_BIT: if (sd_clk_en_p_i && dat0_i != '1) end_bit_err_d = '1;
+      STATUS_END_BIT: if (dat0_i != '1) end_bit_err_d = '1;
 
       DONE: begin
-        done_o        = '1;
+        done_o        = sd_clk_en_p_i;
         end_bit_err_o = end_bit_err_q;
         crc_err_o     = status_q != 3'b010;
       end

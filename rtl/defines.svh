@@ -7,4 +7,7 @@
     logic de;                \
   }
 
+`define ila(__name, __signal)  \
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [$bits(__signal)-1:0] __name; \
+  assign __name = __signal;
 `endif
