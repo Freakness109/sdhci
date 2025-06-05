@@ -1372,7 +1372,7 @@ module sdhci_reg_top #(
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RW"),
-    .RESVAL  (1'h1)
+    .RESVAL  (1'h0)
   ) u_host_control_data_transfer_width (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -4790,5 +4790,4 @@ module sdhci_reg_top_intf
   );
   
 endmodule
-
 
