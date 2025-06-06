@@ -120,6 +120,8 @@ module dat_wrap #(
   logic read_run_timeout;
   always_comb begin
 
+    buffer_data_port_d_o = 32'b0;
+
     first_block_d = first_block_q;
 
     read_run_timeout = '0;
