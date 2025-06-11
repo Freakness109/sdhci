@@ -1,5 +1,6 @@
 `include "common_cells/registers.svh"
 `include "common_cells/assertions.svh"
+`include "defines.svh"
 
 module dat_buffer #(
   parameter int unsigned NumWords        = 256,
