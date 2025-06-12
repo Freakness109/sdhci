@@ -3,7 +3,6 @@
 
 `include "common_cells/registers.svh"
 
-//Untested!
 module par_ser_shift_reg #(
   parameter int unsigned  NumBits     = 40,   //Number of bits
   parameter bit           ShiftInVal  = 0     //value to be shifted in, unimportant
@@ -13,7 +12,7 @@ module par_ser_shift_reg #(
   input   logic rst_ni,
 
   input   logic par_write_en_i, //write data in parallel to shift register
-  input   logic shift_en_i,     //enable shifting, non-latching!s
+  input   logic shift_en_i,     //enable shifting, non-latching!
 
   input   logic [NumBits-1:0] dat_par_i,
   output  logic               dat_ser_o
@@ -28,11 +27,11 @@ module par_ser_shift_reg #(
     end
     else if (shift_en_i) begin : shift_data
       dat_d[NumBits-1:1] = dat_q[NumBits-2:0];
-      dat_d[0] = ShiftInVal;  //fill with ShiftInVal
+      dat_d[0] = ShiftInVal;  //backfill with ShiftInVal
     end
   end
   
-  `FFL (dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
+  `FFL(dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
 
   //output assignment
   assign dat_ser_o = dat_q[NumBits-1];

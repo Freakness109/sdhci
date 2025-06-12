@@ -179,26 +179,20 @@ module user_sdhci #(
     .sd_rsp_done_o     (sd_rsp_done),
     .sd_cmd_dat_busy_o (sd_cmd_dat_busy),
 
-    .hw2reg_response0_d  (hw2reg.response0.d),
-    .hw2reg_response1_d  (hw2reg.response1.d),
-    .hw2reg_response2_d  (hw2reg.response2.d),
-    .hw2reg_response3_d  (hw2reg.response3.d),
-    .hw2reg_response0_de (hw2reg.response0.de),
-    .hw2reg_response1_de (hw2reg.response1.de),
-    .hw2reg_response2_de (hw2reg.response2.de),
-    .hw2reg_response3_de (hw2reg.response3.de),
-    .hw2reg_present_state_command_inhibit_cmd_d             (hw2reg.present_state.command_inhibit_cmd.d),
-    .hw2reg_present_state_command_inhibit_cmd_de            (hw2reg.present_state.command_inhibit_cmd.de),
-    .hw2reg_error_interrupt_status_command_end_bit_error_d  (hw2reg.error_interrupt_status.command_end_bit_error.d),
-    .hw2reg_error_interrupt_status_command_end_bit_error_de (hw2reg.error_interrupt_status.command_end_bit_error.de),
-    .hw2reg_error_interrupt_status_command_crc_error_d      (hw2reg.error_interrupt_status.command_crc_error.d),
-    .hw2reg_error_interrupt_status_command_crc_error_de     (hw2reg.error_interrupt_status.command_crc_error.de),
-    .hw2reg_error_interrupt_status_command_index_error_d    (hw2reg.error_interrupt_status.command_index_error.d),
-    .hw2reg_error_interrupt_status_command_index_error_de   (hw2reg.error_interrupt_status.command_index_error.de),
-    .hw2reg_error_interrupt_status_command_timeout_error_d  (hw2reg.error_interrupt_status.command_timeout_error.d),
-    .hw2reg_error_interrupt_status_command_timeout_error_de (hw2reg.error_interrupt_status.command_timeout_error.de),
-
-    .auto_cmd12_errors_o     (hw2reg.auto_cmd12_error_status)
+    .response0_d_o  (hw2reg.response0.d),
+    .response1_d_o  (hw2reg.response1.d),
+    .response2_d_o  (hw2reg.response2.d),
+    .response3_d_o  (hw2reg.response3.d),
+    .response0_de_o (hw2reg.response0.de),
+    .response1_de_o (hw2reg.response1.de),
+    .response2_de_o (hw2reg.response2.de),
+    .response3_de_o (hw2reg.response3.de),
+    .command_inhibit_cmd_o    (hw2reg.present_state.command_inhibit_cmd),
+    .command_end_bit_error_o  (hw2reg.error_interrupt_status.command_end_bit_error),
+    .command_crc_error_o      (hw2reg.error_interrupt_status.command_crc_error),
+    .command_index_error_o    (hw2reg.error_interrupt_status.command_index_error),
+    .command_timeout_error_o  (hw2reg.error_interrupt_status.command_timeout_error),
+    .auto_cmd12_errors_o      (hw2reg.auto_cmd12_error_status)
   );
 
 

@@ -4,24 +4,27 @@
 
 `include "common_cells/registers.svh"
 
-//Untested!
 module crc7_write (
   input   logic clk_i,
   input   logic clk_en_i,
   input   logic rst_ni,
 
   input   logic shift_out_crc7_i,
+  input   logic input_en_i, //enable for data_ser_i
   input   logic dat_ser_i,
   output  logic crc_ser_o
 );
   logic [2:0] lower_3_d, lower_3_q;
   logic [3:0] upper_4_d, upper_4_q;
-  logic       dat_i_xor_out;
+  logic dat_ser;
+  logic dat_i_xor_out;
+
+  assign dat_ser = (input_en_i) ? dat_ser_i : 1'b0; //unnecessary in current implementation, but seems wise
+  assign dat_i_xor_out = (dat_ser ^ crc_ser_o);
 
   always_comb begin : crc7_comb
     lower_3_d = lower_3_q;
     upper_4_d = upper_4_q;
-    dat_i_xor_out = 1'b0;
     
     if (shift_out_crc7_i) begin : shift_out_result
       upper_4_d[3:1]  = upper_4_q[2:0];
@@ -29,7 +32,6 @@ module crc7_write (
       lower_3_d[2:1]  = lower_3_q[1:0];
       lower_3_d[0]    = 1'b0; //Fill with zeros while shifting out crc; no reset needed?
     end else begin : calc_crc7
-      dat_i_xor_out   = (dat_ser_i ^ upper_4_q[3]);
       upper_4_d[3:1]  = upper_4_q[2:0];
       upper_4_d[0]    = (lower_3_q[2] ^ dat_i_xor_out);
       lower_3_d[2:1]  = lower_3_q[1:0];

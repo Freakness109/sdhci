@@ -3,7 +3,6 @@
 
 `include "common_cells/registers.svh"
 
-//Untested!
 module ser_par_shift_reg #(
   parameter int unsigned  NumBits     = 48,
   parameter bit           MaskOutput  = 0  //if output is masked with zeros during shifting, if 1, par_output_en_i is needed.
@@ -29,11 +28,11 @@ module ser_par_shift_reg #(
     end
   end
 
-  `FFL (dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
+  `FFL(dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
 
   generate
     if (MaskOutput) begin
-      assign  dat_par_o = (par_output_en_i) ?  dat_q : '0;
+      assign  dat_par_o = (par_output_en_i) ? dat_q : '0;
     end else begin
       assign  dat_par_o = dat_q;
     end
