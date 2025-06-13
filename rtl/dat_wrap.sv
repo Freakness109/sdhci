@@ -36,6 +36,14 @@ module dat_wrap #(
   output `writable_reg_t([15:0]) block_count_o
 );
 
+  logic buffer_write_ready, buffer_write_valid, buffer_read_ready, buffer_read_valid, buffer_empty;
+  logic [31:0] buffer_write_data, buffer_read_data;
+  logic start_read, read_valid, read_done, read_crc_err, read_end_bit_err, read_timeout;
+  logic write_done;
+
+  logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
+  `FF (transmitted_block_counter_q, transmitted_block_counter_d, '0);
+
   typedef enum logic [3:0] {
     READY,
 
@@ -109,20 +117,15 @@ module dat_wrap #(
       default: state_d = READY;
     endcase
   end
-  
-  logic [MaxBlockBitSize-1:0] reg_start_length_q, reg_start_length_d;
-  `FF (reg_start_length_q, reg_start_length_d, '0, clk_i, rst_ni)
 
   logic [MaxBlockBitSize-1:0] block_size;
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
-  logic rsp_done_q, rsp_done_d;
-  `FF (rsp_done_q, rsp_done_d, '0, clk_i, rst_ni);
-
-  logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
-  `FF (transmitted_block_counter_q, transmitted_block_counter_d, '0)
-
+  
   logic read_run_timeout;
+  logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
+  logic [31:0] write_data, read_data;
+
   always_comb begin
     read_run_timeout = '0;
 
@@ -229,7 +232,6 @@ module dat_wrap #(
   end
   
   // Read timeout
-  logic read_timeout;
   dat_read_timeout i_read_timeout (
     .clk_i,
     .rst_ni,
@@ -240,10 +242,7 @@ module dat_wrap #(
     .timeout_o      (read_timeout)
   );
 
-
-  logic buffer_write_operation, buffer_read_operation;
-  logic buffer_write_ready, buffer_write_valid, buffer_read_ready, buffer_read_valid, buffer_empty;
-  logic [31:0] buffer_write_data, buffer_read_data;
+  
   dat_buffer #(
     .NumWords        (256), // = 1024, Just enough to double buffer 512 byte blocks
     .MaxBlockBitSize (MaxBlockBitSize)
@@ -271,8 +270,6 @@ module dat_wrap #(
     .block_count_o
   );
 
-  logic start_read, read_valid, read_done, read_crc_err, read_end_bit_err;
-  logic [31:0] read_data;
   dat_read #(
     .MaxBlockBitSize (MaxBlockBitSize)
   ) i_read (
@@ -293,8 +290,6 @@ module dat_wrap #(
     .end_bit_err_o (read_end_bit_err)
   );
 
-  logic start_write, write_requests_next_word, write_done, write_crc_err, write_end_bit_err;
-  logic [31:0] write_data;
   dat_write #(
     .MaxBlockBitSize (MaxBlockBitSize)
   ) i_write (

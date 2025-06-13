@@ -292,7 +292,7 @@ module cmd_wrap (
   end : start_tx_cdc
 
 
-  logic [31:0] rsp_0, rsp_1, rsp_2, rsp_3;
+  logic [31:0] rsp0, rsp1, rsp2, rsp3;
   logic [119:0] rsp;
   logic long_rsp;
 
@@ -302,34 +302,34 @@ module cmd_wrap (
 
   always_comb begin : rsp_assignment
 
-    rsp_0 = reg2hw.response0.q;
-    rsp_1 = reg2hw.response1.q;
-    rsp_2 = reg2hw.response2.q;
-    rsp_3 = reg2hw.response3.q;
+    rsp0 = reg2hw.response0.q;
+    rsp1 = reg2hw.response1.q;
+    rsp2 = reg2hw.response2.q;
+    rsp3 = reg2hw.response3.q;
     update_rsp_reg  = 1'b0; //only update response register when there was a response
 
     if (running_cmd12_q) begin //auto cmd 12 response goes to upper word of rsp register
-        rsp_3 = rsp [31:0];
+        rsp3 = rsp [31:0];
     end else begin
       
       unique case (reg2hw.command.response_type_select.q)
         2'b00:;      //no response
 
         2'b01:  begin //long response
-          rsp_0 = rsp [31:0];
-          rsp_1 = rsp [63:32];
-          rsp_2 = rsp [95:64];
-          rsp_3 [23:0]  = rsp [119:96]; //save bits 31:24 of rsp_3
+          rsp0 = rsp [31:0];
+          rsp1 = rsp [63:32];
+          rsp2 = rsp [95:64];
+          rsp3 [23:0]  = rsp [119:96]; //save bits 31:24 of rsp3
           update_rsp_reg = 1'b1;
         end 
 
         2'b10:  begin //short response without busy signaling
-          rsp_0 = rsp [31:0];
+          rsp0 = rsp [31:0];
           update_rsp_reg = 1'b1;
         end
 
         2'b11:  begin //short response with busy signaling
-          rsp_0 = rsp [31:0];
+          rsp0 = rsp [31:0];
           update_rsp_reg = 1'b1;
         end
 
@@ -337,10 +337,10 @@ module cmd_wrap (
       endcase
     end
 
-    response0_d_o  = rsp_0;
-    response1_d_o  = rsp_1;
-    response2_d_o  = rsp_2;
-    response3_d_o  = rsp_3;
+    response0_d_o  = rsp0;
+    response1_d_o  = rsp1;
+    response2_d_o  = rsp2;
+    response3_d_o  = rsp3;
 
     response0_de_o = (update_rsp_reg & rsp_valid & clk_en_p_i);
     response1_de_o = (update_rsp_reg & rsp_valid & clk_en_p_i);

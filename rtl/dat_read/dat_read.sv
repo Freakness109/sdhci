@@ -4,7 +4,7 @@
 // theres always atleast 7 cycles between every data_valid_o
 
 module dat_read #(
-  parameter int MaxBlockBitSize
+  parameter int MaxBlockBitSize = 10
 ) (
   input  logic       clk_i,
   input  logic       sd_clk_en_i,

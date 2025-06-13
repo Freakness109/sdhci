@@ -13,7 +13,7 @@ module crc16_read (
   logic [4:0] lower_5_d,  lower_5_q;
   logic [6:0] middle_7_d, middle_7_q;
   logic [3:0] upper_4_d,  upper_4_q;
-  logic int_rst_n, dat_i_xor_out;
+  logic dat_i_xor_out;
 
   always_comb begin : crc_data_path
     crc16_o       = { upper_4_q, middle_7_q, lower_5_q };

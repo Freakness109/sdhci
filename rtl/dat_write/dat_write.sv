@@ -3,7 +3,7 @@
 `include "common_cells/registers.svh"
 
 module dat_write #(
-  parameter int MaxBlockBitSize
+  parameter int MaxBlockBitSize = 10
 ) (
   input  logic       clk_i,
   input  logic       sd_clk_en_p_i,
@@ -96,6 +96,9 @@ module dat_write #(
   `FFL(dat_divn, dat, sd_clk_en_n_i, 4'b1, clk_i, rst_ni);
 
   assign dat_o = (div_1_i)  ? dat_div1 :  dat_divn; 
+
+  logic shift_out_crc;
+  logic [3:0] crc;
 
   always_comb begin : dat_write_datapath
     dat_en_o = '0;
@@ -197,8 +200,6 @@ module dat_write #(
     endcase
   end
 
-  logic [3:0] crc;
-  logic shift_out_crc;
   for (genvar i=0; i<4 ; i++) begin
     crc16_write i_crc16_write (
       .clk_i,

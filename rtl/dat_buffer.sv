@@ -4,7 +4,7 @@
 
 module dat_buffer #(
   parameter int unsigned NumWords        = 256,
-  parameter int unsigned MaxBlockBitSize
+  parameter int unsigned MaxBlockBitSize = 10
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -38,13 +38,22 @@ module dat_buffer #(
   logic [MaxBlockBitSize-1:0] current_word_counter_q, current_word_counter_d;
   `FF (current_word_counter_q, current_word_counter_d, '0);
 
+  logic reg_empty;
   assign empty_o = reg_empty;
+
+  logic [cf_math_pkg::idx_width(NumWords + 1)-1:0] reg_length;
+  logic [cf_math_pkg::idx_width(NumBytes + 1)-1:0] reg_remaining_bytes;
+  assign reg_remaining_bytes = {cf_math_pkg::idx_width(NumBytes + 1)}'(NumBytes - reg_length * 4);
 
   logic has_block, has_space;
   assign has_space = reg_remaining_bytes >= block_size;
   assign has_block = reg_length * 4 >= block_size;
 
+  logic enable_reg;
   assign enable_reg = read_operation_i || write_operation_i;
+
+  logic reg_full, reg_push, reg_pop;
+  logic [31:0] reg_push_data, reg_pop_data;
 
   always_comb begin
     reg_push      = '0;
@@ -102,12 +111,6 @@ module dat_buffer #(
     end
   end
 
-  logic [cf_math_pkg::idx_width(NumBytes + 1)-1:0] reg_remaining_bytes;
-  assign reg_remaining_bytes = {cf_math_pkg::idx_width(NumBytes + 1)}'(NumBytes - reg_length * 4);
-
-  logic [cf_math_pkg::idx_width(NumWords + 1)-1:0] reg_length;
-  logic enable_reg, reg_empty, reg_full, reg_push, reg_pop;
-  logic [31:0] reg_push_data, reg_pop_data;
 
   sram_shift_reg #(
     .NumWords (NumWords)
