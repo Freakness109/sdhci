@@ -81,6 +81,8 @@ module user_sdhci #(
     .hw2reg
   );
 
+  logic  sd_cmd_dat_busy;
+
   sdhci_reg_logic i_sdhci_reg_logic (
     .clk_i,
     .rst_ni     (sd_rst_n),
@@ -159,7 +161,7 @@ module user_sdhci #(
   assign hw2reg.present_state.card_detect_pin_level          = '{ de: '1, d: '1 }; // TODO ?
 
 
-  logic sd_cmd_done, sd_rsp_done, sd_cmd_dat_busy, request_cmd12;
+  logic sd_cmd_done, sd_rsp_done, request_cmd12;
 
   cmd_wrap  i_cmd_wrap (
     .clk_i           (clk_i),
