@@ -11,10 +11,10 @@
 `define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
 
 module user_sdhci #(
-  parameter obi_pkg::obi_cfg_t ObiCfg      = obi_pkg::ObiDefaultConfig,
-  parameter type               obi_req_t   = logic,
-  parameter type               obi_rsp_t   = logic,
-  
+  parameter int unsigned AddrWidth = 32'd32,
+  parameter type               reg_req_t   = logic,
+  parameter type               reg_rsp_t   = logic,
+
   //sw handles clock division. However, largest base freq. accepted is 63MHz!
   //-> internal clock predivider to get below 63MHz
   //only power of 2 dividers allowed :(
@@ -25,18 +25,17 @@ module user_sdhci #(
   input  logic clk_i,
   input  logic rst_ni,
 
-  input  obi_req_t obi_req_i,
-  output obi_rsp_t obi_rsp_o,
+  input  reg_req_t reg_req_i,
+  output reg_rsp_t reg_rsp_o,
 
-  output  logic sd_clk_o,
+  output logic       sd_clk_o,
+  output logic       sd_cmd_en_o,
+  output logic       sd_cmd_o,
+  input  logic       sd_cmd_i,
 
-  input  logic sd_cmd_i,
-  output logic sd_cmd_o,
-  output logic sd_cmd_en_o,
-
-  input  logic [3:0] sd_dat_i,
-  output logic [3:0] sd_dat_o,
   output logic       sd_dat_en_o,
+  output logic [3:0] sd_dat_o,
+  input  logic [3:0] sd_dat_i,
 
   output logic interrupt_o
   
@@ -79,17 +78,18 @@ module user_sdhci #(
   end
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  sdhci_reg_obi #(
-    .ObiCfg    (ObiCfg),
-    .obi_req_t (obi_req_t),
-    .obi_rsp_t (obi_rsp_t)
+  sdhci_reg_top #(
+    .AW        (AddrWidth),
+    .reg_req_t (reg_req_t),
+    .reg_rsp_t (reg_rsp_t)
   ) i_regs (
     .clk_i,
-    .rst_ni (sd_rst_n),
-    .obi_req_i,
-    .obi_rsp_o,
-    .reg2hw (reg2hw_orig),
-    .hw2reg
+    .rst_ni    (sd_rst_n),
+    .reg_req_i,
+    .reg_rsp_o,
+    .reg2hw    (reg2hw_orig),
+    .hw2reg,
+    .devmode_i (1'b1)
   );
 
   logic  sd_cmd_dat_busy;
@@ -149,7 +149,7 @@ module user_sdhci #(
     .div_1_o         (div_1),
     .sd_clk_stable_o (hw2reg.clock_control.internal_clock_stable)
   );
-
+  
   assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: sd_dat_i };
   assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: sd_cmd_i };
 
