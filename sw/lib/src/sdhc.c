@@ -827,7 +827,7 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 	while ((status & mask) == 0) {
 
 		status = HREAD2(hp, SDHC_NINTR_STATUS);
-		DPRINTF(0, ("sdhc_wait_intr status: %x, mask: %x\n", status, mask));
+		DPRINTF(1, ("sdhc_wait_intr status: %x, mask: %x\n", status, mask));
 		if (ISSET(status, SDHC_NINTR_STATUS_MASK)) {
 			HWRITE2(hp, SDHC_NINTR_STATUS, status);
 
