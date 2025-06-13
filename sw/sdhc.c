@@ -6,13 +6,16 @@
 // - Philippe Sauter <phsauter@iis.ee.ethz.ch>
 
 #include "uart.h"
-#include "print.h"
-#include "timer.h"
-#include "gpio.h"
+#include "printf.h"
 #include "util.h"
 
 #include "sdmmcvar.h"
 #include "sdhcvar.h"
+
+#include "regs/cheshire.h"
+#include "params.h"
+
+#define SDHCI_BASE_ADDR 0x0300a000
 
 struct sdmmc_softc sc = { 0 };
 struct sdhc_host hp = { 0 };
@@ -75,7 +78,9 @@ int test_rw(int size, unsigned int seed) {
 }
 
 int main() {
-    uart_init(); // setup the uart peripheral
+    uint32_t rtc_freq = *reg32(&__base_regs, CHESHIRE_RTC_FREQ_REG_OFFSET);
+    uint64_t reset_freq = clint_get_core_freq(rtc_freq, 2500);
+    uart_init(&__base_uart, reset_freq, 1000000);
     
     printf("Hello world!\n");
     uart_write_flush();
@@ -111,7 +116,7 @@ int main() {
     }
 #endif
 
-    ASSERT_OK(sdhc_bus_clock(sc.sch, SDMMC_SDCLK_25MHZ, SDMMC_TIMING_LEGACY));
+    ASSERT_OK(sdhc_bus_clock(sc.sch, SDMMC_SDCLK_50MHZ, SDMMC_TIMING_LEGACY));
 
 #ifdef WITH_SD_MODEL
     ASSERT_OK(sdmmc_mem_set_blocklen(&sc, &sc.sc_card));
@@ -125,7 +130,7 @@ int main() {
     // TODO half block rw?
 
     printf("\n");
-    uart_write_flush();
+    uart_write_flush(&__base_uart);
 
     return 1;
 }

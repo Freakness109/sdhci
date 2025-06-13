@@ -26,7 +26,7 @@
 #include "sdmmcreg.h"
 #include "sdmmcvar.h"
 
-#include "timer.h"
+#include "clint.h"
 
 int	sdmmc_enable(struct sdmmc_softc *);
 void	sdmmc_disable(struct sdmmc_softc *);
@@ -246,7 +246,7 @@ sdmmc_scan(struct sdmmc_softc *sc)
 void
 sdmmc_delay(u_int usecs)
 {
-	sleep_ms(usecs / 1000);
+	clint_spin_ticks(usecs * 32);
 }
 
 int
