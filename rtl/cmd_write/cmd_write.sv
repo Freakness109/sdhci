@@ -110,6 +110,7 @@ module cmd_write (
         tx_ongoing_d = 1'b0;
       end
 
+      default: ;
     endcase
   end : cmd_tx_datapath
 

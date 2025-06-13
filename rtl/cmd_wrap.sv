@@ -108,8 +108,6 @@ module cmd_wrap (
   assign check_index_err     = reg2hw.error_interrupt_status_enable.command_index_error_status_enable.q & reg2hw.command.command_index_check_enable.q;
   assign check_timeout_error = reg2hw.error_interrupt_status_enable.command_timeout_error_status_enable.q;
 
-  assign index_err = (rsp [37:32] != command_index);
-
   
   always_comb begin : cmd_seq_ctrl
     start_listening = 1'b0;
@@ -180,6 +178,7 @@ module cmd_wrap (
         sd_rsp_done_o = 1'b1;
       end
 
+      default: ;
     endcase
   end : cmd_seq_ctrl
 
@@ -297,6 +296,7 @@ module cmd_wrap (
   logic [119:0] rsp;
   logic long_rsp;
 
+  assign index_err = (rsp [37:32] != command_index);
 
   logic update_rsp_reg;
 
