@@ -8,7 +8,14 @@
 module user_sdhci #(
   parameter obi_pkg::obi_cfg_t ObiCfg      = obi_pkg::ObiDefaultConfig,
   parameter type               obi_req_t   = logic,
-  parameter type               obi_rsp_t   = logic
+  parameter type               obi_rsp_t   = logic,
+  
+  //sw handles clock division. However, largest base freq. accepted is 63MHz!
+  //-> internal clock predivider to get below 63MHz
+  //only power of 2 dividers allowed :(
+  //input log2 of divider i.e div by 4 ->  ClkPreDivLog = 2
+  parameter int unsigned       ClkPreDivLog   = 0
+  //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -110,7 +117,9 @@ module user_sdhci #(
   );
 
   logic sd_clk, pause_sd_clk, sd_clk_en_p, sd_clk_en_n, div_1;
-  sd_clk_generator i_sd_clk_generator (
+  sd_clk_generator #(
+    .ClkPreDivLog (ClkPreDivLog)
+  ) i_sd_clk_generator (
     .clk_i,
     .rst_ni (sd_rst_n),
     .reg2hw_i (reg2hw),

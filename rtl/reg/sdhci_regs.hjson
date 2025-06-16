@@ -1195,7 +1195,7 @@
           bits: "13:8"
           name: "base_clock_frequency_for_sd_clock"
           desc: ""
-          resval: "0b011001" // 25Mhz
+          resval: "0b011001" // 25Mhz TODO: Change to next highest full MHz, max 63.
         }
         {
           bits: "7"
