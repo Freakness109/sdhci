@@ -113,6 +113,9 @@ module user_sdhci #(
     .transfer_complete_o (hw2reg.normal_interrupt_status.transfer_complete),
     .command_complete_o  (hw2reg.normal_interrupt_status.command_complete),
 
+    .card_removal_o    (hw2reg.normal_interrupt_status.card_removal),
+    .card_insertion_o  (hw2reg.normal_interrupt_status.card_insertion),
+
     .interrupt_o
   );
 

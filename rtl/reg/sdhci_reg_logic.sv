@@ -24,6 +24,9 @@ module sdhci_reg_logic (
   output `writable_reg_t() transfer_complete_o,
   output `writable_reg_t() command_complete_o,
 
+  output `writable_reg_t() card_removal_o,
+  output `writable_reg_t() card_insertion_o,
+
   output logic interrupt_o
 );
   `define did_get_set(register, field) ( \
@@ -50,34 +53,34 @@ module sdhci_reg_logic (
   logic interrupt_q, interrupt_d;
   `FF(interrupt_q, interrupt_d, '0, clk_i, rst_ni);
   assign interrupt_d =
-    `should_interrupt(normal_interrupt, card_interrupt    ) |
+    // `should_interrupt(normal_interrupt, card_interrupt    ) |
     `should_interrupt(normal_interrupt, card_removal      ) |
     `should_interrupt(normal_interrupt, card_insertion    ) |
     `should_interrupt(normal_interrupt, buffer_read_ready ) |
     `should_interrupt(normal_interrupt, buffer_write_ready) |
-    `should_interrupt(normal_interrupt, dma_interrupt     ) |
-    `should_interrupt(normal_interrupt, block_gap_event   ) |
+    // `should_interrupt(normal_interrupt, dma_interrupt     ) |
+    // `should_interrupt(normal_interrupt, block_gap_event   ) |
     `should_interrupt(normal_interrupt, transfer_complete ) |
     `should_interrupt(normal_interrupt, command_complete  ) |
 
     `should_interrupt(error_interrupt, auto_cmd12_error     ) |
-    `should_interrupt(error_interrupt, current_limit_error  ) |
+    // `should_interrupt(error_interrupt, current_limit_error  ) |
     `should_interrupt(error_interrupt, data_end_bit_error   ) |
     `should_interrupt(error_interrupt, data_crc_error       ) |
     `should_interrupt(error_interrupt, data_timeout_error   ) |
     `should_interrupt(error_interrupt, command_index_error  ) |
     `should_interrupt(error_interrupt, command_end_bit_error) |
     `should_interrupt(error_interrupt, command_crc_error    ) |
-    `should_interrupt(error_interrupt, command_timeout_error) |
-    `should_interrupt(error_interrupt, vendor_specific_error);
+    `should_interrupt(error_interrupt, command_timeout_error) /*|
+    `should_interrupt(error_interrupt, vendor_specific_error)*/;
 
   assign interrupt_o = interrupt_q;
 
   // Automatically write to Error Interrupt Status
   assign error_interrupt_o.d = rst_ni &
-    ((|`instant_reg_value(error_interrupt_status, vendor_specific_error)) |
+    (//(|`instant_reg_value(error_interrupt_status, vendor_specific_error)) |
        `instant_reg_value(error_interrupt_status, auto_cmd12_error     )  |
-       `instant_reg_value(error_interrupt_status, current_limit_error  )  |
+      //  `instant_reg_value(error_interrupt_status, current_limit_error  )  |
        `instant_reg_value(error_interrupt_status, data_end_bit_error   )  |
        `instant_reg_value(error_interrupt_status, data_crc_error       )  |
        `instant_reg_value(error_interrupt_status, data_timeout_error   )  |
@@ -103,7 +106,7 @@ module sdhci_reg_logic (
 
   assign buffer_write_ready_o.d = '1;
   assign buffer_write_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_write_enable);
-    
+
 
   assign dat_line_active_o.de = '1;
   assign dat_line_active_o.d = rst_dat_ni & (sd_cmd_dat_busy_i |
@@ -125,7 +128,16 @@ module sdhci_reg_logic (
 
   assign command_complete_o.d = '1;
   assign command_complete_o.de = rst_cmd_ni & `did_get_unset(present_state, command_inhibit_cmd);
+
+
+  assign card_insertion_o.d = '1;
+  assign card_insertion_o.de = rst_dat_ni & `did_get_set(present_state, card_inserted);
+
+  assign card_removal_o.d = '1;
+  assign card_removal_o.de = rst_dat_ni & `did_get_unset(present_state, card_inserted);
+    
   
+  // TODO slot interrupt
   // TODO ignore writes to transfer mode if command_inhibit_cmd is set
   // TODO ignore writes to block count and transfer block size when dat_line_ative is set
 endmodule

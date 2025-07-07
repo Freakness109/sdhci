@@ -417,10 +417,10 @@ module sdhci_reg_top #(
   logic [7:0] maximum_current_capabilities_maximum_current_for_1_8v_qs;
   logic [7:0] maximum_current_capabilities_rsvd_24_qs;
   logic [31:0] maximum_current_capabilities_reserved_qs;
-  logic [7:0] slot_interrupt_status_register_interrupt_signal_for_each_slot_qs;
-  logic [7:0] slot_interrupt_status_register_rsvd_8_qs;
-  logic [7:0] host_controller_version_register_specification_version_number_qs;
-  logic [7:0] host_controller_version_register_vendor_version_number_qs;
+  logic [7:0] slot_interrupt_status_interrupt_signal_for_each_slot_qs;
+  logic [7:0] slot_interrupt_status_rsvd_8_qs;
+  logic [7:0] host_controller_version_specification_version_number_qs;
+  logic [7:0] host_controller_version_vendor_version_number_qs;
 
   // Register instances
   // R[system_address]: V(False)
@@ -438,12 +438,12 @@ module sdhci_reg_top #(
     .wd     (system_address_wd),
 
     // from internal hardware
-    .de     (hw2reg.system_address.de),
-    .d      (hw2reg.system_address.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.system_address.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (system_address_qs)
@@ -466,8 +466,8 @@ module sdhci_reg_top #(
     .wd     (block_size_transfer_block_size_wd),
 
     // from internal hardware
-    .de     (hw2reg.block_size.transfer_block_size.de),
-    .d      (hw2reg.block_size.transfer_block_size.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -492,8 +492,8 @@ module sdhci_reg_top #(
     .wd     (block_size_host_dma_buffer_boundary_wd),
 
     // from internal hardware
-    .de     (hw2reg.block_size.host_dma_buffer_boundary.de),
-    .d      (hw2reg.block_size.host_dma_buffer_boundary.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -551,8 +551,8 @@ module sdhci_reg_top #(
     .wd     (argument_wd),
 
     // from internal hardware
-    .de     (hw2reg.argument.de),
-    .d      (hw2reg.argument.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -579,8 +579,8 @@ module sdhci_reg_top #(
     .wd     (transfer_mode_dma_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.transfer_mode.dma_enable.de),
-    .d      (hw2reg.transfer_mode.dma_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -605,8 +605,8 @@ module sdhci_reg_top #(
     .wd     (transfer_mode_block_count_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.transfer_mode.block_count_enable.de),
-    .d      (hw2reg.transfer_mode.block_count_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -631,8 +631,8 @@ module sdhci_reg_top #(
     .wd     (transfer_mode_auto_cmd12_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.transfer_mode.auto_cmd12_enable.de),
-    .d      (hw2reg.transfer_mode.auto_cmd12_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -662,8 +662,8 @@ module sdhci_reg_top #(
     .wd     (transfer_mode_data_transfer_direction_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.transfer_mode.data_transfer_direction_select.de),
-    .d      (hw2reg.transfer_mode.data_transfer_direction_select.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -688,8 +688,8 @@ module sdhci_reg_top #(
     .wd     (transfer_mode_multi_single_block_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.transfer_mode.multi_single_block_select.de),
-    .d      (hw2reg.transfer_mode.multi_single_block_select.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -726,8 +726,8 @@ module sdhci_reg_top #(
     .wd     (command_response_type_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.command.response_type_select.de),
-    .d      (hw2reg.command.response_type_select.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.command.response_type_select.qe),
@@ -757,8 +757,8 @@ module sdhci_reg_top #(
     .wd     (command_command_crc_check_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.command.command_crc_check_enable.de),
-    .d      (hw2reg.command.command_crc_check_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.command.command_crc_check_enable.qe),
@@ -783,8 +783,8 @@ module sdhci_reg_top #(
     .wd     (command_command_index_check_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.command.command_index_check_enable.de),
-    .d      (hw2reg.command.command_index_check_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.command.command_index_check_enable.qe),
@@ -809,8 +809,8 @@ module sdhci_reg_top #(
     .wd     (command_data_present_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.command.data_present_select.de),
-    .d      (hw2reg.command.data_present_select.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.command.data_present_select.qe),
@@ -835,8 +835,8 @@ module sdhci_reg_top #(
     .wd     (command_command_type_wd),
 
     // from internal hardware
-    .de     (hw2reg.command.command_type.de),
-    .d      (hw2reg.command.command_type.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.command.command_type.qe),
@@ -861,8 +861,8 @@ module sdhci_reg_top #(
     .wd     (command_command_index_wd),
 
     // from internal hardware
-    .de     (hw2reg.command.command_index.de),
-    .d      (hw2reg.command.command_index.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.command.command_index.qe),
@@ -1356,8 +1356,8 @@ module sdhci_reg_top #(
     .wd     (host_control_led_control_wd),
 
     // from internal hardware
-    .de     (hw2reg.host_control.led_control.de),
-    .d      (hw2reg.host_control.led_control.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1382,8 +1382,8 @@ module sdhci_reg_top #(
     .wd     (host_control_data_transfer_width_wd),
 
     // from internal hardware
-    .de     (hw2reg.host_control.data_transfer_width.de),
-    .d      (hw2reg.host_control.data_transfer_width.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1408,8 +1408,8 @@ module sdhci_reg_top #(
     .wd     (host_control_high_speed_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.host_control.high_speed_enable.de),
-    .d      (hw2reg.host_control.high_speed_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1441,8 +1441,8 @@ module sdhci_reg_top #(
     .wd     (power_control_sd_bus_power_wd),
 
     // from internal hardware
-    .de     (hw2reg.power_control.sd_bus_power.de),
-    .d      (hw2reg.power_control.sd_bus_power.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1467,8 +1467,8 @@ module sdhci_reg_top #(
     .wd     (power_control_sd_bus_voltage_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.power_control.sd_bus_voltage_select.de),
-    .d      (hw2reg.power_control.sd_bus_voltage_select.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1500,8 +1500,8 @@ module sdhci_reg_top #(
     .wd     (block_gap_control_stop_at_block_gap_request_wd),
 
     // from internal hardware
-    .de     (hw2reg.block_gap_control.stop_at_block_gap_request.de),
-    .d      (hw2reg.block_gap_control.stop_at_block_gap_request.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1526,8 +1526,8 @@ module sdhci_reg_top #(
     .wd     (block_gap_control_continue_request_wd),
 
     // from internal hardware
-    .de     (hw2reg.block_gap_control.continue_request.de),
-    .d      (hw2reg.block_gap_control.continue_request.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1552,8 +1552,8 @@ module sdhci_reg_top #(
     .wd     (block_gap_control_read_wait_control_wd),
 
     // from internal hardware
-    .de     (hw2reg.block_gap_control.read_wait_control.de),
-    .d      (hw2reg.block_gap_control.read_wait_control.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1578,8 +1578,8 @@ module sdhci_reg_top #(
     .wd     (block_gap_control_interrupt_at_block_gap_wd),
 
     // from internal hardware
-    .de     (hw2reg.block_gap_control.interrupt_at_block_gap.de),
-    .d      (hw2reg.block_gap_control.interrupt_at_block_gap.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1611,8 +1611,8 @@ module sdhci_reg_top #(
     .wd     (wakeup_control_wakeup_event_enable_on_card_interrupt_wd),
 
     // from internal hardware
-    .de     (hw2reg.wakeup_control.wakeup_event_enable_on_card_interrupt.de),
-    .d      (hw2reg.wakeup_control.wakeup_event_enable_on_card_interrupt.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1637,8 +1637,8 @@ module sdhci_reg_top #(
     .wd     (wakeup_control_wakeup_event_enable_on_sd_card_insertion_wd),
 
     // from internal hardware
-    .de     (hw2reg.wakeup_control.wakeup_event_enable_on_sd_card_insertion.de),
-    .d      (hw2reg.wakeup_control.wakeup_event_enable_on_sd_card_insertion.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1663,8 +1663,8 @@ module sdhci_reg_top #(
     .wd     (wakeup_control_wakeup_event_enable_on_sd_card_removal_wd),
 
     // from internal hardware
-    .de     (hw2reg.wakeup_control.wakeup_event_enable_on_sd_card_removal.de),
-    .d      (hw2reg.wakeup_control.wakeup_event_enable_on_sd_card_removal.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1696,8 +1696,8 @@ module sdhci_reg_top #(
     .wd     (clock_control_internal_clock_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.clock_control.internal_clock_enable.de),
-    .d      (hw2reg.clock_control.internal_clock_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.clock_control.internal_clock_enable.qe),
@@ -1747,8 +1747,8 @@ module sdhci_reg_top #(
     .wd     (clock_control_sd_clock_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.clock_control.sd_clock_enable.de),
-    .d      (hw2reg.clock_control.sd_clock_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.clock_control.sd_clock_enable.qe),
@@ -1778,8 +1778,8 @@ module sdhci_reg_top #(
     .wd     (clock_control_sdclk_frequency_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.clock_control.sdclk_frequency_select.de),
-    .d      (hw2reg.clock_control.sdclk_frequency_select.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (reg2hw.clock_control.sdclk_frequency_select.qe),
@@ -1806,8 +1806,8 @@ module sdhci_reg_top #(
     .wd     (timeout_control_data_timeout_counter_value_wd),
 
     // from internal hardware
-    .de     (hw2reg.timeout_control.data_timeout_counter_value.de),
-    .d      (hw2reg.timeout_control.data_timeout_counter_value.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1839,8 +1839,8 @@ module sdhci_reg_top #(
     .wd     (software_reset_software_reset_for_all_wd),
 
     // from internal hardware
-    .de     (hw2reg.software_reset.software_reset_for_all.de),
-    .d      (hw2reg.software_reset.software_reset_for_all.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -1976,12 +1976,12 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_block_gap_event_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status.block_gap_event.de),
-    .d      (hw2reg.normal_interrupt_status.block_gap_event.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.normal_interrupt_status.block_gap_event.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (normal_interrupt_status_block_gap_event_qs)
@@ -2002,12 +2002,12 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_dma_interrupt_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status.dma_interrupt.de),
-    .d      (hw2reg.normal_interrupt_status.dma_interrupt.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.normal_interrupt_status.dma_interrupt.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (normal_interrupt_status_dma_interrupt_qs)
@@ -2119,28 +2119,8 @@ module sdhci_reg_top #(
 
 
   //   F[card_interrupt]: 8:8
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_normal_interrupt_status_card_interrupt (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.normal_interrupt_status.card_interrupt.de),
-    .d      (hw2reg.normal_interrupt_status.card_interrupt.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_status.card_interrupt.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_status_card_interrupt_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_status_card_interrupt_qs = 1'h0;
 
 
   //   F[rsvd_9]: 14:9
@@ -2371,12 +2351,12 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_current_limit_error_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status.current_limit_error.de),
-    .d      (hw2reg.error_interrupt_status.current_limit_error.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.error_interrupt_status.current_limit_error.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (error_interrupt_status_current_limit_error_qs)
@@ -2428,12 +2408,12 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_vendor_specific_error_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status.vendor_specific_error.de),
-    .d      (hw2reg.error_interrupt_status.vendor_specific_error.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.error_interrupt_status.vendor_specific_error.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (error_interrupt_status_vendor_specific_error_qs)
@@ -2456,8 +2436,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_command_complete_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.command_complete_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.command_complete_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2482,8 +2462,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_transfer_complete_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.transfer_complete_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.transfer_complete_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2508,8 +2488,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_block_gap_event_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.block_gap_event_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.block_gap_event_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2534,8 +2514,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_dma_interrupt_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.dma_interrupt_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.dma_interrupt_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2560,8 +2540,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_buffer_write_ready_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.buffer_write_ready_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.buffer_write_ready_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2586,8 +2566,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_buffer_read_ready_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.buffer_read_ready_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.buffer_read_ready_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2612,8 +2592,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_card_insertion_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.card_insertion_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.card_insertion_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2638,8 +2618,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_card_removal_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.card_removal_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.card_removal_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2664,8 +2644,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_status_enable_card_interrupt_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.card_interrupt_status_enable.de),
-    .d      (hw2reg.normal_interrupt_status_enable.card_interrupt_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2694,8 +2674,8 @@ module sdhci_reg_top #(
     .wd     ('0  ),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_status_enable.fixed_to_0.de),
-    .d      (hw2reg.normal_interrupt_status_enable.fixed_to_0.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2722,8 +2702,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_command_timeout_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.command_timeout_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.command_timeout_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2748,8 +2728,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_command_crc_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.command_crc_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.command_crc_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2774,8 +2754,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_command_end_bit_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.command_end_bit_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.command_end_bit_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2800,8 +2780,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_command_index_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.command_index_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.command_index_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2826,8 +2806,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_data_timeout_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.data_timeout_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.data_timeout_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2852,8 +2832,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_data_crc_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.data_crc_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.data_crc_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2878,8 +2858,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_data_end_bit_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.data_end_bit_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.data_end_bit_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2904,8 +2884,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_current_limit_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.current_limit_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.current_limit_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2930,8 +2910,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_auto_cmd12_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.auto_cmd12_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.auto_cmd12_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2961,8 +2941,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_status_enable_vendor_specific_error_status_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_status_enable.vendor_specific_error_status_enable.de),
-    .d      (hw2reg.error_interrupt_status_enable.vendor_specific_error_status_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -2989,8 +2969,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_command_complete_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.command_complete_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.command_complete_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3015,8 +2995,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_transfer_complete_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.transfer_complete_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.transfer_complete_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3041,8 +3021,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_block_gap_event_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.block_gap_event_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.block_gap_event_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3067,8 +3047,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_dma_interrupt_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.dma_interrupt_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.dma_interrupt_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3093,8 +3073,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_buffer_write_ready_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.buffer_write_ready_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.buffer_write_ready_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3119,8 +3099,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_buffer_read_ready_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.buffer_read_ready_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.buffer_read_ready_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3145,8 +3125,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_card_insertion_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.card_insertion_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.card_insertion_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3171,8 +3151,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_card_removal_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.card_removal_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.card_removal_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3197,8 +3177,8 @@ module sdhci_reg_top #(
     .wd     (normal_interrupt_signal_enable_card_interrupt_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.normal_interrupt_signal_enable.card_interrupt_signal_enable.de),
-    .d      (hw2reg.normal_interrupt_signal_enable.card_interrupt_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3235,8 +3215,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_command_timeout_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.command_timeout_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.command_timeout_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3261,8 +3241,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_command_crc_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.command_crc_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.command_crc_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3287,8 +3267,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_command_end_bit_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.command_end_bit_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.command_end_bit_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3313,8 +3293,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_command_index_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.command_index_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.command_index_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3339,8 +3319,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_data_timeout_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.data_timeout_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.data_timeout_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3365,8 +3345,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_data_crc_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.data_crc_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.data_crc_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3391,8 +3371,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_data_end_bit_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.data_end_bit_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.data_end_bit_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3417,8 +3397,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_current_limit_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.current_limit_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.current_limit_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3443,8 +3423,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_auto_cmd12_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.auto_cmd12_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.auto_cmd12_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3474,8 +3454,8 @@ module sdhci_reg_top #(
     .wd     (error_interrupt_signal_enable_vendor_specific_error_signal_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.error_interrupt_signal_enable.vendor_specific_error_signal_enable.de),
-    .d      (hw2reg.error_interrupt_signal_enable.vendor_specific_error_signal_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -3651,28 +3631,8 @@ module sdhci_reg_top #(
   // R[capabilities]: V(False)
 
   //   F[timeout_clock_frequency]: 5:0
-  prim_subreg #(
-    .DW      (6),
-    .SWACCESS("RO"),
-    .RESVAL  (6'h19)
-  ) u_capabilities_timeout_clock_frequency (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.timeout_clock_frequency.de),
-    .d      (hw2reg.capabilities.timeout_clock_frequency.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.timeout_clock_frequency.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_timeout_clock_frequency_qs)
-  );
+  // constant-only read
+  assign capabilities_timeout_clock_frequency_qs = 6'h28;
 
 
   //   F[rsvd_6]: 6:6
@@ -3681,53 +3641,13 @@ module sdhci_reg_top #(
 
 
   //   F[timeout_clock_unit]: 7:7
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h1)
-  ) u_capabilities_timeout_clock_unit (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.timeout_clock_unit.de),
-    .d      (hw2reg.capabilities.timeout_clock_unit.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.timeout_clock_unit.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_timeout_clock_unit_qs)
-  );
+  // constant-only read
+  assign capabilities_timeout_clock_unit_qs = 1'h1;
 
 
   //   F[base_clock_frequency_for_sd_clock]: 13:8
-  prim_subreg #(
-    .DW      (6),
-    .SWACCESS("RO"),
-    .RESVAL  (6'h19)
-  ) u_capabilities_base_clock_frequency_for_sd_clock (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.base_clock_frequency_for_sd_clock.de),
-    .d      (hw2reg.capabilities.base_clock_frequency_for_sd_clock.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.base_clock_frequency_for_sd_clock.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_base_clock_frequency_for_sd_clock_qs)
-  );
+  // constant-only read
+  assign capabilities_base_clock_frequency_for_sd_clock_qs = 6'h28;
 
 
   //   F[rsvd_14]: 15:14
@@ -3736,28 +3656,8 @@ module sdhci_reg_top #(
 
 
   //   F[max_block_length]: 17:16
-  prim_subreg #(
-    .DW      (2),
-    .SWACCESS("RO"),
-    .RESVAL  (2'h0)
-  ) u_capabilities_max_block_length (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.max_block_length.de),
-    .d      (hw2reg.capabilities.max_block_length.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.max_block_length.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_max_block_length_qs)
-  );
+  // constant-only read
+  assign capabilities_max_block_length_qs = 2'h0;
 
 
   //   F[rsvd_18]: 20:18
@@ -3766,153 +3666,33 @@ module sdhci_reg_top #(
 
 
   //   F[high_speed_support]: 21:21
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_capabilities_high_speed_support (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.high_speed_support.de),
-    .d      (hw2reg.capabilities.high_speed_support.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.high_speed_support.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_high_speed_support_qs)
-  );
+  // constant-only read
+  assign capabilities_high_speed_support_qs = 1'h0;
 
 
   //   F[dma_support]: 22:22
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_capabilities_dma_support (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.dma_support.de),
-    .d      (hw2reg.capabilities.dma_support.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.dma_support.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_dma_support_qs)
-  );
+  // constant-only read
+  assign capabilities_dma_support_qs = 1'h0;
 
 
   //   F[suspend_resume_support]: 23:23
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_capabilities_suspend_resume_support (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.suspend_resume_support.de),
-    .d      (hw2reg.capabilities.suspend_resume_support.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.suspend_resume_support.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_suspend_resume_support_qs)
-  );
+  // constant-only read
+  assign capabilities_suspend_resume_support_qs = 1'h0;
 
 
   //   F[voltage_support_3_3v]: 24:24
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h1)
-  ) u_capabilities_voltage_support_3_3v (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.voltage_support_3_3v.de),
-    .d      (hw2reg.capabilities.voltage_support_3_3v.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.voltage_support_3_3v.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_voltage_support_3_3v_qs)
-  );
+  // constant-only read
+  assign capabilities_voltage_support_3_3v_qs = 1'h1;
 
 
   //   F[voltage_support_3_0v]: 25:25
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_capabilities_voltage_support_3_0v (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.voltage_support_3_0v.de),
-    .d      (hw2reg.capabilities.voltage_support_3_0v.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.voltage_support_3_0v.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_voltage_support_3_0v_qs)
-  );
+  // constant-only read
+  assign capabilities_voltage_support_3_0v_qs = 1'h0;
 
 
   //   F[voltage_support_1_8v]: 26:26
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RO"),
-    .RESVAL  (1'h0)
-  ) u_capabilities_voltage_support_1_8v (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.capabilities.voltage_support_1_8v.de),
-    .d      (hw2reg.capabilities.voltage_support_1_8v.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.capabilities.voltage_support_1_8v.q ),
-
-    // to register interface (read)
-    .qs     (capabilities_voltage_support_1_8v_qs)
-  );
+  // constant-only read
+  assign capabilities_voltage_support_1_8v_qs = 1'h0;
 
 
   //   F[rsvd_27]: 31:27
@@ -3929,78 +3709,18 @@ module sdhci_reg_top #(
   // R[maximum_current_capabilities]: V(False)
 
   //   F[maximum_current_for_3_3v]: 7:0
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_maximum_current_capabilities_maximum_current_for_3_3v (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.maximum_current_capabilities.maximum_current_for_3_3v.q ),
-
-    // to register interface (read)
-    .qs     (maximum_current_capabilities_maximum_current_for_3_3v_qs)
-  );
+  // constant-only read
+  assign maximum_current_capabilities_maximum_current_for_3_3v_qs = 8'h0;
 
 
   //   F[maximum_current_for_3_0v]: 15:8
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_maximum_current_capabilities_maximum_current_for_3_0v (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.maximum_current_capabilities.maximum_current_for_3_0v.q ),
-
-    // to register interface (read)
-    .qs     (maximum_current_capabilities_maximum_current_for_3_0v_qs)
-  );
+  // constant-only read
+  assign maximum_current_capabilities_maximum_current_for_3_0v_qs = 8'h0;
 
 
   //   F[maximum_current_for_1_8v]: 23:16
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_maximum_current_capabilities_maximum_current_for_1_8v (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.maximum_current_capabilities.maximum_current_for_1_8v.q ),
-
-    // to register interface (read)
-    .qs     (maximum_current_capabilities_maximum_current_for_1_8v_qs)
-  );
+  // constant-only read
+  assign maximum_current_capabilities_maximum_current_for_1_8v_qs = 8'h0;
 
 
   //   F[rsvd_24]: 31:24
@@ -4014,88 +3734,28 @@ module sdhci_reg_top #(
   assign maximum_current_capabilities_reserved_qs = 32'h0;
 
 
-  // R[slot_interrupt_status_register]: V(False)
+  // R[slot_interrupt_status]: V(False)
 
   //   F[interrupt_signal_for_each_slot]: 7:0
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_slot_interrupt_status_register_interrupt_signal_for_each_slot (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.slot_interrupt_status_register.interrupt_signal_for_each_slot.de),
-    .d      (hw2reg.slot_interrupt_status_register.interrupt_signal_for_each_slot.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.slot_interrupt_status_register.interrupt_signal_for_each_slot.q ),
-
-    // to register interface (read)
-    .qs     (slot_interrupt_status_register_interrupt_signal_for_each_slot_qs)
-  );
+  // constant-only read
+  assign slot_interrupt_status_interrupt_signal_for_each_slot_qs = 8'h0;
 
 
   //   F[rsvd_8]: 15:8
   // constant-only read
-  assign slot_interrupt_status_register_rsvd_8_qs = 8'h0;
+  assign slot_interrupt_status_rsvd_8_qs = 8'h0;
 
 
-  // R[host_controller_version_register]: V(False)
+  // R[host_controller_version]: V(False)
 
   //   F[specification_version_number]: 23:16
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_host_controller_version_register_specification_version_number (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.host_controller_version_register.specification_version_number.de),
-    .d      (hw2reg.host_controller_version_register.specification_version_number.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.host_controller_version_register.specification_version_number.q ),
-
-    // to register interface (read)
-    .qs     (host_controller_version_register_specification_version_number_qs)
-  );
+  // constant-only read
+  assign host_controller_version_specification_version_number_qs = 8'h0;
 
 
   //   F[vendor_version_number]: 31:24
-  prim_subreg #(
-    .DW      (8),
-    .SWACCESS("RO"),
-    .RESVAL  (8'h0)
-  ) u_host_controller_version_register_vendor_version_number (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    .we     (1'b0),
-    .wd     ('0  ),
-
-    // from internal hardware
-    .de     (hw2reg.host_controller_version_register.vendor_version_number.de),
-    .d      (hw2reg.host_controller_version_register.vendor_version_number.d ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.host_controller_version_register.vendor_version_number.q ),
-
-    // to register interface (read)
-    .qs     (host_controller_version_register_vendor_version_number_qs)
-  );
+  // constant-only read
+  assign host_controller_version_vendor_version_number_qs = 8'h0;
 
 
 
@@ -4133,8 +3793,8 @@ module sdhci_reg_top #(
     addr_hit[27] = |(reg_be & SDHCI_BYTEMASK[27]) && reg_addr == SDHCI_CAPABILITIES_RESERVED_OFFSET;
     addr_hit[28] = |(reg_be & SDHCI_BYTEMASK[28]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_OFFSET;
     addr_hit[29] = |(reg_be & SDHCI_BYTEMASK[29]) && reg_addr == SDHCI_MAXIMUM_CURRENT_CAPABILITIES_RESERVED_OFFSET;
-    addr_hit[30] = |(reg_be & SDHCI_BYTEMASK[30]) && reg_addr == SDHCI_SLOT_INTERRUPT_STATUS_REGISTER_OFFSET;
-    addr_hit[31] = |(reg_be & SDHCI_BYTEMASK[31]) && reg_addr == SDHCI_HOST_CONTROLLER_VERSION_REGISTER_OFFSET;
+    addr_hit[30] = |(reg_be & SDHCI_BYTEMASK[30]) && reg_addr == SDHCI_SLOT_INTERRUPT_STATUS_OFFSET;
+    addr_hit[31] = |(reg_be & SDHCI_BYTEMASK[31]) && reg_addr == SDHCI_HOST_CONTROLLER_VERSION_OFFSET;
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -4712,13 +4372,13 @@ module sdhci_reg_top #(
       end
 
       addr_hit[30]: begin
-        reg_rdata_next[7:0] = slot_interrupt_status_register_interrupt_signal_for_each_slot_qs;
-        reg_rdata_next[15:8] = slot_interrupt_status_register_rsvd_8_qs;
+        reg_rdata_next[7:0] = slot_interrupt_status_interrupt_signal_for_each_slot_qs;
+        reg_rdata_next[15:8] = slot_interrupt_status_rsvd_8_qs;
       end
 
       addr_hit[31]: begin
-        reg_rdata_next[23:16] = host_controller_version_register_specification_version_number_qs;
-        reg_rdata_next[31:24] = host_controller_version_register_vendor_version_number_qs;
+        reg_rdata_next[23:16] = host_controller_version_specification_version_number_qs;
+        reg_rdata_next[31:24] = host_controller_version_vendor_version_number_qs;
       end
 
       default: begin
@@ -4790,4 +4450,5 @@ module sdhci_reg_top_intf
   );
   
 endmodule
+
 

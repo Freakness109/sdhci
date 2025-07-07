@@ -15,7 +15,7 @@
     {
       name: "system_address"
       desc: ""
-      hwaccess: "hrw"
+      hwaccess: "none"
       fields: [
         {
           bits: "31:0"
@@ -30,7 +30,7 @@
         {
           name: "block_size"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "15"
@@ -72,7 +72,7 @@
     {
       name: "argument"
       desc: ""
-      hwaccess: "hrw"
+      hwaccess: "hro"
       fields: [
         {
           bits: "31:0"
@@ -87,7 +87,7 @@
         {
           name: "transfer_mode"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "15:8"
@@ -148,7 +148,7 @@
         {
           name: "command"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           hwqe: true
           fields: [
             {
@@ -396,7 +396,7 @@
           name: "host_control"
           desc: ""
           swaccess: "rw"
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "7:3"
@@ -428,7 +428,7 @@
           name: "power_control"
           desc: ""
           swaccess: "rw"
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "7:4"
@@ -453,7 +453,7 @@
         {
           name: "block_gap_control"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "7:4"
@@ -493,7 +493,7 @@
           name: "wakeup_control"
           desc: ""
           swaccess: "rw"
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "7:3"
@@ -530,7 +530,7 @@
         {
           name: "clock_control"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           hwqe: true
           fields: [
             {
@@ -558,6 +558,7 @@
               name: "internal_clock_stable"
               desc: ""
               swaccess: "ro"
+              hwaccess: "hrw"
               resval: "1"
             }
             {
@@ -571,7 +572,7 @@
         {
           name: "timeout_control"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "7:4"
@@ -593,6 +594,7 @@
           name: "software_reset"
           desc: ""
           hwaccess: "hrw"
+          resval: "0"
           fields: [
             {
               bits: "7:4"
@@ -619,6 +621,7 @@
               name: "software_reset_for_all"
               desc: ""
               swaccess: "rw1s"
+              hwaccess: "hro"
             }
           ]
         }
@@ -651,6 +654,7 @@
               name: "card_interrupt"
               desc: ""
               swaccess: "ro"
+              hwaccess: "none"
               resval: "0"
             }
             {
@@ -678,16 +682,22 @@
               swaccess: "rw1c"
             }
             {
+              // DMA not currently supported
               bits: "3"
               name: "dma_interrupt"
               desc: ""
               swaccess: "rw1c"
+              hwaccess: "none"
+              resval: "0"
             }
             {
+              // DMA not currently supported
               bits: "2"
               name: "block_gap_event"
               desc: ""
               swaccess: "rw1c"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "1"
@@ -712,6 +722,8 @@
             {
               bits: "15:12"
               name: "vendor_specific_error"
+              hwaccess: "none"
+              resval: "0"
               desc: ""
             }
             {
@@ -725,11 +737,14 @@
             {
               bits: "8"
               name: "auto_cmd12_error"
+              resval: "0"
               desc: ""
             }
             {
               bits: "7"
               name: "current_limit_error"
+              hwaccess: "none"
+              resval: "0"
               desc: ""
             }
             {
@@ -776,7 +791,7 @@
         {
           name: "normal_interrupt_status_enable"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "15"
@@ -853,7 +868,7 @@
           name: "error_interrupt_status_enable"
           desc: ""
           swaccess: "rw"
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "15:12"
@@ -922,7 +937,7 @@
         {
           name: "normal_interrupt_signal_enable"
           desc: ""
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "15"
@@ -1000,7 +1015,7 @@
           name: "error_interrupt_signal_enable"
           desc: ""
           swaccess: "rw"
-          hwaccess: "hrw"
+          hwaccess: "hro"
           fields: [
             {
               bits: "15:12"
@@ -1123,7 +1138,7 @@
       name: "capabilities"
       desc: ""
       swaccess: "ro"
-      hwaccess: "hrw"
+      hwaccess: "none"
       fields: [
         {
           bits: "31:27"
@@ -1195,7 +1210,7 @@
           bits: "13:8"
           name: "base_clock_frequency_for_sd_clock"
           desc: ""
-          resval: "0b011001" // 25Mhz TODO: Change to next highest full MHz, max 63.
+          resval: "40" // TODO: Change to next highest full MHz, max 63.
         }
         {
           bits: "7"
@@ -1215,7 +1230,7 @@
           bits: "5:0"
           name: "timeout_clock_frequency"
           desc: ""
-          resval: "0b011001" // 25Mhz
+          resval: "40" // MHz
         }
       ]
     }
@@ -1238,7 +1253,7 @@
       name: "maximum_current_capabilities"
       desc: ""
       swaccess: "ro"
-      hwaccess: "hro"
+      hwaccess: "none"
       fields: [
         {
           bits: "31:24"
@@ -1294,11 +1309,11 @@
     {
       packed: [
         {
-          name: "slot_interrupt_status_register"
+          name: "slot_interrupt_status"
           desc: ""
           swaccess: "ro"
           resval: "0"
-          hwaccess: "hrw"
+          hwaccess: "none"
           fields: [
             {
               bits: "15:8"
@@ -1310,16 +1325,16 @@
             }
             {
               bits: "7:0"
-              name: "interrupt_signal_for_each_slot"
+              name: "interrupt_signal_for_each_slot" // TODO
               desc: ""
             }
           ]
         }
         {
-          name: "host_controller_version_register"
+          name: "host_controller_version"
           desc: ""
           swaccess: "ro"
-          hwaccess: "hrw"
+          hwaccess: "none"
           fields: [
             {
               bits: "15:8"
