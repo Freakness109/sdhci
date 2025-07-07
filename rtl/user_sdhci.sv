@@ -21,18 +21,17 @@ module user_sdhci #(
   input  logic rst_ni,
 
   input  obi_req_t obi_req_i,
-  output obi_rsp_t obi_rsp_o, 
+  output obi_rsp_t obi_rsp_o,
 
-  `ifndef WITH_SD_MODEL
-    output  logic sd_clk_o,
+  output  logic sd_clk_o,
 
-    inout   logic sd_cmd_io,
+  input  logic sd_cmd_i,
+  output logic sd_cmd_o,
+  output logic sd_cmd_en_o,
 
-    inout logic sd_dat0_io,
-    inout logic sd_dat1_io,
-    inout logic sd_dat2_io,
-    inout logic sd_dat3_io,
-  `endif
+  input  logic [3:0] sd_dat_i,
+  output logic [3:0] sd_dat_o,
+  output logic       sd_dat_en_o,
 
   output logic interrupt_o
   
@@ -140,29 +139,15 @@ module user_sdhci #(
   logic dat_write_en;
   logic [3:0] dat_write, dat_read;
   
-  `ifdef WITH_SD_MODEL
-    sd_card i_sd_card(
-      .sd_clk_i (sd_clk),
-      .cmd_en_i (cmd_write_en),
-      .cmd_i    (cmd_write),
-      .cmd_o    (cmd_read),
-      .dat_en_i (dat_write_en),
-      .dat_i    (dat_write),
-      .dat_o    (dat_read)
-    );
-  `else //assignment for physical sd card bus
-    assign sd_clk_o = sd_clk;
-    assign sd_cmd_io = (cmd_write_en) ? cmd_write : 1'bz;
-    assign sd_dat0_io = (dat_write_en) ? dat_write[0] : 1'bz;
-    assign sd_dat1_io = (dat_write_en) ? dat_write[1] : 1'bz;
-    assign sd_dat2_io = (dat_write_en) ? dat_write[2] : 1'bz;
-    assign sd_dat3_io = (dat_write_en) ? dat_write[3] : 1'bz;
-    assign cmd_read = sd_cmd_io;
-    assign dat_read[0] = sd_dat0_io;
-    assign dat_read[1] = sd_dat1_io;
-    assign dat_read[2] = sd_dat2_io;
-    assign dat_read[3] = sd_dat3_io;
-  `endif
+  assign sd_clk_o = sd_clk;
+
+  assign cmd_read    = sd_cmd_i;
+  assign sd_dat_en_o = dat_write_en;
+  assign sd_dat_o    = dat_write;
+
+  assign dat_read    = sd_dat_i;
+  assign sd_cmd_en_o = cmd_write_en;
+  assign sd_cmd_o    = cmd_write;
   
   assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: dat_read };
   assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: cmd_read };
