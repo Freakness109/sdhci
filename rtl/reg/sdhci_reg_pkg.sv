@@ -775,7 +775,7 @@ package sdhci_reg_pkg;
   };
 
   // Register boudary crossing infromation to make sure we don't write to half of a field
-  parameter logic [3:0] SDHCI_DISALLOWED_BOUNDARY_CROSSINGS [32] = '{
+  parameter logic [2:0] SDHCI_DISALLOWED_BOUNDARY_CROSSINGS [32] = '{
     3'b 111, // index[ 0] SDHCI_SYSTEM_ADDRESS
     3'b 001, // index[ 1] SDHCI_BLOCK_SIZE
     3'b 100, // index[ 2] SDHCI_BLOCK_COUNT

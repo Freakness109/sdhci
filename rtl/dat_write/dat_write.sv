@@ -102,7 +102,7 @@ module dat_write #(
 
   always_comb begin : dat_write_datapath
     dat_en_o = '0;
-    dat      = 'X;
+    dat      = '1;
 
     done_o        = '0;
     end_bit_err_o = 'X;

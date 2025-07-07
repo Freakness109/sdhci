@@ -4116,7 +4116,7 @@ module sdhci_reg_top #(
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
-    unique case (1'b1)
+    case (1'b1)
       addr_hit[0]: begin
         reg_rdata_next[31:0] = system_address_qs;
       end

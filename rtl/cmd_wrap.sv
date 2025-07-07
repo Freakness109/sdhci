@@ -154,8 +154,8 @@ module cmd_wrap (
         if (rsp_valid) begin
           if (running_cmd12_q) begin
             auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = end_bit_err;
-            auto_cmd12_errors_o.auto_cmd12_crc_error.de = ~crc_corr;
-            auto_cmd12_errors_o.auto_cmd12_index_error.de = index_err;
+            auto_cmd12_errors_o.auto_cmd12_crc_error.de     = ~crc_corr;
+            auto_cmd12_errors_o.auto_cmd12_index_error.de   = index_err;
           end else begin
             command_end_bit_error_o.de = (check_end_bit_err & end_bit_err & clk_en_p_i);
             command_crc_error_o.de     = (check_crc_err & ~crc_corr & clk_en_p_i);
@@ -227,8 +227,7 @@ module cmd_wrap (
     cmd12_requested_d      = cmd12_requested_q | request_cmd12_i;
     
     running_cmd12_d = running_cmd12_q;
-    start_tx_d      = '0;
-    
+    start_tx_d      = start_tx_q;
 
     if (!rst_ni) begin
       command_inhibit_cmd_o.de = '1;
@@ -246,45 +245,47 @@ module cmd_wrap (
     end
 
     if (cmd_seq_state_q == READY) begin
-      running_cmd12_d = '0;
-      if (cmd12_requested_q) begin
-        if (
-          reg2hw.error_interrupt_status.command_index_error.q ||
-          reg2hw.error_interrupt_status.command_end_bit_error.q ||
-          reg2hw.error_interrupt_status.command_crc_error.q ||
-          reg2hw.error_interrupt_status.command_timeout_error.q
-        ) begin //prior command failed, do not execute auto cmd 12
-          cmd12_requested_d = '0;
-          auto_cmd12_errors_o.auto_cmd12_not_executed.de = '1;
-        end else begin //execute auto comd 12
-          start_tx_d      = '1;
-          running_cmd12_d = '1;
-        end
+      if (!start_tx_q) begin
+        running_cmd12_d = '0;
+        if (cmd12_requested_q) begin
+          if (
+            reg2hw.error_interrupt_status.command_index_error.q ||
+            reg2hw.error_interrupt_status.command_end_bit_error.q ||
+            reg2hw.error_interrupt_status.command_crc_error.q ||
+            reg2hw.error_interrupt_status.command_timeout_error.q
+          ) begin //prior command failed, do not execute auto cmd 12
+            cmd12_requested_d = '0;
+            auto_cmd12_errors_o.auto_cmd12_not_executed.de = '1;
+          end else begin //execute auto comd 12
+            start_tx_d      = '1;
+            running_cmd12_d = '1;
+          end
 
-      end else if (driver_cmd_requested_q) begin
-        if (
-          reg2hw.auto_cmd12_error_status.auto_cmd12_index_error.q ||
-          reg2hw.auto_cmd12_error_status.auto_cmd12_end_bit_error.q ||
-          reg2hw.auto_cmd12_error_status.auto_cmd12_crc_error.q ||
-          reg2hw.auto_cmd12_error_status.auto_cmd12_timeout_error.q
-        ) begin //prior auto cmd 12 failed, do not execute cmd
-          driver_cmd_requested_d = '0;
-          auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error.de = '1;
-        end else begin //execute cmd
-          start_tx_d = '1;
-        end
+        end else if (driver_cmd_requested_q) begin
+          if (
+            reg2hw.auto_cmd12_error_status.auto_cmd12_index_error.q ||
+            reg2hw.auto_cmd12_error_status.auto_cmd12_end_bit_error.q ||
+            reg2hw.auto_cmd12_error_status.auto_cmd12_crc_error.q ||
+            reg2hw.auto_cmd12_error_status.auto_cmd12_timeout_error.q
+          ) begin //prior auto cmd 12 failed, do not execute cmd
+            driver_cmd_requested_d = '0;
+            auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error.de = '1;
+          end else begin //execute cmd
+            start_tx_d = '1;
+          end
 
-      end else if (!reg2hw.command.command_index.qe) begin
-        command_inhibit_cmd_o.de = '1;
-        command_inhibit_cmd_o.d  = '0;
-        dat_busy_d = '0;
+        end else if (!reg2hw.command.command_index.qe) begin
+          command_inhibit_cmd_o.de = '1;
+          command_inhibit_cmd_o.d  = '0;
+          dat_busy_d = '0;
+        end
       end
 
     end else if (start_tx_q) begin// Request received by sdclk domain, transmission has started
-
-      if (cmd12_requested_q) begin
+      start_tx_d = '0;
+      if (running_cmd12_d) begin
         cmd12_requested_d = '0;
-      end else if (driver_cmd_requested_q) begin
+      end else begin
         driver_cmd_requested_d = '0;
       end
     end
