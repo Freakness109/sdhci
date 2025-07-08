@@ -59,6 +59,14 @@ module cmd_wrap (
   logic start_tx_q, start_tx_d;
   `FF(start_tx_q, start_tx_d, 1'b0, clk_i, rst_ni);
 
+  //high if were running AUTO CMD12
+  logic running_cmd12_q, running_cmd12_d;
+  `FFL(running_cmd12_q, running_cmd12_d, clk_en_p_i, '0, clk_i, rst_ni);
+
+  //high if we are in READ_RSP_BUSY and received rsp_valid
+  logic wait_for_busy_q, wait_for_busy_d;
+  `FFL(wait_for_busy_q, wait_for_busy_d, clk_en_p_i, '0, clk_i, rst_ni);
+
   logic rsp_valid, tx_done;
 
   cmd_seq_state_e cmd_seq_state_d, cmd_seq_state_q;
@@ -76,11 +84,11 @@ module cmd_wrap (
           cmd_seq_state_d = (reg2hw.command.response_type_select.q == 2'b00) ? RSP_RECEIVED : BUS_SWITCH;
         end
       end
-      BUS_SWITCH:     cmd_seq_state_d = (reg2hw.command.response_type_select.q == 2'b11) ?  READ_RSP_BUSY : READ_RSP;
+      BUS_SWITCH:     cmd_seq_state_d = ((reg2hw.command.response_type_select.q == 2'b11) || running_cmd12_q) ?  READ_RSP_BUSY : READ_RSP;
 
       READ_RSP:       cmd_seq_state_d = (rsp_valid) ? RSP_RECEIVED : READ_RSP;
 
-      READ_RSP_BUSY:  cmd_seq_state_d = (dat0_i) ? RSP_RECEIVED : READ_RSP_BUSY;
+      READ_RSP_BUSY:  cmd_seq_state_d = (wait_for_busy_q && dat0_i) ? RSP_RECEIVED : READ_RSP_BUSY;
       
       RSP_RECEIVED:   cmd_seq_state_d = (cnt == 3'd7) ? READY : RSP_RECEIVED;
       
@@ -100,8 +108,9 @@ module cmd_wrap (
 
   logic end_bit_err, crc_corr, index_err;
 
-  logic running_cmd12_q, running_cmd12_d;
-  `FFL(running_cmd12_q, running_cmd12_d, clk_en_p_i, '0, clk_i, rst_ni);
+  logic rx_started_q, rx_started_d;
+  `FFL(rx_started_q, rx_started_d, clk_en_p_i, 0, clk_i, rst_ni);
+
   
   assign check_end_bit_err   = reg2hw.error_interrupt_status_enable.command_end_bit_error_status_enable.q;
   assign check_crc_err       = reg2hw.error_interrupt_status_enable.command_crc_error_status_enable.q & reg2hw.command.command_crc_check_enable.q;
@@ -130,6 +139,9 @@ module cmd_wrap (
     sd_rsp_done_o = 1'b0;
     sd_cmd_done_o = 1'b0;
 
+    wait_for_busy_d = 1'b0;
+    rx_started_d    = 1'b0;
+
     unique case (cmd_seq_state_q)
       READY:;
       
@@ -144,7 +156,26 @@ module cmd_wrap (
         cnt_en  = 1'b1;
         cnt_clr = receiving;  //reset counter when we are receiving
 
-        if  (cnt >= 62) begin
+        if (cnt >= 62) command_timeout_error_o.de = check_timeout_error & clk_en_p_i;
+
+        if (rsp_valid) begin
+          command_end_bit_error_o.de = (check_end_bit_err & end_bit_err & clk_en_p_i);
+          command_crc_error_o.de     = (check_crc_err & ~crc_corr & clk_en_p_i);
+          command_index_error_o.de   = (check_index_err & index_err & clk_en_p_i);
+        end
+      end
+
+      READ_RSP_BUSY:  begin
+        wait_for_busy_d = wait_for_busy_q;
+        rx_started_d    = (receiving) ? '1 : rx_started_q;
+
+
+        //response should still start within 64 clock cycles, card may become busy during response
+        cnt_en  = 1'b1;
+        cnt_clr = rx_started_q;  //stop counter when we are receiving
+
+        
+        if  (cnt >= 63) begin
           //timeout interrupt if response didn't start within 64 clock cycles
 
           if (running_cmd12_q) auto_cmd12_errors_o.auto_cmd12_timeout_error.de = '1;
@@ -152,24 +183,18 @@ module cmd_wrap (
         end
 
         if (rsp_valid) begin
+          wait_for_busy_d = 1'b1;
+          
           if (running_cmd12_q) begin
-            auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = end_bit_err;
-            auto_cmd12_errors_o.auto_cmd12_crc_error.de     = ~crc_corr;
-            auto_cmd12_errors_o.auto_cmd12_index_error.de   = index_err;
+            auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = end_bit_err & clk_en_p_i;
+            auto_cmd12_errors_o.auto_cmd12_crc_error.de = ~crc_corr & clk_en_p_i;
+            auto_cmd12_errors_o.auto_cmd12_index_error.de = index_err & clk_en_p_i;
           end else begin
             command_end_bit_error_o.de = (check_end_bit_err & end_bit_err & clk_en_p_i);
             command_crc_error_o.de     = (check_crc_err & ~crc_corr & clk_en_p_i);
             command_index_error_o.de   = (check_index_err & index_err & clk_en_p_i);
           end
         end
-      end
-
-      READ_RSP_BUSY:  begin
-        //response should still start within 64 clock cycles, card may become busy during response
-        cnt_en  = 1'b1;
-        cnt_clr = receiving;  //reset counter when we are receiving
-
-        if  (cnt >= 62) command_timeout_error_o.de = check_timeout_error & clk_en_p_i;
       end
 
       RSP_RECEIVED:   begin
@@ -363,7 +388,7 @@ module cmd_wrap (
     
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
-    .start_tx_i     (start_tx_q), //need to buffer when registers run faster than sd cmd_write
+    .start_tx_i     (start_tx_q), //need to buffer when registers run faster than cmd_write
     .cmd_argument_i (running_cmd12_q ? '0 : reg2hw.argument.q),
     .cmd_nr_i       (command_index),
     .cmd_phase_i    (cmd_phase_q),
