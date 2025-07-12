@@ -97,9 +97,9 @@ module sdhci_reg_top #(
   logic transfer_mode_data_transfer_direction_select_qs;
   logic transfer_mode_data_transfer_direction_select_wd;
   logic transfer_mode_data_transfer_direction_select_we;
-  logic transfer_mode_multi_single_bit_block_select_qs;
-  logic transfer_mode_multi_single_bit_block_select_wd;
-  logic transfer_mode_multi_single_bit_block_select_we;
+  logic transfer_mode_multi_single_block_select_qs;
+  logic transfer_mode_multi_single_block_select_wd;
+  logic transfer_mode_multi_single_block_select_we;
   logic [1:0] transfer_mode_rsvd_6_qs;
   logic [7:0] transfer_mode_rsvd_8_qs;
   logic [1:0] command_response_type_select_qs;
@@ -674,29 +674,29 @@ module sdhci_reg_top #(
   );
 
 
-  //   F[multi_single_bit_block_select]: 5:5
+  //   F[multi_single_block_select]: 5:5
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RW"),
     .RESVAL  (1'h0)
-  ) u_transfer_mode_multi_single_bit_block_select (
+  ) u_transfer_mode_multi_single_block_select (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
     // from register interface
-    .we     (transfer_mode_multi_single_bit_block_select_we),
-    .wd     (transfer_mode_multi_single_bit_block_select_wd),
+    .we     (transfer_mode_multi_single_block_select_we),
+    .wd     (transfer_mode_multi_single_block_select_wd),
 
     // from internal hardware
-    .de     (hw2reg.transfer_mode.multi_single_bit_block_select.de),
-    .d      (hw2reg.transfer_mode.multi_single_bit_block_select.d ),
+    .de     (hw2reg.transfer_mode.multi_single_block_select.de),
+    .d      (hw2reg.transfer_mode.multi_single_block_select.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.transfer_mode.multi_single_bit_block_select.q ),
+    .q      (reg2hw.transfer_mode.multi_single_block_select.q ),
 
     // to register interface (read)
-    .qs     (transfer_mode_multi_single_bit_block_select_qs)
+    .qs     (transfer_mode_multi_single_block_select_qs)
   );
 
 
@@ -4203,8 +4203,8 @@ module sdhci_reg_top #(
   assign transfer_mode_data_transfer_direction_select_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign transfer_mode_data_transfer_direction_select_wd = reg_wdata[4];
 
-  assign transfer_mode_multi_single_bit_block_select_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign transfer_mode_multi_single_bit_block_select_wd = reg_wdata[5];
+  assign transfer_mode_multi_single_block_select_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
+  assign transfer_mode_multi_single_block_select_wd = reg_wdata[5];
 
   assign command_response_type_select_we = addr_hit[5] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
   assign command_response_type_select_wd = reg_wdata[17:16];
@@ -4481,7 +4481,7 @@ module sdhci_reg_top #(
         reg_rdata_next[2] = transfer_mode_auto_cmd12_enable_qs;
         reg_rdata_next[3] = transfer_mode_rsvd_3_qs;
         reg_rdata_next[4] = transfer_mode_data_transfer_direction_select_qs;
-        reg_rdata_next[5] = transfer_mode_multi_single_bit_block_select_qs;
+        reg_rdata_next[5] = transfer_mode_multi_single_block_select_qs;
         reg_rdata_next[7:6] = transfer_mode_rsvd_6_qs;
         reg_rdata_next[15:8] = transfer_mode_rsvd_8_qs;
       end

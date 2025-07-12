@@ -20,66 +20,9 @@
 #define _SDMMC_CHIP_H_
 
 #include "types.h"
+#include "sdhcvar.h"
 
 struct sdmmc_command;
-
-typedef struct sdmmc_chip_functions *sdmmc_chipset_tag_t;
-typedef void *sdmmc_chipset_handle_t;
-
-struct sdmmc_chip_functions {
-	/* host controller reset */
-	int	(*host_reset)(sdmmc_chipset_handle_t);
-	/* host capabilities */
-	u_int32_t (*host_ocr)(sdmmc_chipset_handle_t);
-	int	(*host_maxblklen)(sdmmc_chipset_handle_t);
-	/* card detection */
-	int	(*card_detect)(sdmmc_chipset_handle_t);
-	/* bus power and clock frequency */
-	int	(*bus_power)(sdmmc_chipset_handle_t, u_int32_t);
-	int	(*bus_clock)(sdmmc_chipset_handle_t, int, int);
-	int	(*bus_width)(sdmmc_chipset_handle_t, int);
-	/* command execution */
-	void	(*exec_command)(sdmmc_chipset_handle_t,
-		    struct sdmmc_command *);
-	/* card interrupt */
-	void	(*card_intr_mask)(sdmmc_chipset_handle_t, int);
-	void	(*card_intr_ack)(sdmmc_chipset_handle_t);
-	/* UHS functions */
-	int	(*signal_voltage)(sdmmc_chipset_handle_t, int);
-	int	(*execute_tuning)(sdmmc_chipset_handle_t, int);
-};
-
-/* host controller reset */
-#define sdmmc_chip_host_reset(tag, handle)				\
-	((tag)->host_reset((handle)))
-/* host capabilities */
-#define sdmmc_chip_host_ocr(tag, handle)				\
-	((tag)->host_ocr((handle)))
-#define sdmmc_chip_host_maxblklen(tag, handle)				\
-	((tag)->host_maxblklen((handle)))
-/* card detection */
-#define sdmmc_chip_card_detect(tag, handle)				\
-	((tag)->card_detect((handle)))
-/* bus power and clock frequency */
-#define sdmmc_chip_bus_power(tag, handle, ocr)				\
-	((tag)->bus_power((handle), (ocr)))
-#define sdmmc_chip_bus_clock(tag, handle, freq, timing)			\
-	((tag)->bus_clock((handle), (freq), (timing)))
-#define sdmmc_chip_bus_width(tag, handle, width)			\
-	((tag)->bus_width((handle), (width)))
-/* command execution */
-#define sdmmc_chip_exec_command(tag, handle, cmdp)			\
-	((tag)->exec_command((handle), (cmdp)))
-/* card interrupt */
-#define sdmmc_chip_card_intr_mask(tag, handle, enable)			\
-	((tag)->card_intr_mask((handle), (enable)))
-#define sdmmc_chip_card_intr_ack(tag, handle)				\
-	((tag)->card_intr_ack((handle)))
-/* UHS functions */
-#define sdmmc_chip_signal_voltage(tag, handle, voltage)			\
-	((tag)->signal_voltage((handle), (voltage)))
-#define sdmmc_chip_execute_tuning(tag, handle, timing)			\
-	((tag)->execute_tuning((handle), (timing)))
 
 /* clock frequencies for sdmmc_chip_bus_clock() */
 #define SDMMC_SDCLK_OFF		0
@@ -102,8 +45,8 @@ struct sdmmc_chip_functions {
 
 struct sdmmcbus_attach_args {
 	const char *saa_busname;
-	sdmmc_chipset_tag_t sct;
-	sdmmc_chipset_handle_t sch;
+	struct sdhc_host* sch;
+
 	bus_dma_tag_t dmat;
 	bus_dmamap_t dmap;
 	int	flags;
@@ -115,8 +58,6 @@ struct sdmmcbus_attach_args {
 };
 
 struct device;
-void	sdmmc_needs_discover(struct device *);
-void	sdmmc_card_intr(struct device *);
-void	sdmmc_delay(u_int);
 
+void	sdmmc_delay(u_int);
 #endif

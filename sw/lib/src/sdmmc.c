@@ -31,8 +31,6 @@
 int	sdmmc_enable(struct sdmmc_softc *);
 void	sdmmc_disable(struct sdmmc_softc *);
 int	sdmmc_scan(struct sdmmc_softc *);
-int	sdmmc_init(struct sdmmc_softc *);
-void sdmmc_discover_task(void *arg);
 void sdmmc_card_attach(struct sdmmc_softc *sc);
 void sdmmc_card_detach(struct sdmmc_softc *sc, int flags);
 
@@ -48,61 +46,19 @@ void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 
 
 void
-sdmmc_attach(struct sdmmc_softc *sc, struct sdmmcbus_attach_args *saa)
+sdmmc_init(struct sdmmc_softc *sc, struct sdhc_host *hp)
 {
-	int error;
-	printf("sdmmc");
+	DFUNC(sdmmc_init);
 
-	if (ISSET(saa->caps, SMC_CAPS_8BIT_MODE))
-		printf(": 8-bit");
-	else if (ISSET(saa->caps, SMC_CAPS_4BIT_MODE))
-		printf(": 4-bit");
-	else
-		printf(": 1-bit");
-	if (ISSET(saa->caps, SMC_CAPS_SD_HIGHSPEED))
-		printf(", sd high-speed");
-	if (ISSET(saa->caps, SMC_CAPS_UHS_SDR50))
-		printf(", sdr50");
-	if (ISSET(saa->caps, SMC_CAPS_UHS_SDR104))
-		printf(", sdr104");
-	if (ISSET(saa->caps, SMC_CAPS_MMC_HIGHSPEED))
-		printf(", mmc high-speed");
-	if (ISSET(saa->caps, SMC_CAPS_MMC_DDR52))
-		printf(", ddr52");
-	if (ISSET(saa->caps, SMC_CAPS_MMC_HS200))
-		printf(", hs200");
-	if (ISSET(saa->caps, SMC_CAPS_DMA))
-		printf(", dma");
-	printf("\n");
+	sc->sch = hp;
+	sc->sc_flags = SMF_MEM_MODE;
+	sc->sc_caps = SMC_CAPS_4BIT_MODE;
 
-	sc->sct = saa->sct;
-	sc->sch = saa->sch;
-	sc->sc_dmat = saa->dmat;
-	sc->sc_dmap = saa->dmap;
-	sc->sc_flags = saa->flags;
-	sc->sc_caps = saa->caps;
-	sc->sc_max_seg = saa->max_seg ? saa->max_seg : MAXPHYS;
-	sc->sc_max_xfer = saa->max_xfer;
-	memcpy(&sc->sc_cookies, &saa->cookies, sizeof(sc->sc_cookies));
-
-	// if (ISSET(sc->sc_caps, SMC_CAPS_DMA) && sc->sc_dmap == NULL) {
-		// error = bus_dmamap_create(sc->sc_dmat, MAXPHYS, SDMMC_MAXNSEGS,
-		//     sc->sc_max_seg, saa->dma_boundary,
-		//     BUS_DMA_NOWAIT|BUS_DMA_ALLOCNOW,
-		//     &sc->sc_dmap);
-		// if (error) {
-		// 	printf("%s: can't create DMA map\n", DEVNAME(sc));
-		// 	return;
-		// }
-	// }
-
-	/*
-	 * Create the event thread that will attach and detach cards
-	 * and perform other lengthy operations.  Enter config_pending
-	 * state until the discovery task has run for the first time.
-	 */
+	if (ISSET(hp->flags, SDHC_F_NONREMOVABLE))
+		sc->sc_caps |= SMC_CAPS_NONREMOVABLE;
+	
 	SET(sc->sc_flags, SMF_CONFIG_PENDING);
-	sdmmc_discover_task(sc);
+	sdmmc_discover_cards(sc);
 }
 
 int
@@ -115,11 +71,11 @@ sdmmc_detach(struct device *self, int flags)
 }
 
 void
-sdmmc_discover_task(void *arg)
+sdmmc_discover_cards(struct sdmmc_softc *sc)
 {
-	struct sdmmc_softc *sc = arg;
+	DFUNC(sdmmc_discover_cards);
 
-	if (sdmmc_chip_card_detect(sc->sct, sc->sch)) {
+	if (sdhc_card_detect(sc->sch)) {
 		if (!ISSET(sc->sc_flags, SMF_CARD_PRESENT)) {
 			SET(sc->sc_flags, SMF_CARD_PRESENT);
 			sdmmc_card_attach(sc);
@@ -145,7 +101,7 @@ sdmmc_discover_task(void *arg)
 void
 sdmmc_card_attach(struct sdmmc_softc *sc)
 {
-	DPRINTF(1,("%s: attach card\n", DEVNAME(sc)));
+	DFUNC(sdmmc_card_attach);
 
 	// rw_enter_write(&sc->sc_lock);
 	CLR(sc->sc_flags, SMF_CARD_ATTACHED);
@@ -162,16 +118,13 @@ sdmmc_card_attach(struct sdmmc_softc *sc)
 	 * Scan for I/O functions and memory cards on the bus,
 	 * allocating a sdmmc_function structure for each.
 	 */
-	if (sdmmc_scan(sc) != 0) {
-		printf("%s: no functions\n", DEVNAME(sc));
-		goto err;
-	}
+	sdmmc_mem_scan(sc);
 
 	/*
 	 * Initialize the I/O functions and memory cards.
 	 */
-	if (sdmmc_init(sc) != 0) {
-		printf("%s: init failed\n", DEVNAME(sc));
+	if (sdmmc_mem_init(sc, &sc->sc_card) != 0) {
+		printf("%s: mem init failed\n", DEVNAME(sc));
 		goto err;
 	}
 
@@ -200,37 +153,22 @@ sdmmc_card_detach(struct sdmmc_softc *sc, int flags)
 		CLR(sc->sc_flags, SMF_CARD_ATTACHED);
 	}
 
-	/* Power down. */
 	sdmmc_disable(sc);
-
-	/* Free all sdmmc_function structures. */
-	sdmmc_function_free(sc->sc_card);
-	sc->sc_card = NULL;
+	sc->sc_card.rca = 0;
 }
 
 int
 sdmmc_enable(struct sdmmc_softc *sc)
 {
+	DFUNC(sdmmc_enable);
+
 	u_int32_t host_ocr;
 	int error;
-
-	// rw_assert_wrlock(&sc->sc_lock);
-
-	/*
-	 * Calculate the equivalent of the card OCR from the host
-	 * capabilities and select the maximum supported bus voltage.
-	 */
-	host_ocr = sdmmc_chip_host_ocr(sc->sct, sc->sch);
-	error = sdmmc_chip_bus_power(sc->sct, sc->sch, host_ocr);
-	if (error != 0) {
-		printf("%s: can't supply bus power\n", DEVNAME(sc));
-		goto err;
-	}
 
 	/*
 	 * Select the minimum clock frequency.
 	 */
-	error = sdmmc_chip_bus_clock(sc->sct, sc->sch,
+	error = sdhc_bus_clock(sc->sch,
 	    SDMMC_SDCLK_400KHZ, SDMMC_TIMING_LEGACY);
 	if (error != 0) {
 		printf("%s: can't supply clock\n", DEVNAME(sc));
@@ -262,6 +200,8 @@ sdmmc_enable(struct sdmmc_softc *sc)
 void
 sdmmc_disable(struct sdmmc_softc *sc)
 {
+	DFUNC(sdmmc_disable);
+
 	/* XXX complete commands if card is still present. */
 
 	// rw_assert_wrlock(&sc->sc_lock);
@@ -270,57 +210,20 @@ sdmmc_disable(struct sdmmc_softc *sc)
 	(void)sdmmc_select_card(sc, NULL);
 
 	/* Turn off bus power and clock. */
-	(void)sdmmc_chip_bus_clock(sc->sct, sc->sch,
+	(void)sdhc_bus_clock(sc->sch,
 	    SDMMC_SDCLK_OFF, SDMMC_TIMING_LEGACY);
-	(void)sdmmc_chip_bus_power(sc->sct, sc->sch, 0);
-}
-
-/*
- * Set the lowest bus voltage supported by the card and the host.
- */
-int
-sdmmc_set_bus_power(struct sdmmc_softc *sc, u_int32_t host_ocr,
-    u_int32_t card_ocr)
-{
-	u_int32_t bit;
-
-	// rw_assert_wrlock(&sc->sc_lock);
-
-	/* Mask off unsupported voltage levels and select the lowest. */
-	DPRINTF(1,("%s: host_ocr=%x ", DEVNAME(sc), host_ocr));
-	host_ocr &= card_ocr;
-	for (bit = 4; bit < 23; bit++) {
-		if (ISSET(host_ocr, 1<<bit)) {
-			host_ocr &= 3<<bit;
-			break;
-		}
-	}
-	DPRINTF(1,("card_ocr=%x new_ocr=%x\n", card_ocr, host_ocr));
-
-	if (host_ocr == 0 ||
-	    sdmmc_chip_bus_power(sc->sct, sc->sch, host_ocr) != 0)
-		return 1;
-	return 0;
 }
 
 struct sdmmc_function*
 sdmmc_function_alloc(struct sdmmc_softc *sc)
 {
-	struct sdmmc_function* sf = sc->sc_card;
+	DFUNC(sdmmc_function_alloc);
+
+	struct sdmmc_function* sf = &sc->sc_card;
 	bzero(sf, sizeof(*sf));
 
-	sf->sc = sc;
-	sf->number = -1;
-	sf->cis.manufacturer = SDMMC_VENDOR_INVALID;
-	sf->cis.product = SDMMC_PRODUCT_INVALID;
-	sf->cis.function = SDMMC_FUNCTION_INVALID;
-	sf->cur_blklen = sdmmc_chip_host_maxblklen(sc->sct, sc->sch);
 	return sf;
 }
-
-void
-sdmmc_function_free(struct sdmmc_function *sf)
-{ }
 
 /*
  * Scan for I/O functions and memory cards on the bus, allocating a
@@ -329,35 +232,13 @@ sdmmc_function_free(struct sdmmc_function *sf)
 int
 sdmmc_scan(struct sdmmc_softc *sc)
 {
+	DFUNC(sdmmc_scan);
 	// rw_assert_wrlock(&sc->sc_lock);
 
 	/* Scan for memory cards on the bus. */
 	if (ISSET(sc->sc_flags, SMF_MEM_MODE))
-		sdmmc_mem_scan(sc);
 
 	return 0;
-}
-
-/*
- * Initialize all the distinguished functions of the card, be it I/O
- * or memory functions.
- */
-int
-sdmmc_init(struct sdmmc_softc *sc)
-{
-	struct sdmmc_function *sf;
-
-	// rw_assert_wrlock(&sc->sc_lock);
-
-	if (ISSET(sc->sc_flags, SMF_MEM_MODE) &&
-		sdmmc_mem_init(sc, sc->sc_card) != 0)
-		printf("%s: mem init failed\n", DEVNAME(sc));
-
-	if (!ISSET(sc->sc_card->flags, SFF_ERROR))
-		return 0;
-
-	/* No, we should probably power down the card. */
-	return 1;
 }
 
 void
@@ -370,6 +251,8 @@ sdmmc_delay(u_int usecs)
 int
 sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 {
+	DFUNC(sdmmc_app_command);
+
 	struct sdmmc_command acmd;
 	int error;
 
@@ -377,10 +260,7 @@ sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 
 	bzero(&acmd, sizeof acmd);
 	acmd.c_opcode = MMC_APP_CMD;
-	acmd.c_arg = 0;
-	if (sc->sc_card != NULL) {
-		acmd.c_arg = sc->sc_card->rca << 16;
-	}
+	acmd.c_arg = sc->sc_card.rca << 16;
 	acmd.c_flags = SCF_CMD_AC | SCF_RSP_R1;
 
 	error = sdmmc_mmc_command(sc, &acmd);
@@ -406,19 +286,15 @@ sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 int
 sdmmc_mmc_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 {
-	int error;
+	DFUNC(sdmmc_mmc_command);
 
-	// rw_assert_wrlock(&sc->sc_lock);
-
-	sdmmc_chip_exec_command(sc->sct, sc->sch, cmd);
+	sdhc_exec_command(sc->sch, cmd);
 
 #ifdef SDMMC_DEBUG
 	sdmmc_dump_command(sc, cmd);
 #endif
 
-	error = cmd->c_error;
-
-	return error;
+	return cmd->c_error;
 }
 
 /*
@@ -427,6 +303,8 @@ sdmmc_mmc_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 void
 sdmmc_go_idle_state(struct sdmmc_softc *sc)
 {
+	DFUNC(sdmmc_go_idle_state);
+
 	struct sdmmc_command cmd;
 
 	// rw_assert_wrlock(&sc->sc_lock);
@@ -444,6 +322,8 @@ sdmmc_go_idle_state(struct sdmmc_softc *sc)
 int
 sdmmc_send_if_cond(struct sdmmc_softc *sc, uint32_t card_ocr)
 {
+	DFUNC(sdmmc_send_if_cond);
+
 	struct sdmmc_command cmd;
 	uint8_t pat = 0x23;	/* any pattern will do here */
 	uint8_t res;
@@ -473,6 +353,8 @@ int
 sdmmc_set_relative_addr(struct sdmmc_softc *sc,
     struct sdmmc_function *sf)
 {
+	DFUNC(sdmmc_set_relative_addr);
+
 	struct sdmmc_command cmd;
 
 	// rw_assert_wrlock(&sc->sc_lock);
@@ -499,31 +381,25 @@ sdmmc_set_relative_addr(struct sdmmc_softc *sc,
 int
 sdmmc_select_card(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 {
+	DFUNC(sdmmc_select_card);
+
 	struct sdmmc_command cmd;
 	int error;
-
-	// rw_assert_wrlock(&sc->sc_lock);
-
-	if (sc->sc_card == sf || (sf && sc->sc_card &&
-	    sc->sc_card->rca == sf->rca)) {
-		sc->sc_card = sf;
-		return 0;
-	}
 
 	bzero(&cmd, sizeof cmd);
 	cmd.c_opcode = MMC_SELECT_CARD;
 	cmd.c_arg = sf == NULL ? 0 : MMC_ARG_RCA(sf->rca);
 	cmd.c_flags = SCF_CMD_AC | (sf == NULL ? SCF_RSP_R0 : SCF_RSP_R1);
-	error = sdmmc_mmc_command(sc, &cmd);
-	if (error == 0 || sf == NULL)
-		sc->sc_card = sf;
-	return error;
+
+	return sdmmc_mmc_command(sc, &cmd);
 }
 
 #ifdef SDMMC_DEBUG
 void
 sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 {
+	DFUNC(sdmmc_dump_command);
+
 	int i;
 
 	// rw_assert_wrlock(&sc->sc_lock);

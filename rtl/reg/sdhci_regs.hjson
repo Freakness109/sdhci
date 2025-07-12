@@ -107,7 +107,7 @@
             }
             {
               bits: "5"
-              name: "multi_single_bit_block_select"
+              name: "multi_single_block_select"
               desc: ""
               swaccess: "rw"
             }

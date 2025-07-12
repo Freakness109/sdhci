@@ -14,6 +14,10 @@ module cmd_wrap (
 
   input   logic busy_dat0_i,    //busy signal on dat0 line
 
+  // These 2 signals are updated on the sd clock edge
+  output  logic sd_cmd_done_o,
+  output  logic sd_rsp_done_o,
+
   output  logic [31:0] hw2reg_response0_d, //hook up to hw2reg.response0.d etc.
   output  logic [31:0] hw2reg_response1_d,
   output  logic [31:0] hw2reg_response2_d,
@@ -25,8 +29,6 @@ module cmd_wrap (
 
   output  logic hw2reg_present_state_command_inhibit_cmd_d,
   output  logic hw2reg_present_state_command_inhibit_cmd_de,
-  output  logic hw2reg_present_state_command_inhibit_dat_d,
-  output  logic hw2reg_present_state_command_inhibit_dat_de,
 
   output  logic hw2reg_error_interrupt_status_command_end_bit_error_d,
   output  logic hw2reg_error_interrupt_status_command_end_bit_error_de,
@@ -102,12 +104,16 @@ module cmd_wrap (
     hw2reg_error_interrupt_status_command_timeout_error_d = 1'b1;
     hw2reg_error_interrupt_status_command_timeout_error_de = 1'b0;
 
+    sd_rsp_done_o = 1'b0;
+    sd_cmd_done_o = 1'b0;
+
     unique case (cmd_seq_state_q)
       READY:;   
 
       WRITE_CMD: hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
 
       BUS_SWITCH:     begin
+        sd_cmd_done_o   = 1'b1;
         start_listening =  1'b1;
       end
       
@@ -138,8 +144,9 @@ module cmd_wrap (
       end
 
       RSP_RECEIVED:   begin
-        cnt_en  = 1'b1;
-        cnt_clr = 1'b0;
+        cnt_en        = 1'b1;
+        cnt_clr       = 1'b0;
+        sd_rsp_done_o = 1'b1;
         if (cnt == 6'd7) begin
           hw2reg_present_state_command_inhibit_cmd_d  = 1'b0;
           hw2reg_present_state_command_inhibit_cmd_de = 1'b1;
@@ -185,7 +192,7 @@ module cmd_wrap (
     .rst_ni         (rst_ni),
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
-    .start_tx_i     (start_tx_d), //need to buffer when registers run faster than sd cmd_write
+    .start_tx_i     (start_tx_q), //need to buffer when registers run faster than sd cmd_write
     .cmd_argument_i (reg2hw.argument.q),
     .cmd_nr_i       (reg2hw.command.command_index.q),
     .cmd_phase_i    (cmd_phase_d),

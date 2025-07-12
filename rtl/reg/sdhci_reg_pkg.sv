@@ -49,7 +49,7 @@ package sdhci_reg_pkg;
     } data_transfer_direction_select;
     struct packed {
       logic        q;
-    } multi_single_bit_block_select;
+    } multi_single_block_select;
   } sdhci_reg2hw_transfer_mode_reg_t;
 
   typedef struct packed {
@@ -550,7 +550,7 @@ package sdhci_reg_pkg;
     struct packed {
       logic        d;
       logic        de;
-    } multi_single_bit_block_select;
+    } multi_single_block_select;
   } sdhci_hw2reg_transfer_mode_reg_t;
 
   typedef struct packed {

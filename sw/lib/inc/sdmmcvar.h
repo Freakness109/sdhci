@@ -119,14 +119,7 @@ struct sdmmc_function {
 	struct sdmmc_softc *sc;		/* card slot softc */
 	u_int16_t rca;			/* relative card address */
 	int flags;
-#define SFF_ERROR		0x0001	/* function is poo; ignore it */
 #define SFF_SDHC		0x0002	/* SD High Capacity card */
-	void *cookie;			/* pass extra info from bus to dev */
-	// SIMPLEQ_ENTRY(sdmmc_function) sf_list;
-	/* SD card I/O function members */
-	int number;			/* I/O function number or -1 */
-	struct device *child;		/* function driver */
-	struct sdmmc_cis cis;		/* decoded CIS */
 	unsigned int cur_blklen;	/* current block length */
 	/* SD/MMC memory card members */
 	struct sdmmc_csd csd;		/* decoded CSD value */
@@ -140,11 +133,8 @@ struct sdmmc_function {
  */
 struct sdmmc_softc {
 #define DEVNAME(sc)	("SDHC")
-	sdmmc_chipset_tag_t sct;	/* host controller chipset tag */
-	sdmmc_chipset_handle_t sch;	/* host controller chipset handle */
+	struct sdhc_host* sch;	/* host controller chipset handle */
 
-	bus_dma_tag_t sc_dmat;
-	bus_dmamap_t sc_dmap;
 #define SDMMC_MAXNSEGS	((MAXPHYS / PAGE_SIZE) + 1)
 
 	int sc_flags;
@@ -177,80 +167,30 @@ struct sdmmc_softc {
 #define SMC_CAPS_MMC_HS400	0x8000	/* eMMC HS400 timing */
 #define SMC_CAPS_NONREMOVABLE	0x10000	/* non-removable devices */
 
-	int sc_function_count;		/* number of I/O functions (SDIO) */
-	struct sdmmc_function *sc_card;	/* selected card */
-	int sc_dying;			/* bus driver is shutting down */
-	// struct rwlock sc_lock;		/* lock around host controller */
-	// TAILQ_HEAD(, sdmmc_intr_handler) sc_intrq; /* interrupt handlers */
-	long sc_max_seg;		/* maximum segment size */
-	long sc_max_xfer;		/* maximum transfer size */
-	void *sc_cookies[SDMMC_MAX_FUNCTIONS]; /* pass extra info from bus to dev */
+	struct sdmmc_function sc_card;	/* selected card */
 };
-
-/*
- * Attach devices at the sdmmc bus.
- */
-struct sdmmc_attach_args {
-	struct sdmmc_function		*sf;
-};
-
 
 #define	SDMMC_ASSERT_LOCKED(sc) \
 	rw_assert_wrlock(&(sc)->sc_lock)
 
 
-void sdmmc_attach(struct sdmmc_softc *sc, struct sdmmcbus_attach_args *saa);
+void sdmmc_init(struct sdmmc_softc *, struct sdhc_host *);
 struct	sdmmc_function *sdmmc_function_alloc(struct sdmmc_softc *);
-void	sdmmc_function_free(struct sdmmc_function *);
-int	sdmmc_set_bus_power(struct sdmmc_softc *, u_int32_t, u_int32_t);
 int	sdmmc_mmc_command(struct sdmmc_softc *, struct sdmmc_command *);
 int	sdmmc_app_command(struct sdmmc_softc *, struct sdmmc_command *);
 void	sdmmc_go_idle_state(struct sdmmc_softc *);
-int	sdmmc_select_card(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_set_relative_addr(struct sdmmc_softc *,
 	    struct sdmmc_function *);
 int	sdmmc_send_if_cond(struct sdmmc_softc *, uint32_t);
 
-void	sdmmc_intr_enable(struct sdmmc_function *);
-void	sdmmc_intr_disable(struct sdmmc_function *);
-void	*sdmmc_intr_establish(struct device *, int (*)(void *),
-	    void *, const char *);
-void	sdmmc_intr_disestablish(void *);
-void	sdmmc_intr_task(void *);
-
-int	sdmmc_io_enable(struct sdmmc_softc *);
-void	sdmmc_io_scan(struct sdmmc_softc *);
-int	sdmmc_io_init(struct sdmmc_softc *, struct sdmmc_function *);
-void	sdmmc_io_attach(struct sdmmc_softc *);
-void	sdmmc_io_detach(struct sdmmc_softc *);
-u_int8_t sdmmc_io_read_1(struct sdmmc_function *, int);
-u_int16_t sdmmc_io_read_2(struct sdmmc_function *, int);
-u_int32_t sdmmc_io_read_4(struct sdmmc_function *, int);
-int	sdmmc_io_read_multi_1(struct sdmmc_function *, int, u_char *, int);
-int	sdmmc_io_read_region_1(struct sdmmc_function *, int, u_char *, int);
-void	sdmmc_io_write_1(struct sdmmc_function *, int, u_int8_t);
-void	sdmmc_io_write_2(struct sdmmc_function *, int, u_int16_t);
-void	sdmmc_io_write_4(struct sdmmc_function *, int, u_int32_t);
-int	sdmmc_io_write_multi_1(struct sdmmc_function *, int, u_char *, int);
-int	sdmmc_io_write_region_1(struct sdmmc_function *, int, u_char *, int);
-int	sdmmc_io_function_ready(struct sdmmc_function *);
-int	sdmmc_io_function_enable(struct sdmmc_function *);
-void	sdmmc_io_function_disable(struct sdmmc_function *);
-void	sdmmc_io_set_blocklen(struct sdmmc_function *, unsigned int);
-
-int	sdmmc_read_cis(struct sdmmc_function *, struct sdmmc_cis *);
-void	sdmmc_print_cis(struct sdmmc_function *);
-void	sdmmc_check_cis_quirks(struct sdmmc_function *);
+void sdmmc_discover_cards(struct sdmmc_softc *);
 
 int	sdmmc_mem_enable(struct sdmmc_softc *);
-void	sdmmc_mem_scan(struct sdmmc_softc *);
+int	sdmmc_mem_scan(struct sdmmc_softc *);
 int	sdmmc_mem_init(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_mem_read_block(struct sdmmc_function *, int, u_char *, size_t);
 int	sdmmc_mem_write_block(struct sdmmc_function *, int, u_char *, size_t);
-
-#ifdef HIBERNATE
-int	sdmmc_mem_hibernate_write(struct sdmmc_function *, daddr_t, u_char *,
-	    size_t);
-#endif
+int	sdmmc_mem_set_blocklen(struct sdmmc_softc *, struct sdmmc_function *);
+int sdmmc_select_card(struct sdmmc_softc *, struct sdmmc_function *);
 
 #endif
