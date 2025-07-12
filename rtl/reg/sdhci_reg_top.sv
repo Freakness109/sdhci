@@ -74,34 +74,46 @@ module sdhci_reg_top #(
   logic [11:0] block_size_transfer_block_size_qs;
   logic [11:0] block_size_transfer_block_size_wd;
   logic block_size_transfer_block_size_we;
+  logic block_size_transfer_block_size_re;
   logic [2:0] block_size_host_dma_buffer_boundary_qs;
   logic [2:0] block_size_host_dma_buffer_boundary_wd;
   logic block_size_host_dma_buffer_boundary_we;
+  logic block_size_host_dma_buffer_boundary_re;
   logic block_size_rsvd_15_qs;
+  logic block_size_rsvd_15_re;
   logic [15:0] block_count_qs;
   logic [15:0] block_count_wd;
   logic block_count_we;
+  logic block_count_re;
   logic [31:0] argument_qs;
   logic [31:0] argument_wd;
   logic argument_we;
   logic transfer_mode_dma_enable_qs;
   logic transfer_mode_dma_enable_wd;
   logic transfer_mode_dma_enable_we;
+  logic transfer_mode_dma_enable_re;
   logic transfer_mode_block_count_enable_qs;
   logic transfer_mode_block_count_enable_wd;
   logic transfer_mode_block_count_enable_we;
+  logic transfer_mode_block_count_enable_re;
   logic transfer_mode_auto_cmd12_enable_qs;
   logic transfer_mode_auto_cmd12_enable_wd;
   logic transfer_mode_auto_cmd12_enable_we;
+  logic transfer_mode_auto_cmd12_enable_re;
   logic transfer_mode_rsvd_3_qs;
+  logic transfer_mode_rsvd_3_re;
   logic transfer_mode_data_transfer_direction_select_qs;
   logic transfer_mode_data_transfer_direction_select_wd;
   logic transfer_mode_data_transfer_direction_select_we;
+  logic transfer_mode_data_transfer_direction_select_re;
   logic transfer_mode_multi_single_block_select_qs;
   logic transfer_mode_multi_single_block_select_wd;
   logic transfer_mode_multi_single_block_select_we;
+  logic transfer_mode_multi_single_block_select_re;
   logic [1:0] transfer_mode_rsvd_6_qs;
+  logic transfer_mode_rsvd_6_re;
   logic [7:0] transfer_mode_rsvd_8_qs;
+  logic transfer_mode_rsvd_8_re;
   logic [1:0] command_response_type_select_qs;
   logic [1:0] command_response_type_select_wd;
   logic command_response_type_select_we;
@@ -418,7 +430,9 @@ module sdhci_reg_top #(
   logic [7:0] maximum_current_capabilities_rsvd_24_qs;
   logic [31:0] maximum_current_capabilities_reserved_qs;
   logic [7:0] slot_interrupt_status_interrupt_signal_for_each_slot_qs;
+  logic slot_interrupt_status_interrupt_signal_for_each_slot_re;
   logic [7:0] slot_interrupt_status_rsvd_8_qs;
+  logic slot_interrupt_status_rsvd_8_re;
   logic [7:0] host_controller_version_specification_version_number_qs;
   logic [7:0] host_controller_version_vendor_version_number_qs;
 
@@ -450,88 +464,65 @@ module sdhci_reg_top #(
   );
 
 
-  // R[block_size]: V(False)
+  // R[block_size]: V(True)
 
   //   F[transfer_block_size]: 11:0
-  prim_subreg #(
-    .DW      (12),
-    .SWACCESS("RW"),
-    .RESVAL  (12'h0)
+  prim_subreg_ext #(
+    .DW    (12)
   ) u_block_size_transfer_block_size (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (block_size_transfer_block_size_re),
     .we     (block_size_transfer_block_size_we),
     .wd     (block_size_transfer_block_size_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.block_size.transfer_block_size.d),
+    .qre    (),
+    .qe     (reg2hw.block_size.transfer_block_size.qe),
     .q      (reg2hw.block_size.transfer_block_size.q ),
-
-    // to register interface (read)
     .qs     (block_size_transfer_block_size_qs)
   );
 
 
   //   F[host_dma_buffer_boundary]: 14:12
-  prim_subreg #(
-    .DW      (3),
-    .SWACCESS("RW"),
-    .RESVAL  (3'h0)
+  prim_subreg_ext #(
+    .DW    (3)
   ) u_block_size_host_dma_buffer_boundary (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (block_size_host_dma_buffer_boundary_re),
     .we     (block_size_host_dma_buffer_boundary_we),
     .wd     (block_size_host_dma_buffer_boundary_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.block_size.host_dma_buffer_boundary.d),
+    .qre    (),
+    .qe     (reg2hw.block_size.host_dma_buffer_boundary.qe),
     .q      (reg2hw.block_size.host_dma_buffer_boundary.q ),
-
-    // to register interface (read)
     .qs     (block_size_host_dma_buffer_boundary_qs)
   );
 
 
   //   F[rsvd_15]: 15:15
-  // constant-only read
-  assign block_size_rsvd_15_qs = 1'h0;
+  prim_subreg_ext #(
+    .DW    (1)
+  ) u_block_size_rsvd_15 (
+    .re     (block_size_rsvd_15_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      ('0),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (block_size_rsvd_15_qs)
+  );
 
 
-  // R[block_count]: V(False)
+  // R[block_count]: V(True)
 
-  prim_subreg #(
-    .DW      (16),
-    .SWACCESS("RW"),
-    .RESVAL  (16'h0)
+  prim_subreg_ext #(
+    .DW    (16)
   ) u_block_count (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (block_count_re),
     .we     (block_count_we),
     .wd     (block_count_wd),
-
-    // from internal hardware
-    .de     (hw2reg.block_count.de),
-    .d      (hw2reg.block_count.d ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.block_count.d),
+    .qre    (),
+    .qe     (reg2hw.block_count.qe),
     .q      (reg2hw.block_count.q ),
-
-    // to register interface (read)
     .qs     (block_count_qs)
   );
 
@@ -563,151 +554,126 @@ module sdhci_reg_top #(
   );
 
 
-  // R[transfer_mode]: V(False)
+  // R[transfer_mode]: V(True)
 
   //   F[dma_enable]: 0:0
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
+  prim_subreg_ext #(
+    .DW    (1)
   ) u_transfer_mode_dma_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (transfer_mode_dma_enable_re),
     .we     (transfer_mode_dma_enable_we),
     .wd     (transfer_mode_dma_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.transfer_mode.dma_enable.d),
+    .qre    (),
+    .qe     (reg2hw.transfer_mode.dma_enable.qe),
     .q      (reg2hw.transfer_mode.dma_enable.q ),
-
-    // to register interface (read)
     .qs     (transfer_mode_dma_enable_qs)
   );
 
 
   //   F[block_count_enable]: 1:1
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
+  prim_subreg_ext #(
+    .DW    (1)
   ) u_transfer_mode_block_count_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (transfer_mode_block_count_enable_re),
     .we     (transfer_mode_block_count_enable_we),
     .wd     (transfer_mode_block_count_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.transfer_mode.block_count_enable.d),
+    .qre    (),
+    .qe     (reg2hw.transfer_mode.block_count_enable.qe),
     .q      (reg2hw.transfer_mode.block_count_enable.q ),
-
-    // to register interface (read)
     .qs     (transfer_mode_block_count_enable_qs)
   );
 
 
   //   F[auto_cmd12_enable]: 2:2
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
+  prim_subreg_ext #(
+    .DW    (1)
   ) u_transfer_mode_auto_cmd12_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (transfer_mode_auto_cmd12_enable_re),
     .we     (transfer_mode_auto_cmd12_enable_we),
     .wd     (transfer_mode_auto_cmd12_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.transfer_mode.auto_cmd12_enable.d),
+    .qre    (),
+    .qe     (reg2hw.transfer_mode.auto_cmd12_enable.qe),
     .q      (reg2hw.transfer_mode.auto_cmd12_enable.q ),
-
-    // to register interface (read)
     .qs     (transfer_mode_auto_cmd12_enable_qs)
   );
 
 
   //   F[rsvd_3]: 3:3
-  // constant-only read
-  assign transfer_mode_rsvd_3_qs = 1'h0;
+  prim_subreg_ext #(
+    .DW    (1)
+  ) u_transfer_mode_rsvd_3 (
+    .re     (transfer_mode_rsvd_3_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      ('0),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (transfer_mode_rsvd_3_qs)
+  );
 
 
   //   F[data_transfer_direction_select]: 4:4
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
+  prim_subreg_ext #(
+    .DW    (1)
   ) u_transfer_mode_data_transfer_direction_select (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (transfer_mode_data_transfer_direction_select_re),
     .we     (transfer_mode_data_transfer_direction_select_we),
     .wd     (transfer_mode_data_transfer_direction_select_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.transfer_mode.data_transfer_direction_select.d),
+    .qre    (),
+    .qe     (reg2hw.transfer_mode.data_transfer_direction_select.qe),
     .q      (reg2hw.transfer_mode.data_transfer_direction_select.q ),
-
-    // to register interface (read)
     .qs     (transfer_mode_data_transfer_direction_select_qs)
   );
 
 
   //   F[multi_single_block_select]: 5:5
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
+  prim_subreg_ext #(
+    .DW    (1)
   ) u_transfer_mode_multi_single_block_select (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
+    .re     (transfer_mode_multi_single_block_select_re),
     .we     (transfer_mode_multi_single_block_select_we),
     .wd     (transfer_mode_multi_single_block_select_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
+    .d      (hw2reg.transfer_mode.multi_single_block_select.d),
+    .qre    (),
+    .qe     (reg2hw.transfer_mode.multi_single_block_select.qe),
     .q      (reg2hw.transfer_mode.multi_single_block_select.q ),
-
-    // to register interface (read)
     .qs     (transfer_mode_multi_single_block_select_qs)
   );
 
 
   //   F[rsvd_6]: 7:6
-  // constant-only read
-  assign transfer_mode_rsvd_6_qs = 2'h0;
+  prim_subreg_ext #(
+    .DW    (2)
+  ) u_transfer_mode_rsvd_6 (
+    .re     (transfer_mode_rsvd_6_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      ('0),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (transfer_mode_rsvd_6_qs)
+  );
 
 
   //   F[rsvd_8]: 15:8
-  // constant-only read
-  assign transfer_mode_rsvd_8_qs = 8'h0;
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_transfer_mode_rsvd_8 (
+    .re     (transfer_mode_rsvd_8_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      ('0),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (transfer_mode_rsvd_8_qs)
+  );
 
 
   // R[command]: V(False)
@@ -3734,16 +3700,36 @@ module sdhci_reg_top #(
   assign maximum_current_capabilities_reserved_qs = 32'h0;
 
 
-  // R[slot_interrupt_status]: V(False)
+  // R[slot_interrupt_status]: V(True)
 
   //   F[interrupt_signal_for_each_slot]: 7:0
-  // constant-only read
-  assign slot_interrupt_status_interrupt_signal_for_each_slot_qs = 8'h0;
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_slot_interrupt_status_interrupt_signal_for_each_slot (
+    .re     (slot_interrupt_status_interrupt_signal_for_each_slot_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.slot_interrupt_status.interrupt_signal_for_each_slot.d),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (slot_interrupt_status_interrupt_signal_for_each_slot_qs)
+  );
 
 
   //   F[rsvd_8]: 15:8
-  // constant-only read
-  assign slot_interrupt_status_rsvd_8_qs = 8'h0;
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_slot_interrupt_status_rsvd_8 (
+    .re     (slot_interrupt_status_rsvd_8_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      ('0),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (slot_interrupt_status_rsvd_8_qs)
+  );
 
 
   // R[host_controller_version]: V(False)
@@ -3841,30 +3827,46 @@ module sdhci_reg_top #(
 
   assign block_size_transfer_block_size_we = addr_hit[1] & reg_we & !reg_error & (|(4'b 0011 & reg_be));
   assign block_size_transfer_block_size_wd = reg_wdata[11:0];
+  assign block_size_transfer_block_size_re = addr_hit[1] & reg_re & !reg_error & (|(4'b 0011 & reg_be));
 
   assign block_size_host_dma_buffer_boundary_we = addr_hit[1] & reg_we & !reg_error & (|(4'b 0010 & reg_be));
   assign block_size_host_dma_buffer_boundary_wd = reg_wdata[14:12];
+  assign block_size_host_dma_buffer_boundary_re = addr_hit[1] & reg_re & !reg_error & (|(4'b 0010 & reg_be));
+
+  assign block_size_rsvd_15_re = addr_hit[1] & reg_re & !reg_error & (|(4'b 0010 & reg_be));
 
   assign block_count_we = addr_hit[2] & reg_we & !reg_error & (|(4'b 1100 & reg_be));
   assign block_count_wd = reg_wdata[31:16];
+  assign block_count_re = addr_hit[2] & reg_re & !reg_error & (|(4'b 1100 & reg_be));
 
   assign argument_we = addr_hit[3] & reg_we & !reg_error & (|(4'b 1111 & reg_be));
   assign argument_wd = reg_wdata[31:0];
 
   assign transfer_mode_dma_enable_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign transfer_mode_dma_enable_wd = reg_wdata[0];
+  assign transfer_mode_dma_enable_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
 
   assign transfer_mode_block_count_enable_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign transfer_mode_block_count_enable_wd = reg_wdata[1];
+  assign transfer_mode_block_count_enable_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
 
   assign transfer_mode_auto_cmd12_enable_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign transfer_mode_auto_cmd12_enable_wd = reg_wdata[2];
+  assign transfer_mode_auto_cmd12_enable_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
+
+  assign transfer_mode_rsvd_3_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
 
   assign transfer_mode_data_transfer_direction_select_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign transfer_mode_data_transfer_direction_select_wd = reg_wdata[4];
+  assign transfer_mode_data_transfer_direction_select_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
 
   assign transfer_mode_multi_single_block_select_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign transfer_mode_multi_single_block_select_wd = reg_wdata[5];
+  assign transfer_mode_multi_single_block_select_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
+
+  assign transfer_mode_rsvd_6_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
+
+  assign transfer_mode_rsvd_8_re = addr_hit[4] & reg_re & !reg_error & (|(4'b 0010 & reg_be));
 
   assign command_response_type_select_we = addr_hit[5] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
   assign command_response_type_select_wd = reg_wdata[17:16];
@@ -4112,6 +4114,10 @@ module sdhci_reg_top #(
 
   assign error_interrupt_signal_enable_vendor_specific_error_signal_enable_we = addr_hit[24] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
   assign error_interrupt_signal_enable_vendor_specific_error_signal_enable_wd = reg_wdata[31:28];
+
+  assign slot_interrupt_status_interrupt_signal_for_each_slot_re = addr_hit[30] & reg_re & !reg_error & (|(4'b 0001 & reg_be));
+
+  assign slot_interrupt_status_rsvd_8_re = addr_hit[30] & reg_re & !reg_error & (|(4'b 0010 & reg_be));
 
   // Read data return
   always_comb begin

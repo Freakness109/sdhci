@@ -89,6 +89,9 @@ module user_sdhci #(
 
   logic  sd_cmd_dat_busy;
 
+  `writable_reg_t([15:0]) block_count_hw;
+
+
   sdhci_reg_logic i_sdhci_reg_logic (
     .clk_i,
     .rst_ni     (sd_rst_n),
@@ -115,6 +118,13 @@ module user_sdhci #(
     .card_removal_o    (hw2reg.normal_interrupt_status.card_removal),
     .card_insertion_o  (hw2reg.normal_interrupt_status.card_insertion),
 
+
+    .block_count_o       (hw2reg.block_count),
+    .block_count_hw_i    (block_count_hw),
+    .block_size_reg_o    (hw2reg.block_size),
+    .transfer_mode_reg_o (hw2reg.transfer_mode),
+
+    .slot_interrupt_status_o (hw2reg.slot_interrupt_status),
     .interrupt_o
   );
 
@@ -225,7 +235,7 @@ module user_sdhci #(
     .read_transfer_active_o  (hw2reg.present_state.read_transfer_active),
     .write_transfer_active_o (hw2reg.present_state.write_transfer_active),
 
-    .block_count_o           (hw2reg.block_count)
+    .block_count_o           (block_count_hw)
   );
   
 endmodule
