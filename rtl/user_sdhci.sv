@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: SHL-0.51
 
 `include "common_cells/registers.svh"
+`include "defines.svh"
 `define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
 
 module user_sdhci #(
@@ -124,7 +125,7 @@ module user_sdhci #(
     .block_size_reg_o    (hw2reg.block_size),
     .transfer_mode_reg_o (hw2reg.transfer_mode),
 
-    .slot_interrupt_status_o (hw2reg.slot_interrupt_status),
+    .interrupt_signal_for_each_slot_o (hw2reg.slot_interrupt_status.interrupt_signal_for_each_slot.d),
     .interrupt_o
   );
 

@@ -33,7 +33,7 @@ module sdhci_reg_logic (
   output sdhci_reg_pkg::sdhci_hw2reg_block_size_reg_t    block_size_reg_o,
   output sdhci_reg_pkg::sdhci_hw2reg_transfer_mode_reg_t transfer_mode_reg_o,
 
-  output `writable_reg_t([15:0]) slot_interrupt_status_o,
+  output logic [7:0] interrupt_signal_for_each_slot_o,
   output logic interrupt_o
 );
   `define did_get_set(register, field) ( \
@@ -53,8 +53,8 @@ module sdhci_reg_logic (
     |( reg2hw_i.register``_status.field.q & // Is 1 \
         reg2hw_i.register``_signal_enable.field``_signal_enable.q)) // Should interrupt \
     
-  assign slot_interrupt_status_o.d[15:1] = '0;
-  assign slot_interrupt_status_o.d[0] =
+  assign interrupt_signal_for_each_slot_o[7:1] = '0;
+  assign interrupt_signal_for_each_slot_o[0] =
     // `should_interrupt(normal_interrupt, card_interrupt    ) |
     `should_interrupt(normal_interrupt, card_removal      ) |
     `should_interrupt(normal_interrupt, card_insertion    ) |
@@ -79,7 +79,7 @@ module sdhci_reg_logic (
 
   logic interrupt_status_q, interrupt_status_d;
   `FF(interrupt_status_q, interrupt_status_d, '0);
-  assign interrupt_status_d = slot_interrupt_status_o.d[0];
+  assign interrupt_status_d = interrupt_signal_for_each_slot_o[0];
 
   // Send interrupt if any interupt status went from 0 to 1
   assign interrupt_o = !interrupt_status_q && interrupt_status_d;
