@@ -78,15 +78,16 @@ int main() {
     uart_init(); // setup the uart peripheral
     
     printf("Hello world!\n");
+    uart_write_flush();
 
 
 #ifdef SDHC_DEBUG
     debug_funcs = 0;
-    sdhcdebug = 0;
+    sdhcdebug = 2;
 #endif
 
 
-ASSERT_OK(sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0));
+    ASSERT_OK(sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0));
 
 #ifdef WITH_SD_MODEL
     ASSERT_OK(sdhc_bus_width(&hp, 4));
