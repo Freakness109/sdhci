@@ -61,7 +61,7 @@ module cmd_wrap (
 
   //high if were running AUTO CMD12
   logic running_cmd12_q, running_cmd12_d;
-  `FFL(running_cmd12_q, running_cmd12_d, clk_en_p_i, '0, clk_i, rst_ni);
+  `FF(running_cmd12_q, running_cmd12_d, '0, clk_i, rst_ni);
 
   //high if we are in READ_RSP_BUSY and received rsp_valid
   logic wait_for_busy_q, wait_for_busy_d;

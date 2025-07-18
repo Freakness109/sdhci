@@ -114,8 +114,7 @@ int main() {
     ASSERT_OK(sdhc_bus_clock(sc.sch, SDMMC_SDCLK_25MHZ, SDMMC_TIMING_LEGACY));
 
 #ifdef WITH_SD_MODEL
-    if (sc.sc_card.csd.sector_size != 512)
-        ASSERT_OK(sdmmc_mem_set_blocklen(&sc, &sc.sc_card));
+    ASSERT_OK(sdmmc_mem_set_blocklen(&sc, &sc.sc_card));
 #endif
 
     // Single block RW

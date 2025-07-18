@@ -38,7 +38,7 @@ module user_sdhci #(
   
 );
   logic sd_rst_n, sd_rst_cmd_n, sd_rst_dat_n;
-  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw;
+  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw, reg2hw_orig;
   sdhci_reg_pkg::sdhci_hw2reg_t hw2reg;
 
   //Soft Reset Logic/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ module user_sdhci #(
     .rst_ni (sd_rst_n),
     .obi_req_i,
     .obi_rsp_o,
-    .reg2hw,
+    .reg2hw (reg2hw_orig),
     .hw2reg
   );
 
@@ -99,8 +99,9 @@ module user_sdhci #(
     .rst_cmd_ni (sd_rst_cmd_n),
     .rst_dat_ni (sd_rst_dat_n),
 
-    .reg2hw_i (reg2hw),
-    .hw2reg_i (hw2reg),
+    .reg2hw_i          (reg2hw_orig),
+    .hw2reg_i          (hw2reg),
+    .reg2hw_modified_o (reg2hw),
 
     .sd_cmd_dat_busy_i (sd_cmd_dat_busy),
 

@@ -10,6 +10,8 @@ module sdhci_reg_logic (
   input sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
   input sdhci_reg_pkg::sdhci_hw2reg_t hw2reg_i,
 
+  output sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_modified_o,
+
   input logic sd_cmd_dat_busy_i,
 
   output `writable_reg_t() error_interrupt_o,
@@ -145,21 +147,23 @@ module sdhci_reg_logic (
   assign card_removal_o.de = rst_dat_ni & `did_get_unset(present_state, card_inserted);
   
   // Writes to the transfer_mode register should be ignored when command_inhibit_cmd is active
-  `FFL (transfer_mode_reg_o.multi_single_block_select     .d, reg2hw_i.transfer_mode.multi_single_block_select     .q, '0,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.multi_single_block_select     .qe)
-  `FFL (transfer_mode_reg_o.data_transfer_direction_select.d, reg2hw_i.transfer_mode.data_transfer_direction_select.q, '0,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.data_transfer_direction_select.qe)
-  `FFL (transfer_mode_reg_o.auto_cmd12_enable             .d, reg2hw_i.transfer_mode.auto_cmd12_enable             .q, '0,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.auto_cmd12_enable             .qe)
-  `FFL (transfer_mode_reg_o.block_count_enable            .d, reg2hw_i.transfer_mode.block_count_enable            .q, '0,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.block_count_enable            .qe)
-  `FFL (transfer_mode_reg_o.dma_enable                    .d, reg2hw_i.transfer_mode.dma_enable                    .q, '0,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.dma_enable                    .qe)
+  `FFL (transfer_mode_reg_o.multi_single_block_select     .d, reg2hw_i.transfer_mode.multi_single_block_select     .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.multi_single_block_select     .qe, '0)
+  `FFL (transfer_mode_reg_o.data_transfer_direction_select.d, reg2hw_i.transfer_mode.data_transfer_direction_select.q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.data_transfer_direction_select.qe, '0)
+  `FFL (transfer_mode_reg_o.auto_cmd12_enable             .d, reg2hw_i.transfer_mode.auto_cmd12_enable             .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.auto_cmd12_enable             .qe, '0)
+  `FFL (transfer_mode_reg_o.block_count_enable            .d, reg2hw_i.transfer_mode.block_count_enable            .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.block_count_enable            .qe, '0)
+  `FFL (transfer_mode_reg_o.dma_enable                    .d, reg2hw_i.transfer_mode.dma_enable                    .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.dma_enable                    .qe, '0)
 
   // Writes to the block_count and block_size register should be ignored when command_inhibit_dat is active
-  `FFL (block_size_reg_o.transfer_block_size.d, reg2hw_i.block_size.transfer_block_size.q, '0,
-        !reg2hw_i.present_state.command_inhibit_dat.q && reg2hw_i.block_size.transfer_block_size.qe);
+  logic [11:0] block_size;
+  `FFL (block_size, reg2hw_i.block_size.transfer_block_size.q,
+        !reg2hw_i.present_state.command_inhibit_dat.q && reg2hw_i.block_size.transfer_block_size.qe, '0);
 
+  assign block_size_reg_o.transfer_block_size.d = block_size;
   assign block_size_reg_o.host_dma_buffer_boundary.d = '0;
 
   logic [15:0] block_count_q, block_count_d;
@@ -174,4 +178,17 @@ module sdhci_reg_logic (
   end
   assign block_count_o = block_count_q;
 
+  always_comb begin
+    reg2hw_modified_o = reg2hw_i;   
+
+    reg2hw_modified_o.transfer_mode.multi_single_block_select     .q = transfer_mode_reg_o.multi_single_block_select     .d;
+    reg2hw_modified_o.transfer_mode.data_transfer_direction_select.q = transfer_mode_reg_o.data_transfer_direction_select.d;
+    reg2hw_modified_o.transfer_mode.auto_cmd12_enable             .q = transfer_mode_reg_o.auto_cmd12_enable             .d;
+    reg2hw_modified_o.transfer_mode.block_count_enable            .q = transfer_mode_reg_o.block_count_enable            .d;
+    reg2hw_modified_o.transfer_mode.dma_enable                    .q = transfer_mode_reg_o.dma_enable                    .d;
+
+    reg2hw_modified_o.block_size.transfer_block_size.q = block_size_reg_o.transfer_block_size.d;
+
+    reg2hw_modified_o.block_count.q = block_count_o;
+  end
 endmodule

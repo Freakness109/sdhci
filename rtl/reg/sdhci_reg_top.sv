@@ -4122,26 +4122,25 @@ module sdhci_reg_top #(
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
-    case (1'b1)
-      addr_hit[0]: begin
+    if (addr_hit[0]) begin
         reg_rdata_next[31:0] = system_address_qs;
-      end
+    end
 
-      addr_hit[1]: begin
+    if (addr_hit[1]) begin
         reg_rdata_next[11:0] = block_size_transfer_block_size_qs;
         reg_rdata_next[14:12] = block_size_host_dma_buffer_boundary_qs;
         reg_rdata_next[15] = block_size_rsvd_15_qs;
-      end
+    end
 
-      addr_hit[2]: begin
+    if (addr_hit[2]) begin
         reg_rdata_next[31:16] = block_count_qs;
-      end
+    end
 
-      addr_hit[3]: begin
+    if (addr_hit[3]) begin
         reg_rdata_next[31:0] = argument_qs;
-      end
+    end
 
-      addr_hit[4]: begin
+    if (addr_hit[4]) begin
         reg_rdata_next[0] = transfer_mode_dma_enable_qs;
         reg_rdata_next[1] = transfer_mode_block_count_enable_qs;
         reg_rdata_next[2] = transfer_mode_auto_cmd12_enable_qs;
@@ -4150,9 +4149,9 @@ module sdhci_reg_top #(
         reg_rdata_next[5] = transfer_mode_multi_single_block_select_qs;
         reg_rdata_next[7:6] = transfer_mode_rsvd_6_qs;
         reg_rdata_next[15:8] = transfer_mode_rsvd_8_qs;
-      end
+    end
 
-      addr_hit[5]: begin
+    if (addr_hit[5]) begin
         reg_rdata_next[17:16] = command_response_type_select_qs;
         reg_rdata_next[18] = command_rsvd_2_qs;
         reg_rdata_next[19] = command_command_crc_check_enable_qs;
@@ -4161,29 +4160,29 @@ module sdhci_reg_top #(
         reg_rdata_next[23:22] = command_command_type_qs;
         reg_rdata_next[29:24] = command_command_index_qs;
         reg_rdata_next[31:30] = command_rsvd_14_qs;
-      end
+    end
 
-      addr_hit[6]: begin
+    if (addr_hit[6]) begin
         reg_rdata_next[31:0] = response0_qs;
-      end
+    end
 
-      addr_hit[7]: begin
+    if (addr_hit[7]) begin
         reg_rdata_next[31:0] = response1_qs;
-      end
+    end
 
-      addr_hit[8]: begin
+    if (addr_hit[8]) begin
         reg_rdata_next[31:0] = response2_qs;
-      end
+    end
 
-      addr_hit[9]: begin
+    if (addr_hit[9]) begin
         reg_rdata_next[31:0] = response3_qs;
-      end
+    end
 
-      addr_hit[10]: begin
+    if (addr_hit[10]) begin
         reg_rdata_next[31:0] = buffer_data_port_qs;
-      end
+    end
 
-      addr_hit[11]: begin
+    if (addr_hit[11]) begin
         reg_rdata_next[0] = present_state_command_inhibit_cmd_qs;
         reg_rdata_next[1] = present_state_command_inhibit_dat_qs;
         reg_rdata_next[2] = present_state_dat_line_active_qs;
@@ -4200,57 +4199,57 @@ module sdhci_reg_top #(
         reg_rdata_next[23:20] = present_state_dat_line_signal_level_qs;
         reg_rdata_next[24] = present_state_cmd_line_signal_level_qs;
         reg_rdata_next[31:25] = present_state_rsvd_25_qs;
-      end
+    end
 
-      addr_hit[12]: begin
+    if (addr_hit[12]) begin
         reg_rdata_next[0] = host_control_led_control_qs;
         reg_rdata_next[1] = host_control_data_transfer_width_qs;
         reg_rdata_next[2] = host_control_high_speed_enable_qs;
         reg_rdata_next[7:3] = host_control_rsvd_3_qs;
-      end
+    end
 
-      addr_hit[13]: begin
+    if (addr_hit[13]) begin
         reg_rdata_next[8] = power_control_sd_bus_power_qs;
         reg_rdata_next[11:9] = power_control_sd_bus_voltage_select_qs;
         reg_rdata_next[15:12] = power_control_rsvd_4_qs;
-      end
+    end
 
-      addr_hit[14]: begin
+    if (addr_hit[14]) begin
         reg_rdata_next[16] = block_gap_control_stop_at_block_gap_request_qs;
         reg_rdata_next[17] = block_gap_control_continue_request_qs;
         reg_rdata_next[18] = block_gap_control_read_wait_control_qs;
         reg_rdata_next[19] = block_gap_control_interrupt_at_block_gap_qs;
         reg_rdata_next[23:20] = block_gap_control_rsvd_4_qs;
-      end
+    end
 
-      addr_hit[15]: begin
+    if (addr_hit[15]) begin
         reg_rdata_next[24] = wakeup_control_wakeup_event_enable_on_card_interrupt_qs;
         reg_rdata_next[25] = wakeup_control_wakeup_event_enable_on_sd_card_insertion_qs;
         reg_rdata_next[26] = wakeup_control_wakeup_event_enable_on_sd_card_removal_qs;
         reg_rdata_next[31:27] = wakeup_control_rsvd_3_qs;
-      end
+    end
 
-      addr_hit[16]: begin
+    if (addr_hit[16]) begin
         reg_rdata_next[0] = clock_control_internal_clock_enable_qs;
         reg_rdata_next[1] = clock_control_internal_clock_stable_qs;
         reg_rdata_next[2] = clock_control_sd_clock_enable_qs;
         reg_rdata_next[7:3] = clock_control_rsvd_3_qs;
         reg_rdata_next[15:8] = clock_control_sdclk_frequency_select_qs;
-      end
+    end
 
-      addr_hit[17]: begin
+    if (addr_hit[17]) begin
         reg_rdata_next[19:16] = timeout_control_data_timeout_counter_value_qs;
         reg_rdata_next[23:20] = timeout_control_rsvd_4_qs;
-      end
+    end
 
-      addr_hit[18]: begin
+    if (addr_hit[18]) begin
         reg_rdata_next[24] = software_reset_software_reset_for_all_qs;
         reg_rdata_next[25] = software_reset_software_reset_for_cmd_line_qs;
         reg_rdata_next[26] = software_reset_software_reset_for_dat_line_qs;
         reg_rdata_next[31:28] = software_reset_rsvd_4_qs;
-      end
+    end
 
-      addr_hit[19]: begin
+    if (addr_hit[19]) begin
         reg_rdata_next[0] = normal_interrupt_status_command_complete_qs;
         reg_rdata_next[1] = normal_interrupt_status_transfer_complete_qs;
         reg_rdata_next[2] = normal_interrupt_status_block_gap_event_qs;
@@ -4262,9 +4261,9 @@ module sdhci_reg_top #(
         reg_rdata_next[8] = normal_interrupt_status_card_interrupt_qs;
         reg_rdata_next[14:9] = normal_interrupt_status_rsvd_9_qs;
         reg_rdata_next[15] = normal_interrupt_status_error_interrupt_qs;
-      end
+    end
 
-      addr_hit[20]: begin
+    if (addr_hit[20]) begin
         reg_rdata_next[16] = error_interrupt_status_command_timeout_error_qs;
         reg_rdata_next[17] = error_interrupt_status_command_crc_error_qs;
         reg_rdata_next[18] = error_interrupt_status_command_end_bit_error_qs;
@@ -4276,9 +4275,9 @@ module sdhci_reg_top #(
         reg_rdata_next[24] = error_interrupt_status_auto_cmd12_error_qs;
         reg_rdata_next[27:25] = error_interrupt_status_rsvd_9_qs;
         reg_rdata_next[31:28] = error_interrupt_status_vendor_specific_error_qs;
-      end
+    end
 
-      addr_hit[21]: begin
+    if (addr_hit[21]) begin
         reg_rdata_next[0] = normal_interrupt_status_enable_command_complete_status_enable_qs;
         reg_rdata_next[1] = normal_interrupt_status_enable_transfer_complete_status_enable_qs;
         reg_rdata_next[2] = normal_interrupt_status_enable_block_gap_event_status_enable_qs;
@@ -4290,9 +4289,9 @@ module sdhci_reg_top #(
         reg_rdata_next[8] = normal_interrupt_status_enable_card_interrupt_status_enable_qs;
         reg_rdata_next[14:9] = normal_interrupt_status_enable_rsvd_9_qs;
         reg_rdata_next[15] = normal_interrupt_status_enable_fixed_to_0_qs;
-      end
+    end
 
-      addr_hit[22]: begin
+    if (addr_hit[22]) begin
         reg_rdata_next[16] = error_interrupt_status_enable_command_timeout_error_status_enable_qs;
         reg_rdata_next[17] = error_interrupt_status_enable_command_crc_error_status_enable_qs;
         reg_rdata_next[18] = error_interrupt_status_enable_command_end_bit_error_status_enable_qs;
@@ -4304,9 +4303,9 @@ module sdhci_reg_top #(
         reg_rdata_next[24] = error_interrupt_status_enable_auto_cmd12_error_status_enable_qs;
         reg_rdata_next[27:25] = error_interrupt_status_enable_rsvd_9_qs;
         reg_rdata_next[31:28] = error_interrupt_status_enable_vendor_specific_error_status_enable_qs;
-      end
+    end
 
-      addr_hit[23]: begin
+    if (addr_hit[23]) begin
         reg_rdata_next[0] = normal_interrupt_signal_enable_command_complete_signal_enable_qs;
         reg_rdata_next[1] = normal_interrupt_signal_enable_transfer_complete_signal_enable_qs;
         reg_rdata_next[2] = normal_interrupt_signal_enable_block_gap_event_signal_enable_qs;
@@ -4318,9 +4317,9 @@ module sdhci_reg_top #(
         reg_rdata_next[8] = normal_interrupt_signal_enable_card_interrupt_signal_enable_qs;
         reg_rdata_next[14:9] = normal_interrupt_signal_enable_rsvd_9_qs;
         reg_rdata_next[15] = normal_interrupt_signal_enable_fixed_to_0_qs;
-      end
+    end
 
-      addr_hit[24]: begin
+    if (addr_hit[24]) begin
         reg_rdata_next[16] = error_interrupt_signal_enable_command_timeout_error_signal_enable_qs;
         reg_rdata_next[17] = error_interrupt_signal_enable_command_crc_error_signal_enable_qs;
         reg_rdata_next[18] = error_interrupt_signal_enable_command_end_bit_error_signal_enable_qs;
@@ -4332,9 +4331,9 @@ module sdhci_reg_top #(
         reg_rdata_next[24] = error_interrupt_signal_enable_auto_cmd12_error_signal_enable_qs;
         reg_rdata_next[27:25] = error_interrupt_signal_enable_rsvd_9_qs;
         reg_rdata_next[31:28] = error_interrupt_signal_enable_vendor_specific_error_signal_enable_qs;
-      end
+    end
 
-      addr_hit[25]: begin
+    if (addr_hit[25]) begin
         reg_rdata_next[0] = auto_cmd12_error_status_auto_cmd12_not_executed_qs;
         reg_rdata_next[1] = auto_cmd12_error_status_auto_cmd12_timeout_error_qs;
         reg_rdata_next[2] = auto_cmd12_error_status_auto_cmd12_crc_error_qs;
@@ -4343,9 +4342,9 @@ module sdhci_reg_top #(
         reg_rdata_next[6:5] = auto_cmd12_error_status_rsvd_5_qs;
         reg_rdata_next[7] = auto_cmd12_error_status_command_not_issued_by_auto_cmd12_error_qs;
         reg_rdata_next[15:8] = auto_cmd12_error_status_rsvd_8_qs;
-      end
+    end
 
-      addr_hit[26]: begin
+    if (addr_hit[26]) begin
         reg_rdata_next[5:0] = capabilities_timeout_clock_frequency_qs;
         reg_rdata_next[6] = capabilities_rsvd_6_qs;
         reg_rdata_next[7] = capabilities_timeout_clock_unit_qs;
@@ -4360,37 +4359,33 @@ module sdhci_reg_top #(
         reg_rdata_next[25] = capabilities_voltage_support_3_0v_qs;
         reg_rdata_next[26] = capabilities_voltage_support_1_8v_qs;
         reg_rdata_next[31:27] = capabilities_rsvd_27_qs;
-      end
+    end
 
-      addr_hit[27]: begin
+    if (addr_hit[27]) begin
         reg_rdata_next[31:0] = capabilities_reserved_qs;
-      end
+    end
 
-      addr_hit[28]: begin
+    if (addr_hit[28]) begin
         reg_rdata_next[7:0] = maximum_current_capabilities_maximum_current_for_3_3v_qs;
         reg_rdata_next[15:8] = maximum_current_capabilities_maximum_current_for_3_0v_qs;
         reg_rdata_next[23:16] = maximum_current_capabilities_maximum_current_for_1_8v_qs;
         reg_rdata_next[31:24] = maximum_current_capabilities_rsvd_24_qs;
-      end
+    end
 
-      addr_hit[29]: begin
+    if (addr_hit[29]) begin
         reg_rdata_next[31:0] = maximum_current_capabilities_reserved_qs;
-      end
+    end
 
-      addr_hit[30]: begin
+    if (addr_hit[30]) begin
         reg_rdata_next[7:0] = slot_interrupt_status_interrupt_signal_for_each_slot_qs;
         reg_rdata_next[15:8] = slot_interrupt_status_rsvd_8_qs;
-      end
+    end
 
-      addr_hit[31]: begin
+    if (addr_hit[31]) begin
         reg_rdata_next[23:16] = host_controller_version_specification_version_number_qs;
         reg_rdata_next[31:24] = host_controller_version_vendor_version_number_qs;
-      end
+    end
 
-      default: begin
-        reg_rdata_next = '1;
-      end
-    endcase
   end
 
   // Unused signal tieoff
