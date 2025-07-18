@@ -308,7 +308,7 @@ module cmd_wrap (
 
     end else if (start_tx_q) begin// Request received by sdclk domain, transmission has started
       start_tx_d = '0;
-      if (running_cmd12_d) begin
+      if (running_cmd12_q) begin
         cmd12_requested_d = '0;
       end else begin
         driver_cmd_requested_d = '0;
