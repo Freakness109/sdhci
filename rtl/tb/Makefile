@@ -25,16 +25,14 @@ dat: obj_dir/Vtb_dat
 acmd12: obj_dir/Vtb_acmd12
 	set -e; \
 	for Cycles in $$(seq -10 10); do \
+	for ClkEnPeriod in 1 2 4; do \
 	for Valid in 0 1 ; do \
 	obj_dir/Vtb_acmd12 +verilator+quiet \
 		+CyclesThatDriverCommandArrivesBeforeCMD12=$$Cycles \
-		+IsFirstResponseValid=$$Valid ; \
+		+IsFirstResponseValid=$$Valid \
+		+ClkEnPeriod=$$ClkEnPeriod ; \
+	done \
 	done \
 	done
-
-#	obj_dir/Vtb_acmd12 +verilator+quiet \
-#		+CyclesThatDriverCommandArrivesBeforeCMD12=3 \
-#		+IsFirstResponseValid=0
-
 
 .PHONY: acmd12 dat all

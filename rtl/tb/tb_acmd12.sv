@@ -42,29 +42,31 @@ module tb_acmd12 #(
       .interrupt_o ()
   );
 
+  int ClkEnPeriod;
+
   task automatic send_response_48(
       input logic [5:0] index,
       input logic [6:0] crc
   );
     tb_cmd = '0; // start_bit
-    @(negedge clk);
+    repeat (ClkEnPeriod) @(negedge clk);
     tb_cmd = '0; // direction bit
-    @(negedge clk);
+    repeat (ClkEnPeriod) @(negedge clk);
 
     // index
     for (int i = 0; i < 6; i++) begin
       tb_cmd = index[5-i];
-      @(negedge clk);
+      repeat (ClkEnPeriod) @(negedge clk);
     end
 
     // data
     tb_cmd = '0;
-    repeat (32) @(negedge clk);
+    repeat (32 * ClkEnPeriod) @(negedge clk);
 
     // crc
     for (int i = 0; i < 7; i++) begin
       tb_cmd = crc[6-i];
-      @(negedge clk);
+      repeat (ClkEnPeriod) @(negedge clk);
     end
 
     tb_cmd = '1;
@@ -92,10 +94,13 @@ module tb_acmd12 #(
     if (!$value$plusargs("IsFirstResponseValid=%d", IsFirstResponseValid)) begin
       IsFirstResponseValid = 0;
     end
+    if (!$value$plusargs("ClkEnPeriod=%d", ClkEnPeriod)) begin
+      ClkEnPeriod = 4;
+    end
 
     AutoCMD12First = CyclesThatDriverCommandArrivesBeforeCMD12 <= 0;
 
-    $display("Testing auto cmd12 with CyclesThatDriverCommandArrivesBeforeCMD12=%d, IsFirstResponseValid=%d", CyclesThatDriverCommandArrivesBeforeCMD12, IsFirstResponseValid);
+    $display("Testing auto cmd12 with CyclesThatDriverCommandArrivesBeforeCMD12=%d, IsFirstResponseValid=%d, ClkEnPeriod=%d", CyclesThatDriverCommandArrivesBeforeCMD12, IsFirstResponseValid, ClkEnPeriod);
 
     obi_req = '0;
     obi_req.a.we    = '1;
@@ -113,10 +118,15 @@ module tb_acmd12 #(
     obi_req.a.wdata = 'hFFFF_FFFF; // TODO currently we need to set this for acmd12 to work, change it?
     @(negedge clk);
 
-    // Enable Clock
+    // Set Clock frequency
     obi_req.a.addr  = 'h02C;
     obi_req.a.be    = 'b0011;
-    obi_req.a.wdata = 'h0004;
+    obi_req.a.wdata = { 16'b0, 8'(ClkEnPeriod >> 1), 8'h0 };
+    @(negedge clk);
+    // turn on clock
+    obi_req.a.addr  = 'h02C;
+    obi_req.a.be    = 'b0011;
+    obi_req.a.wdata = 'h04;
     @(negedge clk);
 
     // Set multi block + write + ACMD12
@@ -139,28 +149,34 @@ module tb_acmd12 #(
 
     obi_req.req     = '0;
 
-    repeat(10) @(negedge clk);
+    repeat(10*ClkEnPeriod) @(negedge clk);
     repeat (64 / 4) begin
       obi_req.req     = '1;
       obi_req.a.addr  = 'h020;
       obi_req.a.be    = 'b1111;
       obi_req.a.wdata = 'hDEAD_BEEF;
-      @(negedge clk);
+      repeat(ClkEnPeriod) @(negedge clk);
     end
 
     obi_req.req = '0;
 
-    repeat(541 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+    // These values are slightly random because of the offset between command start and sd clk period
+    case (ClkEnPeriod)
+      1: repeat(541 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+      2: repeat(1064 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+      4: repeat(2113 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+      default: $fatal("ClkEnPeriod not supported");
+    endcase
 
     // Dispatch command (cmd0 + 48bit response + no data)
     obi_req.req     = '1;
     obi_req.a.addr  = 'h00C;
     obi_req.a.be    = 'b1100;
     obi_req.a.wdata = ('b0_00011010) << 16;
-    @(negedge clk);
+    repeat(ClkEnPeriod) @(negedge clk);
     obi_req.req = '0;
 
-    repeat(80) @(negedge clk);
+    repeat(80*ClkEnPeriod) @(negedge clk);
 
     if (IsFirstResponseValid) begin
       // valid response, next command should run
@@ -173,7 +189,7 @@ module tb_acmd12 #(
       send_response_48('1, '1);
 
     if (IsFirstResponseValid) begin
-      repeat(80) @(negedge clk);
+      repeat(80*ClkEnPeriod) @(negedge clk);
 
       // Valid response for the second command
       if (AutoCMD12First)
@@ -181,13 +197,13 @@ module tb_acmd12 #(
       else
         send_response_48(12, 'h7A);
     end else begin
-      repeat (80) begin
+      repeat (80*ClkEnPeriod) begin
         if (!sdhc_cmd) $fatal("Second command should not have been sent");
         @(negedge clk);
       end
     end
 
-    repeat(10) @(negedge clk);
+    repeat(10*ClkEnPeriod) @(negedge clk);
 
     // Read out error register
     obi_req.req     = '1;
@@ -207,6 +223,7 @@ module tb_acmd12 #(
 
     obi_req.req = '0;
 
+    // leave some time so we get a cleaner waveform
     repeat(10) @(negedge clk);
 
     if (IsFirstResponseValid) begin

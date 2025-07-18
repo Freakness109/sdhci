@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Mon Jul  7 16:45:41 2025
+[*] Fri Jul 18 08:50:08 2025
 [*]
 [dumpfile] "/fosic/designs/croc/rtl/user_domain/sdhci/tb/tb_acmd12.vcd"
-[dumpfile_mtime] "Mon Jul  7 16:45:14 2025"
-[dumpfile_size] 52302
+[dumpfile_mtime] "Fri Jul 18 08:49:12 2025"
+[dumpfile_size] 58584
 [savefile] "/fosic/designs/croc/rtl/user_domain/sdhci/tb/tb_acmd12.gtkw"
-[timestart] 20190000
-[size] 2476 1418
+[timestart] 0
+[size] 1920 1080
 [pos] -1 -1
-*-21.510481 32490000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+*-24.987671 157800000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [markername] AA
 [markername] BB
 [markername] CC
@@ -44,19 +44,22 @@
 [treeopen] tb_acmd12.i_user_sdhci.i_cmd_wrap.
 [treeopen] tb_acmd12.i_user_sdhci.i_cmd_wrap.i_rsp_read.
 [treeopen] tb_acmd12.i_user_sdhci.i_dat_wrap.
-[treeopen] tb_acmd12.i_user_sdhci.i_regs.i_regs.
+[treeopen] tb_acmd12.i_user_sdhci.i_regs.
+[treeopen] tb_acmd12.i_user_sdhci.i_sd_clk_generator.
 [treeopen] tb_acmd12.i_user_sdhci.reg2hw.
-[treeopen] tb_acmd12.i_user_sdhci.reg2hw.auto_cmd12_error_status.
+[treeopen] tb_acmd12.i_user_sdhci.reg2hw.clock_control.
 [treeopen] tb_acmd12.i_user_sdhci.reg2hw.error_interrupt_status.
-[sst_width] 427
-[signals_width] 334
+[sst_width] 445
+[signals_width] 434
 [sst_expanded] 1
-[sst_vpaned_height] 882
+[sst_vpaned_height] 643
 @28
 tb_acmd12.i_user_sdhci.i_cmd_wrap.clk_i
+tb_acmd12.i_user_sdhci.sd_clk
 tb_acmd12.sdhc_cmd
-@29
 tb_acmd12.tb_cmd
+@22
+tb_acmd12.sdhc_dat[3:0]
 @28
 [color] 2
 tb_acmd12.i_user_sdhci.i_cmd_wrap.driver_cmd_requested_q
