@@ -1224,7 +1224,7 @@
           bits: "13:8"
           name: "base_clock_frequency_for_sd_clock"
           desc: ""
-          resval: "63" // TODO: Change to next highest full MHz, max 63.
+          resval: "50" // TODO: Change to next highest full MHz, max 63. (timeout_clock_frequency too)
         }
         {
           bits: "7"
@@ -1244,7 +1244,7 @@
           bits: "5:0"
           name: "timeout_clock_frequency"
           desc: ""
-          resval: "63" // MHz
+          resval: "50" // MHz
         }
       ]
     }

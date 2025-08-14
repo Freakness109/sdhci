@@ -3598,7 +3598,7 @@ module sdhci_reg_top #(
 
   //   F[timeout_clock_frequency]: 5:0
   // constant-only read
-  assign capabilities_timeout_clock_frequency_qs = 6'h3f;
+  assign capabilities_timeout_clock_frequency_qs = 6'h32;
 
 
   //   F[rsvd_6]: 6:6
@@ -3613,7 +3613,7 @@ module sdhci_reg_top #(
 
   //   F[base_clock_frequency_for_sd_clock]: 13:8
   // constant-only read
-  assign capabilities_base_clock_frequency_for_sd_clock_qs = 6'h3f;
+  assign capabilities_base_clock_frequency_for_sd_clock_qs = 6'h32;
 
 
   //   F[rsvd_14]: 15:14

@@ -19,7 +19,7 @@ module user_sdhci #(
   //-> internal clock predivider to get below 63MHz
   //only power of 2 dividers allowed :(
   //input log2 of divider i.e div by 4 ->  ClkPreDivLog = 2
-  parameter int unsigned       ClkPreDivLog   = 0
+  parameter int unsigned       ClkPreDivLog   = 1
   //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
 ) (
   input  logic clk_i,
