@@ -33,9 +33,9 @@ module user_sdhci #(
   output logic       sd_cmd_o,
   input  logic       sd_cmd_i,
 
-  output logic       sd_dat_en_o,
-  output logic [3:0] sd_dat_o,
   input  logic [3:0] sd_dat_i,
+  output logic [3:0] sd_dat_o,
+  output logic       sd_dat_en_o,
 
   output logic interrupt_o
   

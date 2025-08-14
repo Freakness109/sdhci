@@ -51,8 +51,7 @@ module dat_buffer #(
 
   logic [cf_math_pkg::idx_width(NumWords + 1)-1:0] reg_length;
   logic [cf_math_pkg::idx_width(NumBytes + 1)-1:0] reg_remaining_bytes;
-  // assign reg_remaining_bytes = (cf_math_pkg::idx_width(NumBytes + 1))'(NumBytes - reg_length * 4);
-  assign reg_remaining_bytes = NumBytes - reg_length * 4;
+  assign reg_remaining_bytes = (cf_math_pkg::idx_width(NumBytes + 1))'(NumBytes - reg_length * 4);
 
   logic has_block, has_space;
   assign has_space = reg_remaining_bytes >= block_size;
