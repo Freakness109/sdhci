@@ -822,7 +822,7 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 	int status, usecs;
 
 	mask |= SDHC_ERROR_INTERRUPT;
-	usecs = secs * 1000000;
+	usecs = secs * 1000000 * 1000;
 	status = hp->intr_status;
 	while ((status & mask) == 0) {
 
@@ -858,7 +858,7 @@ sdhc_wait_intr(struct sdhc_host *hp, int mask, int secs)
 		}
 
 		// asm volatile ("nop\n nop\n nop\n nop\n nop\n");
-		sdmmc_delay(1000);
+		sdmmc_delay(1);
 		if (usecs-- == 0) {
 			status |= SDHC_ERROR_INTERRUPT;
 			DPRINTF(0, ("sdhc_wait_intr timeoud out\n"));

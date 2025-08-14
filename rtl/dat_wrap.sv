@@ -133,11 +133,15 @@ module dat_wrap #(
   logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
   logic [31:0] write_data, read_data;
 
+  logic requested_cmd12_q, requested_cmd12_d;
+  `FF(requested_cmd12_q, requested_cmd12_d, '0)
+
   always_comb begin
     read_run_timeout = '0;
 
-    request_cmd12_o  = '0;
-    pause_sd_clk_o   = '0;
+    request_cmd12_o   = '0;
+    requested_cmd12_d = '0;
+    pause_sd_clk_o    = '0;
 
     data_crc_error_o     = '{ de: '0, d: '1};
     data_end_bit_error_o = '{ de: '0, d: '1};
@@ -185,12 +189,17 @@ module dat_wrap #(
           data_end_bit_error_o.de = read_end_bit_err;
         end
       end
-      READING_BUSY: begin
-        read_transfer_active_o.d = '1;
-      end
       DONE_READING_BLOCK: begin
         read_transfer_active_o.d = '1;
         transmitted_block_counter_d = transmitted_block_counter_q - 1;
+      end
+      READING_BUSY: begin
+        read_transfer_active_o.d = '1;
+
+        if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) begin
+          requested_cmd12_d = '1;
+          if (!requested_cmd12_q) request_cmd12_o = '1;
+        end
       end
       TIMEOUT_READING: begin
         read_transfer_active_o.d = '1;
@@ -198,8 +207,6 @@ module dat_wrap #(
       end
       DONE_READING: begin
         read_transfer_active_o.d = '1;
-
-        if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) request_cmd12_o = '1;
       end
 
       WAIT_FOR_RSP: begin
