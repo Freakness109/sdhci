@@ -130,7 +130,7 @@ module user_sdhci #(
     .interrupt_o
   );
 
-  logic sd_clk, pause_sd_clk, sd_clk_en_p, sd_clk_en_n, div_1;
+  logic pause_sd_clk, sd_clk_en_p, sd_clk_en_n, div_1;
   sd_clk_generator #(
     .ClkPreDivLog (ClkPreDivLog)
   ) i_sd_clk_generator (
@@ -139,30 +139,15 @@ module user_sdhci #(
     .reg2hw_i (reg2hw),
 
     .pause_sd_clk_i  (pause_sd_clk),
-    .sd_clk_o        (sd_clk),
+    .sd_clk_o        (sd_clk_o),
     .clk_en_p_o      (sd_clk_en_p),
     .clk_en_n_o      (sd_clk_en_n),
     .div_1_o         (div_1),
     .sd_clk_stable_o (hw2reg.clock_control.internal_clock_stable)
   );
-  logic cmd_write;
-  logic cmd_write_en, cmd_read;
 
-  logic dat_write_en;
-  logic [3:0] dat_write, dat_read;
-  
-  assign sd_clk_o = sd_clk;
-
-  assign cmd_read    = sd_cmd_i;
-  assign sd_dat_en_o = dat_write_en;
-  assign sd_dat_o    = dat_write;
-
-  assign dat_read    = sd_dat_i;
-  assign sd_cmd_en_o = cmd_write_en;
-  assign sd_cmd_o    = cmd_write;
-  
-  assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: dat_read };
-  assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: cmd_read };
+  assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: sd_dat_i };
+  assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: sd_cmd_i };
 
   assign hw2reg.present_state.write_protect_switch_pin_level = '{ de: '1, d: '1 };
   assign hw2reg.present_state.card_inserted                  = '{ de: '1, d: '1 }; // TODO ?
@@ -178,12 +163,12 @@ module user_sdhci #(
     .clk_en_p_i      (sd_clk_en_p),
     .clk_en_n_i      (sd_clk_en_n),
     .div_1_i         (div_1),
-    .sd_bus_cmd_i    (cmd_read),
-    .sd_bus_cmd_o    (cmd_write),
-    .sd_bus_cmd_en_o (cmd_write_en),
+    .sd_bus_cmd_i    (sd_cmd_i),
+    .sd_bus_cmd_o    (sd_cmd_o),
+    .sd_bus_cmd_en_o (sd_cmd_en_o),
     .reg2hw          (reg2hw),
 
-    .dat0_i          (dat_read[0]),
+    .dat0_i          (sd_dat_i[0]),
     .request_cmd12_i (request_cmd12),
 
     .sd_cmd_done_o     (sd_cmd_done),
@@ -214,9 +199,9 @@ module user_sdhci #(
     .div_1_i        (div_1),
     .rst_ni      (sd_rst_dat_n),
 
-    .dat_i    (dat_read),
-    .dat_en_o (dat_write_en),
-    .dat_o    (dat_write),
+    .dat_i    (sd_dat_i),
+    .dat_en_o (sd_dat_en_o),
+    .dat_o    (sd_dat_o),
 
     .sd_cmd_done_i   (sd_cmd_done),
     .sd_rsp_done_i   (sd_rsp_done),
