@@ -1,3 +1,10 @@
+// Copyright 2025 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
+// Authors:
+// - Micha Wehrli <miwehrli@student.ethz.ch>
+
 module tb_dat #(
     parameter time         ClkPeriod     = 50ns,
     parameter int unsigned RstCycles     = 1

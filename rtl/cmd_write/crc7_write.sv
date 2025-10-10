@@ -1,3 +1,10 @@
+// Copyright 2025 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
+// Authors:
+// - Anton Buchner <abuchner@student.ethz.ch>
+
 //CRC7 calculation. Takes in serial data.
 //shifts out result MSb first when shift_out_crc7_i is high, output should otherwise be ignored.
 //polynomial: x⁷ + x³ + 1

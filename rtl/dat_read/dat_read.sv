@@ -1,3 +1,10 @@
+// Copyright 2025 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
+// Authors:
+// - Micha Wehrli <miwehrli@student.ethz.ch>
+
 `include "common_cells/registers.svh"
 
 // done_o and data_valid_o can be done at the same time

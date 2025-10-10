@@ -1,3 +1,10 @@
+// Copyright 2025 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
+// Authors:
+// - Anton Buchner <abuchner@student.ethz.ch>
+
 //serial to parallel converter with active low asynchronous reset
 //shifts in MSb first!
 

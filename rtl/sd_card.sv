@@ -1,3 +1,11 @@
+// Copyright 2025 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
+// Authors:
+// - Micha Wehrli <miwehrli@student.ethz.ch>
+// - Anton Buchner <abuchner@student.ethz.ch>
+
 module sd_card(
     input  logic       sd_clk_i,
 

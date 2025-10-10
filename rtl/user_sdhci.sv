@@ -2,6 +2,10 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
+// Authors:
+// - Micha Wehrli <miwehrli@student.ethz.ch>
+// - Anton Buchner <abuchner@student.ethz.ch>
+
 `include "common_cells/registers.svh"
 `include "defines.svh"
 `define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.

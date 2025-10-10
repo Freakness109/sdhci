@@ -1,3 +1,10 @@
+// Copyright 2025 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
+// Authors:
+// - Anton Buchner <abuchner@student.ethz.ch>
+
 //CRC7 calculation from serial data stream, parallel output
 //output is valid 1st cycle after end_output_i is asserted to cycle where start_i is asserted
 //start_i must be asserted 1 clock cycle before first input bit should be considered
