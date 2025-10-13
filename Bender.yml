@@ -1,0 +1,77 @@
+# Copyright 2022 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+package:
+  name: sdio
+  authors:
+    - "Anton Buchner <abuchner@student.ethz.ch>"
+    - "Micha Wehrli <miwehrli@student.ethz.ch>"
+
+dependencies:
+  #   apb_uart:                 { git: "https://github.com/pulp-platform/apb_uart.git",               version: 0.2.3  }
+  axi:                      { git: "https://github.com/pulp-platform/axi.git",                    version: 0.39.8 }
+  #   axi_llc:                  { git: "https://github.com/pulp-platform/axi_llc.git",                version: 0.2.1  }
+  #   axi_riscv_atomics:        { git: "https://github.com/pulp-platform/axi_riscv_atomics.git",      version: 0.8.2  }
+  #   axi_rt:                   { git: "https://github.com/pulp-platform/axi_rt.git",                 version: 0.0.0-alpha.10 }
+  #   axi_vga:                  { git: "https://github.com/pulp-platform/axi_vga.git",                version: 0.1.3  }
+  #   clic:                     { git: "https://github.com/pulp-platform/clic.git",                   version: 2.0.0  }
+  #   clint:                    { git: "https://github.com/pulp-platform/clint.git",                  version: 0.2.0  }
+  common_cells:             { git: "https://github.com/pulp-platform/common_cells.git",           version: 1.38.0 }
+  common_verification:      { git: "https://github.com/pulp-platform/common_verification.git",    version: 0.2.3  }
+  #   cva6:                     { git: "https://github.com/pulp-platform/cva6.git",                   rev: pulp-v1.0.0 }
+  #   iDMA:                     { git: "https://github.com/pulp-platform/iDMA.git",                   version: 0.6.4  }
+  #   irq_router:               { git: "https://github.com/pulp-platform/irq_router.git",             version: 0.0.1-beta.1 }
+  obi:                      { git: "https://github.com/pulp-platform/obi",                        version: 0.1.7 }
+  opentitan_peripherals:    { git: "https://github.com/pulp-platform/opentitan_peripherals.git",  version: 0.4.0  }
+  register_interface:       { git: "https://github.com/micha4w/register_interface.git",     rev: "b699586fb2d57521552963031ca61768ad156113"  }
+  #   riscv-dbg:                { git: "https://github.com/pulp-platform/riscv-dbg.git",              version: 0.8.1  }
+  #   serial_link:              { git: "https://github.com/pulp-platform/serial_link.git",            version: 1.1.1  }
+  #   unbent:                   { git: "https://github.com/pulp-platform/unbent.git",                 version: 0.1.6  }
+  #   dram_rtl_sim:             { git: "https://github.com/pulp-platform/dram_rtl_sim.git",           version: 0.1.1  }
+
+
+sources:
+  include_dirs:
+  - rtl/include
+
+  files:
+  # Level 0 (packages)
+  - rtl/reg/sdhci_reg_pkg.sv
+  # Level 1
+  - rtl/cmd_write/crc7_write.sv
+  - rtl/dat_read/crc16_read.sv
+  - rtl/dat_read/dat_read_timeout.sv
+  - rtl/dat_write/crc16_write.sv
+  # - rtl/dat_write/crc16_write_copy.sv TODO: this also has the module name crc16_write, which one is the correct one?
+  - rtl/par_ser_shift_reg.sv
+  - rtl/reg/sdhci_reg_logic.sv # sdhci_reg_pkg
+  - rtl/reg/sdhci_reg_top.sv # sdhci_reg_pkg
+  - rtl/rsp_read/crc7_read.sv
+  - rtl/sd_clk_generator.sv
+  - rtl/ser_par_shift_reg.sv
+  - rtl/sram_shift_reg.sv # tc_sram_impl
+
+
+  # Level 2
+  - rtl/cmd_write/cmd_write.sv # par_ser_shift_reg, crc7_write, counter
+  - rtl/dat_buffer.sv # sram_shift_reg
+  - rtl/dat_read/dat_read.sv # crc16_read
+  - rtl/dat_write/dat_write.sv # crc16_write
+  - rtl/rsp_read/rsp_read.sv # ser_par_shift_reg, crc7_read, counter
+  - rtl/reg/sdhci_reg_obi.sv # sdhci_reg_top, external obi_pkg
+
+  # Level 3
+  - rtl/cmd_wrap.sv # cmd_write, rsp_read, counter
+  - rtl/dat_wrap.sv # dat_read_timeout, dat_buffer, dat_read, dat_write
+
+  # Level 4
+  - rtl/user_sdhci.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
+
+  - target: any(simulation, test)
+    files:
+      # Level 1
+      - rtl/tb/tb_acmd12.sv # user_sdhci
+      - rtl/tb/tb_dat.sv # sd_clk_generator, dat_write, dat_read
+      # Level 2
+      # - rtl/sd_card.sv # sdModel, unused
