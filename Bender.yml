@@ -73,5 +73,9 @@ sources:
       # Level 1
       - rtl/tb/tb_acmd12.sv # user_sdhci
       - rtl/tb/tb_dat.sv # sd_clk_generator, dat_write, dat_read
+      - rtl/model/sd_crc_7.v
+      - rtl/model/sd_crc_16.v
       # Level 2
-      - rtl/sd_card.sv # sdModel, unused
+      - rtl/model/sdModel.v # sd_crc_7, sd_crc_16
+      # Level 3
+      - rtl/model/sd_card.sv # sdModel
