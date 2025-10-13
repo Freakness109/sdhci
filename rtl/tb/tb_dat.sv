@@ -51,6 +51,7 @@ module tb_dat #(
   logic [3:0] dat_o;
   assign dat = dat_en_o ? dat_o : 'z;
 
+  logic UseWideBus, BlockSize;
 
   localparam int MaxBlockBitSize = 14;
 
@@ -121,8 +122,7 @@ module tb_dat #(
 
 
   logic [31:0] entries [$];
-  logic UseWideBus;
-  int ClkEnPeriod, BlockSize, remainingBlocks;
+  int ClkEnPeriod, remainingBlocks;
   logic [31:0] got, want;
   initial begin
     $timeformat(-9, 0, "ns", 12);

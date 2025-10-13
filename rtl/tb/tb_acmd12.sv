@@ -5,6 +5,8 @@
 // Authors:
 // - Micha Wehrli <miwehrli@student.ethz.ch>
 
+`include "obi/typedef.svh"
+
 module tb_acmd12 #(
     parameter time         ClkPeriod     = 50ns,
     parameter int unsigned RstCycles     = 1
@@ -19,16 +21,19 @@ module tb_acmd12 #(
     .rst_no ( rst_n )
   );
 
-  croc_pkg::sbr_obi_req_t obi_req;
-  croc_pkg::sbr_obi_rsp_t obi_rsp;
+  localparam obi_pkg::obi_cfg_t sdhci_obi_cfg = obi_pkg::obi_default_cfg(32, 32, 1, '0);
+  `OBI_TYPEDEF_DEFAULT_ALL(sdhci_obi, sdhci_obi_cfg);
+
+  sdhci_obi_req_t obi_req;
+  sdhci_obi_rsp_t obi_rsp;
 
   logic sdhc_dat_en, sdhc_cmd_en, sdhc_cmd, tb_cmd;
   logic [3:0] sdhc_dat, tb_dat;
 
   user_sdhci #(
-      .ObiCfg     (croc_pkg::SbrObiCfg),
-      .obi_req_t  (croc_pkg::sbr_obi_req_t),
-      .obi_rsp_t  (croc_pkg::sbr_obi_rsp_t),
+      .ObiCfg     (sdhci_obi_cfg),
+      .obi_req_t  (sdhci_obi_req_t),
+      .obi_rsp_t  (sdhci_obi_rsp_t),
       .ClkPreDivLog (0)
   ) i_user_sdhci (
       .clk_i  (clk),
