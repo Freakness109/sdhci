@@ -93,7 +93,7 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 {
 	DFUNC(sdmmc_mem_enable);
 
-	uint32_t card_ocr, host_ocr, ocr;
+	uint32_t card_ocr, host_ocr, ocr = 0;
 	int error;
 
 	/* Set host mode to SD "combo" card or SD memory-only. */
@@ -1052,7 +1052,7 @@ sdmmc_mem_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	DFUNC(sdmmc_mem_read_block);
 
 	struct sdmmc_softc *sc = sf->sc;
-	int error;
+	int error = 0;
 
 	// rw_enter_write(&sc->sc_lock);
 
@@ -1167,7 +1167,7 @@ sdmmc_mem_write_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	DFUNC(sdmmc_mem_write_block);
 
 	struct sdmmc_softc *sc = sf->sc;
-	int error;
+	int error = 0;
 
 	// rw_enter_write(&sc->sc_lock);
 

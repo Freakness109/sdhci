@@ -26,7 +26,7 @@
 #include "sdmmcreg.h"
 #include "sdmmcvar.h"
 
-#include "clint.h"
+#include "dif/clint.h"
 
 int	sdmmc_enable(struct sdmmc_softc *);
 void	sdmmc_disable(struct sdmmc_softc *);
@@ -34,6 +34,7 @@ int	sdmmc_scan(struct sdmmc_softc *);
 void sdmmc_card_attach(struct sdmmc_softc *sc);
 void sdmmc_card_detach(struct sdmmc_softc *sc, int flags);
 
+#define SDMMC_DEBUG
 
 #ifdef SDMMC_DEBUG
 int sdmmcdebug = 2;
