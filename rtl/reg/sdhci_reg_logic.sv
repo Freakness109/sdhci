@@ -136,7 +136,7 @@ module sdhci_reg_logic (
   
     
   logic reading;
-  assign reading = reg2hw_i.transfer_mode.data_transfer_direction_select.q;
+  assign reading = transfer_mode_reg_o.data_transfer_direction_select.d; // this is actually q, the naming is weird
 
   assign transfer_complete_o.d = '1;
   assign transfer_complete_o.de = rst_dat_ni &
