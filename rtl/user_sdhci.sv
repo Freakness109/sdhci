@@ -8,7 +8,7 @@
 
 `include "common_cells/registers.svh"
 `include "defines.svh"
-`define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
+//`define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
 
 module user_sdhci #(
   parameter int unsigned AddrWidth = 32'd32,
