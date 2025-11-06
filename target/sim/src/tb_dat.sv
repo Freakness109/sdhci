@@ -51,9 +51,10 @@ module tb_dat #(
   logic [3:0] dat_o;
   assign dat = dat_en_o ? dat_o : 'z;
 
-  logic UseWideBus, BlockSize;
-
   localparam int MaxBlockBitSize = 14;
+
+  logic UseWideBus;
+  logic [MaxBlockBitSize-1:0] BlockSize;
 
   dat_write #(
     .MaxBlockBitSize (MaxBlockBitSize)
@@ -198,7 +199,7 @@ module tb_dat #(
           $fatal();
         end
 
-        entries.pop_front();
+        void'(entries.pop_front());
         remainingBlocks -= 4;
       end
 
