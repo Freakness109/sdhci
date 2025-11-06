@@ -49,6 +49,7 @@ sources:
   - rtl/reg/sdhci_reg_top.sv # sdhci_reg_pkg
   - rtl/rsp_read/crc7_read.sv
   - rtl/sd_clk_generator.sv
+  - rtl/sdhci_debounce.sv
   - rtl/ser_par_shift_reg.sv
   - rtl/sram_shift_reg.sv # tc_sram_impl
 

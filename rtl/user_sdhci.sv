@@ -5,6 +5,7 @@
 // Authors:
 // - Micha Wehrli <miwehrli@student.ethz.ch>
 // - Anton Buchner <abuchner@student.ethz.ch>
+// - Axel Vanoni <axvanoni@student.ethz.ch>
 
 `include "common_cells/registers.svh"
 `include "defines.svh"
@@ -19,8 +20,11 @@ module user_sdhci #(
   //-> internal clock predivider to get below 63MHz
   //only power of 2 dividers allowed :(
   //input log2 of divider i.e div by 4 ->  ClkPreDivLog = 2
-  parameter int unsigned       ClkPreDivLog   = 1
+  parameter int unsigned       ClkPreDivLog   = 1,
   //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
+
+  // clock runs at 50MHz, so 1ms is 50_000 cycles
+  parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -29,6 +33,7 @@ module user_sdhci #(
   output reg_rsp_t reg_rsp_o,
 
   output logic       sd_clk_o,
+  input  logic       sd_cd_ni,
   output logic       sd_cmd_en_o,
   output logic       sd_cmd_o,
   input  logic       sd_cmd_i,
@@ -149,14 +154,29 @@ module user_sdhci #(
     .div_1_o         (div_1),
     .sd_clk_stable_o (hw2reg.clock_control.internal_clock_stable)
   );
+
+  logic sd_card_detected;
+  assign sd_card_detected = ~sd_cd_ni;
+  logic sd_card_detected_stable;
+  logic sd_card_detected_debounced;
+
+  sdhci_debounce #(
+    .NumCycles(NumDebounceCycles)
+  ) i_debouncer (
+    .clk_i    (clk_i),
+    .rst_ni   (rst_ni),
+    .data_i   (sd_card_detected),
+    .stable_o (sd_card_detected_stable),
+    .data_o   (sd_card_detected_debounced)
+  );
   
   assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: sd_dat_i };
   assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: sd_cmd_i };
 
   assign hw2reg.present_state.write_protect_switch_pin_level = '{ de: '1, d: '1 };
-  assign hw2reg.present_state.card_inserted                  = '{ de: '1, d: '1 }; // TODO ?
-  assign hw2reg.present_state.card_state_stable              = '{ de: '1, d: '1 };
-  assign hw2reg.present_state.card_detect_pin_level          = '{ de: '1, d: '1 }; // TODO ?
+  assign hw2reg.present_state.card_inserted                  = '{ de: '1, d: sd_card_detected_debounced };
+  assign hw2reg.present_state.card_state_stable              = '{ de: '1, d: sd_card_detected_stable };
+  assign hw2reg.present_state.card_detect_pin_level          = '{ de: '1, d: sd_card_detected };
 
 
   logic sd_cmd_done, sd_rsp_done, request_cmd12;
