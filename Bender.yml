@@ -47,7 +47,6 @@ sources:
   - hw/dat_read/dat_read.sv # crc16_read
   - hw/dat_write/dat_write.sv # crc16_write
   - hw/rsp_read/rsp_read.sv # ser_par_shift_reg, crc7_read, counter
-  - hw/reg/sdhci_reg_obi.sv # sdhci_reg_top, external obi_pkg
 
   # Level 3
   - hw/cmd_wrap.sv # cmd_write, rsp_read, counter
@@ -55,6 +54,9 @@ sources:
 
   # Level 4
   - hw/sdhci_top.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
+
+  # Level 5
+  - hw/sdhci_top_obi.sv # sdhci_top, external obi_pkg
 
   - target: any(simulation, test)
     files:

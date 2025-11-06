@@ -30,11 +30,12 @@ module tb_acmd12 #(
   logic sdhc_dat_en, sdhc_cmd_en, sdhc_cmd, tb_cmd;
   logic [3:0] sdhc_dat, tb_dat;
 
-  sdhci_top #(
-      .ObiCfg     (sdhci_obi_cfg),
-      .obi_req_t  (sdhci_obi_req_t),
-      .obi_rsp_t  (sdhci_obi_rsp_t),
-      .ClkPreDivLog (0)
+  sdhci_top_obi #(
+      .ObiCfg           (sdhci_obi_cfg),
+      .obi_req_t        (sdhci_obi_req_t),
+      .obi_rsp_t        (sdhci_obi_rsp_t),
+      .ClkPreDivLog     (0),
+      .NumDebounceCycles(2)
   ) i_sdhci_top (
       .clk_i  (clk),
       .rst_ni (rst_n),
@@ -42,6 +43,7 @@ module tb_acmd12 #(
       .obi_req_i (obi_req),
       .obi_rsp_o (obi_rsp),
       .sd_clk_o  (),
+      .sd_cd_ni  (1'b0),
 
       .sd_cmd_i    (tb_cmd     ),
       .sd_cmd_o    (sdhc_cmd   ),
