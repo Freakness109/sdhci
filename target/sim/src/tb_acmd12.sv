@@ -30,12 +30,12 @@ module tb_acmd12 #(
   logic sdhc_dat_en, sdhc_cmd_en, sdhc_cmd, tb_cmd;
   logic [3:0] sdhc_dat, tb_dat;
 
-  user_sdhci #(
+  sdhci_top #(
       .ObiCfg     (sdhci_obi_cfg),
       .obi_req_t  (sdhci_obi_req_t),
       .obi_rsp_t  (sdhci_obi_rsp_t),
       .ClkPreDivLog (0)
-  ) i_user_sdhci (
+  ) i_sdhci_top (
       .clk_i  (clk),
       .rst_ni (rst_n),
 

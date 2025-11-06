@@ -5,8 +5,8 @@
 // Authors:
 // - Micha Wehrli <miwehrli@student.ethz.ch>
 
-`ifndef USER_SDHCI_DEFINES_SVH_
-`define USER_SDHCI_DEFINES_SVH_
+`ifndef SDHCI_TOP_DEFINES_SVH_
+`define SDHCI_TOP_DEFINES_SVH_
 
 `define writable_reg_t(size) \
   struct packed {            \

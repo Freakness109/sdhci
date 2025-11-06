@@ -11,7 +11,7 @@
 `include "defines.svh"
 //`define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
 
-module user_sdhci #(
+module sdhci_top #(
   parameter int unsigned AddrWidth = 32'd32,
   parameter type               reg_req_t   = logic,
   parameter type               reg_rsp_t   = logic,

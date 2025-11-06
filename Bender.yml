@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: SHL-0.51
 
 package:
-  name: sdio
+  name: sdhci
   authors:
     - "Anton Buchner <abuchner@student.ethz.ch>"
     - "Micha Wehrli <miwehrli@student.ethz.ch>"
+    - "Axel Vanoni <axvanoni@student.ethz.ch>"
 
 dependencies:
   axi:                      { git: "https://github.com/pulp-platform/axi.git",                    version: 0.39.8 }
@@ -53,12 +54,12 @@ sources:
   - hw/dat_wrap.sv # dat_read_timeout, dat_buffer, dat_read, dat_write
 
   # Level 4
-  - hw/user_sdhci.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
+  - hw/sdhci_top.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
 
   - target: any(simulation, test)
     files:
       # Level 1
-      - target/sim/src/tb_acmd12.sv # user_sdhci
+      - target/sim/src/tb_acmd12.sv # sdhci_top
       - target/sim/src/tb_dat.sv # sd_clk_generator, dat_write, dat_read
       - target/sim/model/sd_crc_7.v
       - target/sim/model/sd_crc_16.v
