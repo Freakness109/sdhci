@@ -60,10 +60,10 @@ module cmd_wrap (
     READ_RSP_BUSY, // read response with busy signalling on dat0 line
     RSP_RECEIVED   // wait for N_RC=8 clock cycles before allowing next command
   } cmd_seq_state_e;
-  
+
   logic [5:0] timing_counter;
   logic timing_counter_en, timing_counter_clr;
-  
+
   // high if transmission should start next sd_clk posedge
   logic start_tx_q, start_tx_d;
   `FF(start_tx_q, start_tx_d, 1'b0, clk_i, rst_ni);
@@ -79,8 +79,8 @@ module cmd_wrap (
   logic rsp_valid, tx_done;
 
   cmd_seq_state_e cmd_seq_state_d, cmd_seq_state_q;
-      
-  
+
+
   always_comb begin : cmd_sequence_next_state
     cmd_seq_state_d = cmd_seq_state_q;
 
@@ -105,9 +105,9 @@ module cmd_wrap (
     endcase
   end : cmd_sequence_next_state
 
-  
+
   `FFL(cmd_seq_state_q, cmd_seq_state_d, clk_en_p_i, READY, clk_i, rst_ni);
-  
+
   ///////////////
   // Data Path //
   ///////////////
@@ -120,13 +120,13 @@ module cmd_wrap (
   logic rx_started_q, rx_started_d;
   `FFL(rx_started_q, rx_started_d, clk_en_p_i, 0, clk_i, rst_ni);
 
-  
+
   assign check_end_bit_err   = reg2hw.error_interrupt_status_enable.command_end_bit_error_status_enable.q;
   assign check_crc_err       = reg2hw.error_interrupt_status_enable.command_crc_error_status_enable.q & reg2hw.command.command_crc_check_enable.q;
   assign check_index_err     = reg2hw.error_interrupt_status_enable.command_index_error_status_enable.q & reg2hw.command.command_index_check_enable.q;
   assign check_timeout_error = reg2hw.error_interrupt_status_enable.command_timeout_error_status_enable.q;
 
-  
+
   always_comb begin : cmd_seq_ctrl
     start_listening = 1'b0;
     timing_counter_en  = 1'b0;
@@ -153,14 +153,14 @@ module cmd_wrap (
 
     unique case (cmd_seq_state_q)
       READY:;
-      
+
       WRITE_CMD:;
 
       BUS_SWITCH: begin
         sd_cmd_done_o   = 1'b1;
         start_listening = 1'b1;
       end
-      
+
       READ_RSP: begin
         timing_counter_en  = 1'b1;
         timing_counter_clr = receiving; // reset counter when we are receiving
@@ -183,7 +183,7 @@ module cmd_wrap (
         timing_counter_en  = 1'b1;
         timing_counter_clr = rx_started_q; // stop counter when we are receiving
 
-        
+
         if (timing_counter >= 63) begin
           // timeout interrupt if response didn't start within 64 clock cycles
 
@@ -193,7 +193,7 @@ module cmd_wrap (
 
         if (rsp_valid) begin
           wait_for_busy_d = 1'b1;
-          
+
           if (running_cmd12_q) begin
             auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = end_bit_err & clk_en_p_i;
             auto_cmd12_errors_o.auto_cmd12_crc_error.de = ~crc_corr & clk_en_p_i;
@@ -216,15 +216,15 @@ module cmd_wrap (
     endcase
   end : cmd_seq_ctrl
 
-  
+
   // cmd phase assignment
   logic cmd_phase_d, cmd_phase_q;
   always_comb begin : cmd_phase_assignment
     cmd_phase_d = cmd_phase_q;
 
     if (cmd_seq_state_q != WRITE_CMD) begin
-      cmd_phase_d = ~reg2hw.host_control.high_speed_enable.q; 
-    end 
+      cmd_phase_d = ~reg2hw.host_control.high_speed_enable.q;
+    end
   end : cmd_phase_assignment
   `FFL(cmd_phase_q, cmd_phase_d, clk_en_p_i, 1'b1, clk_i, rst_ni);
 
@@ -259,10 +259,10 @@ module cmd_wrap (
 
     driver_cmd_requested_d = driver_cmd_requested_q;
     dat_busy_d = dat_busy_q;
-   
+
     // extend pulse
     cmd12_requested_d = cmd12_requested_q | request_cmd12_i;
-    
+
     running_cmd12_d = running_cmd12_q;
     start_tx_d      = start_tx_q;
 
@@ -344,7 +344,7 @@ module cmd_wrap (
       // auto cmd 12 response goes to upper word of rsp register
       rsp3 = rsp [31:0];
     end else begin
-      
+
       unique case (reg2hw.command.response_type_select.q)
         2'b00:;
         // no response
@@ -356,7 +356,7 @@ module cmd_wrap (
           rsp2 = rsp[95:64];
           rsp3[23:0] = rsp[119:96]; // save bits 31:24 of rsp3
           update_rsp_reg = 1'b1;
-        end 
+        end
 
         2'b10: begin
           // short response without busy signaling
@@ -370,7 +370,7 @@ module cmd_wrap (
           update_rsp_reg = 1'b1;
         end
 
-        default:; 
+        default:;
       endcase
     end
 
@@ -396,7 +396,7 @@ module cmd_wrap (
     .clk_en_p_i     (clk_en_p_i),
     .clk_en_n_i     (clk_en_n_i),
     .div_1_i        (div_1_i),
-    
+
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
     .start_tx_i     (start_tx_q), // need to buffer when registers run faster than cmd_write
