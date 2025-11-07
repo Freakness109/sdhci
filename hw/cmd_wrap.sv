@@ -64,6 +64,20 @@ module cmd_wrap (
   logic [5:0] timing_counter;
   logic timing_counter_en, timing_counter_clr;
 
+  // Electrical spec, 7.13.5; units are number of cycles
+  logic [5:0] N_CR_MIN = 2;  // minimum time between command (SDHC) and response (card)
+  logic [5:0] N_CR_MAX = 64; // maximum time between command and response
+  logic [5:0] N_ID     = 5;  // time between identification command and response
+  logic [5:0] N_RC     = 8;  // minimum time between response and next command
+  logic [5:0] N_CC     = 8;  // minimum time between consecutive commands
+
+  typedef enum logic [1:0] {
+    NO_RESPONSE                  = 2'b00,
+    REPONSE_LENGTH_136           = 2'b01,
+    REPONSE_LENGTH_48            = 2'b10,
+    REPONSE_LENGTH_48_CHECK_BUSY = 2'b01,
+  } response_type_e;
+
   // high if transmission should start next sd_clk posedge
   logic start_tx_q, start_tx_d;
   `FF(start_tx_q, start_tx_d, 1'b0, clk_i, rst_ni);
@@ -85,23 +99,49 @@ module cmd_wrap (
     cmd_seq_state_d = cmd_seq_state_q;
 
     unique case (cmd_seq_state_q)
-      READY:          cmd_seq_state_d = (start_tx_q) ? WRITE_CMD : READY;
-
-      WRITE_CMD: begin
-        cmd_seq_state_d = WRITE_CMD;
-        if (tx_done) begin 
-          cmd_seq_state_d = (reg2hw.command.response_type_select.q == 2'b00) ? RSP_RECEIVED : BUS_SWITCH;
+      READY: begin
+        if (start_tx_q) begin
+          cmd_seq_state_d = WRITE_CMD
         end
       end
-      BUS_SWITCH:     cmd_seq_state_d = ((reg2hw.command.response_type_select.q == 2'b11) || running_cmd12_q) ? READ_RSP_BUSY : READ_RSP;
 
-      READ_RSP:       cmd_seq_state_d = (rsp_valid) ? RSP_RECEIVED : READ_RSP;
+      WRITE_CMD: begin
+        if (tx_done) begin
+          cmd_seq_state_d = (reg2hw.command.response_type_select.q == NO_RESPONSE)
+                            ? RSP_RECEIVED
+                            : BUS_SWITCH;
+        end
+      end
 
-      READ_RSP_BUSY:  cmd_seq_state_d = (wait_for_busy_q && dat0_i) ? RSP_RECEIVED : READ_RSP_BUSY;
-      
-      RSP_RECEIVED:   cmd_seq_state_d = (timing_counter == 3'd7) ? READY : RSP_RECEIVED;
-      
-      default:        cmd_seq_state_d = READY;
+      BUS_SWITCH: begin
+        if ((reg2hw.command.response_type_select.q == RESPONSE_LENGTH_48_CHECK_BUSY) || running_cmd12_q) begin
+          cmd_seq_state_d = READ_RSP_BUSY;
+        end else begin
+          cmd_seq_state_d = READ_RSP;
+        end
+      end
+
+      READ_RSP: begin
+        if (rsp_valid) begin
+          cmd_seq_state_d = RSP_RECEIVED;
+        end
+      end
+
+      READ_RSP_BUSY: begin
+        if (wait_for_busy_q && dat0_i) begin
+          cmd_seq_state_d = RSP_RECEIVED;
+        end
+      end
+
+      RSP_RECEIVED: begin
+        if (timing_counter == N_RC-1) begin
+          cmd_seq_state_d = READY;
+        end
+      end
+
+      default: begin
+        cmd_seq_state_d = READY;
+      end
     endcase
   end : cmd_sequence_next_state
 
@@ -212,7 +252,7 @@ module cmd_wrap (
         sd_rsp_done_o      = 1'b1;
       end
 
-      default: ;
+      default:;
     endcase
   end : cmd_seq_ctrl
 
