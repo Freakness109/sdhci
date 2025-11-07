@@ -5,6 +5,7 @@
 // Authors:
 // - Anton Buchner <abuchner@student.ethz.ch>
 // - Micha Wehrli <miwehrli@student.ethz.ch>
+// - Axel Vanoni <axvanoni@student.ethz.ch>
 
 import sdhci_reg_pkg::*;
 `include "common_cells/registers.svh"
@@ -244,12 +245,15 @@ module cmd_wrap (
   assign command_index = running_cmd12_q ? 6'd12 : reg2hw.command.command_index.q;
 
 
+  logic  command_requested;
+  assign command_requested        = cmd12_requested_q || driver_cmd_requested_q || reg2hw.command.command_index.qe;
+
+  assign command_inhibit_cmd_o.de = '1;
+  assign command_inhibit_cmd_o.d  = (cmd_seq_state_q != READY) || command_requested;
+
   // host registers operate on clk, cmd/rsp logic on sd_clk
   // assumes clock edges are simultaneous
   always_comb begin : start_tx_cdc
-    command_inhibit_cmd_o.de = '0;
-    command_inhibit_cmd_o.d  = '0;
-
     auto_cmd12_errors_o.auto_cmd12_not_executed                = '{ de: '0, d: '1 };
     auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error = '{ de: '0, d: '1 };
 
@@ -262,18 +266,9 @@ module cmd_wrap (
     running_cmd12_d = running_cmd12_q;
     start_tx_d      = start_tx_q;
 
-    if (!rst_ni) begin
-      command_inhibit_cmd_o.de = '1;
-    end
-
     // write to command index starts transmission
     if (reg2hw.command.command_index.qe) begin
       driver_cmd_requested_d = '1;
-      
-      // block further commands till current one is transmitted
-      command_inhibit_cmd_o.d  = '1;
-      command_inhibit_cmd_o.de = '1;
-
       if (reg2hw.command.response_type_select.q == 2'b11) dat_busy_d = '1;
     end
 
@@ -312,8 +307,6 @@ module cmd_wrap (
           end
 
         end else if (!reg2hw.command.command_index.qe) begin
-          command_inhibit_cmd_o.de = '1;
-          command_inhibit_cmd_o.d  = '0;
           dat_busy_d = '0;
         end
       end
