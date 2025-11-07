@@ -19,9 +19,11 @@ $(SDHCI_ROOT)/target/sim/vsim/compile.sdhci.tcl: $(SDHCI_ROOT)/Bender.yml $(SDHC
 	$(BENDER) script vsim -t simulation -t test -t vsim --vlog-arg="$(VLOG_ARGS)" > $@
 
 
-sdhci-sim-all: $(SDHCI_ROOT)/target/sim/model/sd_crc_7.v
-sdhci-sim-all: $(SDHCI_ROOT)/target/sim/model/sd_crc_16.v
-sdhci-sim-all: $(SDHCI_ROOT)/target/sim/model/sdModel.v
+sdhci-sim-model-all: $(SDHCI_ROOT)/target/sim/model/sd_crc_7.v
+sdhci-sim-model-all: $(SDHCI_ROOT)/target/sim/model/sd_crc_16.v
+sdhci-sim-model-all: $(SDHCI_ROOT)/target/sim/model/sdModel.v
+
+sdhci-sim-all: sdhci-sim-model-all
 sdhci-sim-all: $(SDHCI_ROOT)/target/sim/vsim/compile.sdhci.tcl
 
 sdhci-sim-vsim-clean:
