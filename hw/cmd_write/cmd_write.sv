@@ -23,7 +23,6 @@ module cmd_write (
   input   logic         start_tx_i,     // start transmission, only works when tx_done_o is high
   input   logic [31:0]  cmd_argument_i, // from cmd argument register
   input   logic [5:0]   cmd_nr_i,       // cmd index (eg. CMD12 == 6'b001100)
-  input   logic         cmd_phase_i,    // if high, send on negative edge of sd clock, else positive edge
 
   output  logic         tx_done_o       // high when nothing is currently being transmitted (module is in READY state)
 );

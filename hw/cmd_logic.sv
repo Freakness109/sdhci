@@ -183,9 +183,6 @@ module cmd_logic (
     .cmd_argument_i (cmd_arg_q),
     .cmd_nr_i       (cmd_q),
 
-    // let's worry about the phase once timing becomes a problem
-    .cmd_phase_i    (1'b0),
-
     .tx_done_o      (tx_done)
   );
 
