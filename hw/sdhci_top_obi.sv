@@ -66,7 +66,7 @@ module sdhci_top_obi #(
     .reg_rsp_t        (reg_rsp_t),
     .ClkPreDivLog     (ClkPreDivLog),
     .NumDebounceCycles(NumDebounceCycles)
-  ) i_regs (
+  ) i_sdhci_impl (
     .clk_i,
     .rst_ni,
 
