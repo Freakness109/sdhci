@@ -18,6 +18,7 @@ module rsp_read (
 
   input logic long_rsp_i,         //high if response is of type R2 (136 bit)
   input logic start_listening_i,  //should be asserted 2nd cycle after end bit of CMD
+  input logic timeout_i, // TODO: implement
 
   output  logic receiving_o,      //start bit was observed
   output  logic rsp_valid_o,      //write response, end_bit_err and crc_corr to register

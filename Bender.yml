@@ -25,6 +25,7 @@ sources:
   files:
   # Level 0 (packages)
   - hw/reg/sdhci_reg_pkg.sv
+  - hw/sdhci_pkg.sv
   # Level 1
   - hw/cmd_write/crc7_write.sv
   - hw/dat_read/crc16_read.sv
@@ -49,7 +50,8 @@ sources:
   - hw/rsp_read/rsp_read.sv # ser_par_shift_reg, crc7_read, counter
 
   # Level 3
-  - hw/cmd_wrap.sv # cmd_write, rsp_read, counter
+  - hw/cmd_logic.sv # cmd_write, rsp_read, counter
+  - hw/cmd_wrap.sv # cmd_logic
   - hw/dat_wrap.sv # dat_read_timeout, dat_buffer, dat_read, dat_write
 
   # Level 4
