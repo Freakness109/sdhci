@@ -53,13 +53,13 @@ module rsp_read (
       end
 
       WAIT_FOR_START_BIT: begin
-        if (start_bit_observed) begin
+        if (start_bit_observed && clk_en_i) begin
           rx_state_d = SHIFT_IN;
         end
       end
 
       SHIFT_IN: begin
-        if (all_bits_received) begin
+        if (all_bits_received && clk_en_i) begin
           rx_state_d = FINISHED;
         end
       end
@@ -74,7 +74,7 @@ module rsp_read (
     endcase
   end : rsp_state_transition
 
-  `FFL(rx_state_q, rx_state_d, clk_en_i, INACTIVE, clk_i, rst_ni);
+  `FF(rx_state_q, rx_state_d, INACTIVE, clk_i, rst_ni);
 
   ///////////////
   // Data Path //
@@ -118,7 +118,7 @@ module rsp_read (
     unique case (rx_state_q)
 
       WAIT_FOR_START_BIT: begin
-        start_bit_observed = ~rsp_ser; // start bit is first 0 on bus
+        start_bit_observed = ~rsp_ser & clk_en_i; // start bit is first 0 on bus
         if (~long_rsp_i) begin
           crc_start = ~rsp_ser; // start crc for short response
         end
