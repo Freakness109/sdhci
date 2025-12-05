@@ -19,6 +19,7 @@ module dat_read #(
   input  logic [3:0] dat_i,
 
   input  logic                       start_i,
+  input  logic                       timeout_i,
   input  logic [MaxBlockBitSize-1:0] block_size_i, // In bytes
   input  logic                       bus_width_is_4_i,
 
@@ -61,6 +62,9 @@ module dat_read #(
       READY: begin
         if ((bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) && sd_clk_en_i) begin
           state_d = DAT;
+        end
+        if (timeout_i) begin
+          state_d = READY;
         end
       end
       DAT: begin

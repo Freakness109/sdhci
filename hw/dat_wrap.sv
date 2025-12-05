@@ -294,6 +294,7 @@ module dat_wrap #(
     .dat_i,
 
     .start_i          (start_read),
+    .timeout_i        (read_timeout),
     .block_size_i     (block_size),
     .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
     
