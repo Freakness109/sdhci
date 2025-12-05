@@ -43,6 +43,7 @@ module cmd_logic (
 
   typedef enum logic [2:0] {
     IDLE,
+    START,
     SEND_CMD,
     WAIT_RSP,
     READ_RSP,
@@ -98,6 +99,12 @@ module cmd_logic (
     unique case (cmd_state_q)
       IDLE: begin
         if (start_cmd) begin
+          cmd_state_d = START;
+        end
+      end
+      START: begin
+        // sync start to clock edge
+        if (clk_en_p_i) begin
           cmd_state_d = SEND_CMD;
         end
       end
@@ -179,7 +186,7 @@ module cmd_logic (
 
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
-    .start_tx_i     (start_cmd),
+    .start_tx_i     (cmd_state_q == START),
     .cmd_argument_i (cmd_arg_q),
     .cmd_nr_i       (cmd_q),
 
