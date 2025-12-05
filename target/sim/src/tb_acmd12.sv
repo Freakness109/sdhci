@@ -169,7 +169,9 @@ module tb_acmd12 #(
       obi_req.a.addr  = 'h020;
       obi_req.a.be    = 'b1111;
       obi_req.a.wdata = 'hDEAD_BEEF;
-      repeat(ClkEnPeriod) @(negedge clk);
+      @(negedge clk);
+      obi_req.req     = '0;
+      repeat(ClkEnPeriod - 1) @(negedge clk);
     end
 
     obi_req.req = '0;
@@ -187,7 +189,9 @@ module tb_acmd12 #(
     obi_req.a.addr  = 'h00C;
     obi_req.a.be    = 'b1100;
     obi_req.a.wdata = ('b0_00011010) << 16;
-    repeat(ClkEnPeriod) @(negedge clk);
+    @(negedge clk);
+    obi_req.req     = '0;
+    repeat(ClkEnPeriod - 1) @(negedge clk);
     obi_req.req = '0;
 
     repeat(80*ClkEnPeriod) @(negedge clk);
