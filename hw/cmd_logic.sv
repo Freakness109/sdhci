@@ -39,8 +39,6 @@ module cmd_logic (
   output logic timeout_error_o
 );
 
-  assign index_error_o = 1'b0;
-
   typedef enum logic [2:0] {
     IDLE,
     START,
@@ -174,6 +172,12 @@ module cmd_logic (
 
   logic crc_correct;
   assign crc_error_o = ~crc_correct;
+
+  sdhci_pkg::cmd_t cmd_in_response;
+  assign cmd_in_response = sdhci_pkg::cmd_t'{rsp_o[37:32]};
+  // this line could optionally be masked by the valid line, leave it for now
+  assign index_error_o = (cmd_in_response != cmd_q) & (response_type_q == sdhci_pkg::RESPONSE_LENGTH_48 |
+                                                       response_type_q == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY);
 
   // TODO: this is clocked with clk_en_p_i
   cmd_write i_cmd_write (
