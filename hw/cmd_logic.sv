@@ -174,7 +174,7 @@ module cmd_logic (
   assign crc_error_o = ~crc_correct;
 
   sdhci_pkg::cmd_t cmd_in_response;
-  assign cmd_in_response = sdhci_pkg::cmd_t'{rsp_o[37:32]};
+  assign cmd_in_response = sdhci_pkg::cmd_t'(rsp_o[37:32]);
   // this line could optionally be masked by the valid line, leave it for now
   assign index_error_o = (cmd_in_response != cmd_q) & (response_type_q == sdhci_pkg::RESPONSE_LENGTH_48 |
                                                        response_type_q == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY);
