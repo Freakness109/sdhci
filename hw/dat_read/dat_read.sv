@@ -41,7 +41,7 @@ module dat_read #(
   } dat_rx_state_e;
 
   dat_rx_state_e state_q, state_d;
-  `FFL (state_q, state_d, sd_clk_en_i, IDLE);
+  `FF (state_q, state_d, IDLE);
 
   logic [CounterWidth-1:0] counter_q, counter_d;
   `FFL (counter_q, counter_d, sd_clk_en_i, 0);
@@ -54,27 +54,29 @@ module dat_read #(
 
     unique case (state_q)
       IDLE: begin
-        if (start_i) begin
+        if (start_i && sd_clk_en_i) begin
           state_d = READY;
         end
       end
       READY: begin
-        if (bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) begin
+        if ((bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) && sd_clk_en_i) begin
           state_d = DAT;
         end
       end
       DAT: begin
-        if (counter_q + 1 == required_clock_count) begin
+        if ((counter_q + 1 == required_clock_count) && sd_clk_en_i) begin
           state_d = CRC;
         end
       end
       CRC: begin
-        if (counter_q + 1 == required_clock_count + 16) begin
+        if ((counter_q + 1 == required_clock_count + 16) && sd_clk_en_i) begin
           state_d = END_BIT;
         end
       end
       END_BIT: begin
-        state_d = IDLE;
+        if (sd_clk_en_i) begin
+          state_d = IDLE;
+        end
       end
       default: begin
         state_d = IDLE;
