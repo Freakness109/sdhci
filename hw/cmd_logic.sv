@@ -75,11 +75,11 @@ module cmd_logic (
   assign response_type_d = response_type_i;
 
   // Electrical spec, 7.13.5; units are number of cycles
-  logic [6:0] N_CR_MIN = 2;  // minimum time between command (SDHC) and response (card)
-  logic [6:0] N_CR_MAX = 64; // maximum time between command and response
-  logic [6:0] N_ID     = 5;  // time between identification command and response
-  logic [6:0] N_RC     = 8;  // minimum time between response and next command
-  logic [6:0] N_CC     = 8;  // minimum time between consecutive commands
+  localparam logic [6:0] N_CR_MIN = 2;  // minimum time between command (SDHC) and response (card)
+  localparam logic [6:0] N_CR_MAX = 64; // maximum time between command and response
+  localparam logic [6:0] N_ID     = 5;  // time between identification command and response
+  localparam logic [6:0] N_RC     = 8;  // minimum time between response and next command
+  localparam logic [6:0] N_CC     = 8;  // minimum time between consecutive commands
   // TODO: check counter to make sure there are no off-by-one errors
   
   logic tx_done;
