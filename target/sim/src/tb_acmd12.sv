@@ -179,8 +179,8 @@ module tb_acmd12 #(
     // These values are slightly random because of the offset between command start and sd clk period
     case (ClkEnPeriod)
       1: repeat(541 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
-      2: repeat(1064 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
-      4: repeat(2113 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+      2: repeat(1079 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+      4: repeat(2158 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
       default: $fatal("ClkEnPeriod not supported");
     endcase
 
