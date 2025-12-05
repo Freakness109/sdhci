@@ -53,12 +53,32 @@ module dat_read #(
     state_d = state_q;
 
     unique case (state_q)
-      IDLE:    if (start_i) state_d = READY;
-      READY:   if (bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) state_d = DAT;
-      DAT:     if (counter_q + 1 == required_clock_count) state_d = CRC;
-      CRC:     if (counter_q + 1 == required_clock_count + 16) state_d = END_BIT;
-      END_BIT: state_d = IDLE;
-      default: state_d = IDLE;
+      IDLE: begin
+        if (start_i) begin
+          state_d = READY;
+        end
+      end
+      READY: begin
+        if (bus_width_is_4_i ? dat_i == 4'b0 : dat_i[0] == 1'b0) begin
+          state_d = DAT;
+        end
+      end
+      DAT: begin
+        if (counter_q + 1 == required_clock_count) begin
+          state_d = CRC;
+        end
+      end
+      CRC: begin
+        if (counter_q + 1 == required_clock_count + 16) begin
+          state_d = END_BIT;
+        end
+      end
+      END_BIT: begin
+        state_d = IDLE;
+      end
+      default: begin
+        state_d = IDLE;
+      end
     endcase
   end
 
