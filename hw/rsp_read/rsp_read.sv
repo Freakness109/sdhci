@@ -18,7 +18,7 @@ module rsp_read (
 
   input logic long_rsp_i,         // high if response is of type R2 (136 bit)
   input logic start_listening_i,  // should be asserted 2nd cycle after end bit of CMD
-  input logic timeout_i, // TODO: implement
+  input logic timeout_i,
 
   output  logic receiving_o,      // start bit was observed
   output  logic rsp_valid_o,      // write response, end_bit_err and crc_corr to register
@@ -55,6 +55,13 @@ module rsp_read (
       WAIT_FOR_START_BIT: begin
         if (start_bit_observed && clk_en_i) begin
           rx_state_d = SHIFT_IN;
+        end
+
+        // TIMEOUT has priority over SHIFT IN
+        // such that the internal state of everything
+        // stays consistent
+        if (timeout_i) begin
+          rx_state_d = INACTIVE;
         end
       end
 
