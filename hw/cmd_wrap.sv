@@ -221,12 +221,12 @@ module cmd_wrap (
     command_crc_error_o.de     = 1'b0;
     command_index_error_o.de   = 1'b0;
 
-    auto_cmd12_errors_o.auto_cmd12_index_error.de   = 1'b1;
-    auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = 1'b1;
-    auto_cmd12_errors_o.auto_cmd12_crc_error.de     = 1'b1;
+    auto_cmd12_errors_o.auto_cmd12_index_error.de   = 1'b0;
+    auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = 1'b0;
+    auto_cmd12_errors_o.auto_cmd12_crc_error.de     = 1'b0;
 
     if (cmd_result_valid) begin
-      if (!running_autocmd12_q) begin
+      if (running_autocmd12_q) begin
         auto_cmd12_errors_o.auto_cmd12_end_bit_error.de = end_bit_error;
         auto_cmd12_errors_o.auto_cmd12_crc_error.de     = crc_error;
         auto_cmd12_errors_o.auto_cmd12_index_error.de   = index_error;
