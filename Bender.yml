@@ -66,10 +66,12 @@ sources:
       - target/sim/src/tb_dat.sv # sd_clk_generator, dat_write, dat_read
       - target/sim/model/sd_crc_7.v
       - target/sim/model/sd_crc_16.v
-      - target/sim/src/sdhci_vip.sv
+      - target/sim/src/sdhci_obi_driver.sv
       # Level 2
       - target/sim/model/sdModel.v # sd_crc_7, sd_crc_16
-      - target/sim/src/sdhci_fixture.sv # sdhci_vip
+      - target/sim/src/sdhci_vip.sv # sdhci_obi_driver
       # Level 3
       - target/sim/model/sd_card.sv # sdModel
+      - target/sim/src/sdhci_fixture.sv # sdhci_vip
+      # Level 4
       - target/sim/src/tb_acmd12.sv # sdhci_fixture

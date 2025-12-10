@@ -52,20 +52,20 @@ module tb_acmd12 #(
 
     fixture.vip.wait_for_reset();
 
-    fixture.vip.set_interrupt_status_enable(
+    fixture.vip.obi.set_interrupt_status_enable(
       .normal_interrupt_status_enable('hFFFF),
       .error_interrupt_status_enable('hFFFF),
       .finish_transaction(1'b0)
     );
 
-    fixture.vip.set_frequency_select(
+    fixture.vip.obi.set_frequency_select(
       .divider(8'(ClkEnPeriod >> 1)),
       .finish_transaction(1'b0)
     );
 
-    fixture.vip.set_clock_enable(.enable(1'b1), .finish_transaction(1'b0));
+    fixture.vip.obi.set_clock_enable(.enable(1'b1), .finish_transaction(1'b0));
 
-    fixture.vip.set_transfer_mode(
+    fixture.vip.obi.set_transfer_mode(
       .is_multi_block(1'b0),
       .is_read(1'b0),
       .auto_cmd12_enable(1'b1),
@@ -74,13 +74,13 @@ module tb_acmd12 #(
       .finish_transaction(1'b0)
     );
 
-    fixture.vip.set_block_size_count(
+    fixture.vip.obi.set_block_size_count(
       .block_size(12'd64),
       .block_count(16'd1),
       .finish_transaction(1'b0)
     );
 
-    fixture.vip.launch_command(
+    fixture.vip.obi.launch_command(
       .command_index(6'd0),
       .command_type (2'b00), // normal command
       .data_present (1'b1),
@@ -93,7 +93,7 @@ module tb_acmd12 #(
 
     repeat(10) fixture.vip.wait_for_sdclk();
     repeat (64 / 4) begin
-      fixture.vip.write_buffer_data('hDEAD_BEEF);
+      fixture.vip.obi.write_buffer_data('hDEAD_BEEF);
       fixture.vip.wait_for_sdclk();
     end
 
@@ -106,7 +106,7 @@ module tb_acmd12 #(
       default: $fatal("ClkEnPeriod not supported");
     endcase
 
-    fixture.vip.launch_command(
+    fixture.vip.obi.launch_command(
       .command_index(6'd0),
       .command_type (2'b00), // normal command
       .data_present (1'b0),
@@ -149,13 +149,13 @@ module tb_acmd12 #(
 
     repeat(10) fixture.vip.wait_for_sdclk();
 
-    fixture.vip.get_interrupt_status(
+    fixture.vip.obi.get_interrupt_status(
       .normal_interrupt_status(normal_status),
       .error_interrupt_status(error_status)
     );
     error_status[15:4] = '0; // Only care about cmd errors
 
-    fixture.vip.get_acmd_error_status(cmd12_error_status);
+    fixture.vip.obi.get_acmd_error_status(cmd12_error_status);
 
     // leave some time so we get a cleaner waveform
     repeat(10) fixture.vip.wait_for_clk();
