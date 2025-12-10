@@ -63,11 +63,13 @@ sources:
   - target: any(simulation, test)
     files:
       # Level 1
-      - target/sim/src/tb_acmd12.sv # sdhci_top
       - target/sim/src/tb_dat.sv # sd_clk_generator, dat_write, dat_read
       - target/sim/model/sd_crc_7.v
       - target/sim/model/sd_crc_16.v
+      - target/sim/src/sdhci_vip.sv
       # Level 2
       - target/sim/model/sdModel.v # sd_crc_7, sd_crc_16
+      - target/sim/src/sdhci_fixture.sv # sdhci_vip
       # Level 3
       - target/sim/model/sd_card.sv # sdModel
+      - target/sim/src/tb_acmd12.sv # sdhci_fixture

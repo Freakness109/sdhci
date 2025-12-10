@@ -4,89 +4,19 @@
 
 // Authors:
 // - Micha Wehrli <miwehrli@student.ethz.ch>
-
-`include "obi/typedef.svh"
+// - Axel Vanoni <axvanoni@student.ethz.ch>
 
 module tb_acmd12 #(
     parameter time         ClkPeriod     = 50ns,
     parameter int unsigned RstCycles     = 1
   )();
-  logic clk, rst_n;
-
-  clk_rst_gen #(
-    .ClkPeriod    ( ClkPeriod ),
-    .RstClkCycles ( RstCycles )
-  ) i_clk_rst_sys (
-    .clk_o  ( clk   ),
-    .rst_no ( rst_n )
-  );
-
-  localparam obi_pkg::obi_cfg_t sdhci_obi_cfg = obi_pkg::obi_default_cfg(32, 32, 1, '0);
-  `OBI_TYPEDEF_DEFAULT_ALL(sdhci_obi, sdhci_obi_cfg);
-
-  sdhci_obi_req_t obi_req;
-  sdhci_obi_rsp_t obi_rsp;
-
-  logic sdhc_dat_en, sdhc_cmd_en, sdhc_cmd, tb_cmd;
-  logic [3:0] sdhc_dat, tb_dat;
-
-  sdhci_top_obi #(
-      .ObiCfg           (sdhci_obi_cfg),
-      .obi_req_t        (sdhci_obi_req_t),
-      .obi_rsp_t        (sdhci_obi_rsp_t),
-      .ClkPreDivLog     (0),
-      .NumDebounceCycles(2)
-  ) i_sdhci_top (
-      .clk_i  (clk),
-      .rst_ni (rst_n),
-
-      .obi_req_i (obi_req),
-      .obi_rsp_o (obi_rsp),
-      .sd_clk_o  (),
-      .sd_cd_ni  (1'b0),
-
-      .sd_cmd_i    (tb_cmd     ),
-      .sd_cmd_o    (sdhc_cmd   ),
-      .sd_cmd_en_o (sdhc_cmd_en),
-
-      .sd_dat_i    (tb_dat     ),
-      .sd_dat_o    (sdhc_dat   ),
-      .sd_dat_en_o (sdhc_dat_en),
-
-      .interrupt_o ()
-  );
 
   int ClkEnPeriod;
 
-  task automatic send_response_48(
-      input logic [5:0] index,
-      input logic [6:0] crc
-  );
-    tb_cmd = '0; // start_bit
-    repeat (ClkEnPeriod) @(negedge clk);
-    tb_cmd = '0; // direction bit
-    repeat (ClkEnPeriod) @(negedge clk);
-
-    // index
-    for (int i = 0; i < 6; i++) begin
-      tb_cmd = index[5-i];
-      repeat (ClkEnPeriod) @(negedge clk);
-    end
-
-    // data
-    tb_cmd = '0;
-    repeat (32 * ClkEnPeriod) @(negedge clk);
-
-    // crc
-    for (int i = 0; i < 7; i++) begin
-      tb_cmd = crc[6-i];
-      repeat (ClkEnPeriod) @(negedge clk);
-    end
-
-    tb_cmd = '1;
-  endtask
-
-
+  sdhci_fixture #(
+    .ClkPeriod(ClkPeriod),
+    .RstCycles(RstCycles)
+  ) fixture ();
 
   // < 0 cmd12 gets delayed due to our command
   // = 0 both requests arrive at the same time, cmd12 goes first
@@ -95,7 +25,11 @@ module tb_acmd12 #(
   int IsFirstResponseValid;
 
   logic AutoCMD12First;
-  logic [15:0] error_status, cmd12_error_status;
+  logic [15:0] normal_status;
+  logic [15:0] error_status;
+  logic [15:0] cmd12_error_status;
+  logic cmd_en;
+  logic dat_en;
 
   initial begin
     $timeformat(-9, 0, "ns", 12);
@@ -116,133 +50,115 @@ module tb_acmd12 #(
 
     $display("Testing auto cmd12 with CyclesThatDriverCommandArrivesBeforeCMD12=%d, IsFirstResponseValid=%d, ClkEnPeriod=%d", CyclesThatDriverCommandArrivesBeforeCMD12, IsFirstResponseValid, ClkEnPeriod);
 
-    obi_req = '0;
-    obi_req.a.we    = '1;
-    obi_req.a.aid   = '0;
+    fixture.vip.wait_for_reset();
 
-    tb_cmd  = '1;
-    tb_dat  = '1;
+    fixture.vip.set_interrupt_status_enable(
+      .normal_interrupt_status_enable('hFFFF),
+      .error_interrupt_status_enable('hFFFF),
+      .finish_transaction(1'b0)
+    );
 
-    repeat(5) @(negedge clk);
+    fixture.vip.set_frequency_select(
+      .divider(8'(ClkEnPeriod >> 1)),
+      .finish_transaction(1'b0)
+    );
 
-    // Enable error status
-    obi_req.req     = '1;
-    obi_req.a.addr  = 'h034;
-    obi_req.a.be    = 'b1111;
-    obi_req.a.wdata = 'hFFFF_FFFF; // TODO currently we need to set this for acmd12 to work, change it?
-    @(negedge clk);
+    fixture.vip.set_clock_enable(.enable(1'b1), .finish_transaction(1'b0));
 
-    // Set Clock frequency
-    obi_req.a.addr  = 'h02C;
-    obi_req.a.be    = 'b0011;
-    obi_req.a.wdata = { 16'b0, 8'(ClkEnPeriod >> 1), 8'h0 };
-    @(negedge clk);
-    // turn on clock
-    obi_req.a.addr  = 'h02C;
-    obi_req.a.be    = 'b0011;
-    obi_req.a.wdata = 'h04;
-    @(negedge clk);
+    fixture.vip.set_transfer_mode(
+      .is_multi_block(1'b0),
+      .is_read(1'b0),
+      .auto_cmd12_enable(1'b1),
+      .block_count_enable(1'b1),
+      .dma_enable(1'b0),
+      .finish_transaction(1'b0)
+    );
 
-    // Set multi block + write + ACMD12
-    obi_req.a.addr  = 'h00C;
-    obi_req.a.be    = 'b0011;
-    obi_req.a.wdata = 'b100110;
-    @(negedge clk);
+    fixture.vip.set_block_size_count(
+      .block_size(12'd64),
+      .block_count(16'd1),
+      .finish_transaction(1'b0)
+    );
 
-    // Set to one block of 64 bytes
-    obi_req.a.addr  = 'h004;
-    obi_req.a.be    = 'b1111;
-    obi_req.a.wdata = 'h0001_0040;
-    @(negedge clk);
+    fixture.vip.launch_command(
+      .command_index(6'd0),
+      .command_type (2'b00), // normal command
+      .data_present (1'b1),
+      // no response -> no checking
+      .index_check_enable(1'b0),
+      .crc_check_enable(1'b0),
+      .response_type(2'b00), // no response
+      .finish_transaction(1'b1)
+    );
 
-    // Dispatch command (no response + data present)
-    obi_req.a.addr  = 'h00C;
-    obi_req.a.be    = 'b1100;
-    obi_req.a.wdata = ('b100000) << 16;
-    @(negedge clk);
-
-    obi_req.req     = '0;
-
-    repeat(10*ClkEnPeriod) @(negedge clk);
+    repeat(10) fixture.vip.wait_for_sdclk();
     repeat (64 / 4) begin
-      obi_req.req     = '1;
-      obi_req.a.addr  = 'h020;
-      obi_req.a.be    = 'b1111;
-      obi_req.a.wdata = 'hDEAD_BEEF;
-      @(negedge clk);
-      obi_req.req     = '0;
-      repeat(ClkEnPeriod - 1) @(negedge clk);
+      fixture.vip.write_buffer_data('hDEAD_BEEF);
+      fixture.vip.wait_for_sdclk();
     end
 
-    obi_req.req = '0;
 
     // These values are slightly random because of the offset between command start and sd clk period
     case (ClkEnPeriod)
-      1: repeat(541 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
-      2: repeat(1079 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
-      4: repeat(2158 - CyclesThatDriverCommandArrivesBeforeCMD12) @(negedge clk);
+      1: repeat(539 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      2: repeat(1077 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      4: repeat(2155 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
       default: $fatal("ClkEnPeriod not supported");
     endcase
 
-    // Dispatch command (cmd0 + 48bit response + no data)
-    obi_req.req     = '1;
-    obi_req.a.addr  = 'h00C;
-    obi_req.a.be    = 'b1100;
-    obi_req.a.wdata = ('b0_00011010) << 16;
-    @(negedge clk);
-    obi_req.req     = '0;
-    repeat(ClkEnPeriod - 1) @(negedge clk);
-    obi_req.req = '0;
+    fixture.vip.launch_command(
+      .command_index(6'd0),
+      .command_type (2'b00), // normal command
+      .data_present (1'b0),
+      .index_check_enable(1'b1),
+      .crc_check_enable(1'b1),
+      .response_type(2'b10) // 48bit no busy
+    );
 
-    repeat(80*ClkEnPeriod) @(negedge clk);
+    fixture.vip.wait_for_sdclk();
+    repeat(80) fixture.vip.wait_for_sdclk();
 
     if (IsFirstResponseValid) begin
       // valid response, next command should run
       if (AutoCMD12First)
-        send_response_48(12, 'h7A);
+        fixture.vip.send_response_48(12, 'h7A);
       else
-        send_response_48(0, '0);
+        fixture.vip.send_response_48(0, '0);
     end else
       // invalid response, next command should not run
-      send_response_48('1, '1);
+      fixture.vip.send_response_48('1, '1);
 
     if (IsFirstResponseValid) begin
-      repeat(80*ClkEnPeriod) @(negedge clk);
+      repeat(80) fixture.vip.wait_for_sdclk();
 
       // Valid response for the second command
-      if (AutoCMD12First)
-        send_response_48(0, '0);
-      else
-        send_response_48(12, 'h7A);
+      if (AutoCMD12First) begin
+        fixture.vip.send_response_48(0, '0);
+      end else begin
+        fixture.vip.send_response_48(12, 'h7A);
+      end
     end else begin
       repeat (80*ClkEnPeriod) begin
-        if (!sdhc_cmd) $fatal("Second command should not have been sent");
-        @(negedge clk);
+        // TODO: make a wait for command
+        fixture.vip.wait_for_clk();
+        fixture.vip.test_delay();
+        fixture.vip.is_cmd_held(cmd_en);
+        if (cmd_en) $fatal("Second command should not have been sent");
       end
     end
 
-    repeat(10*ClkEnPeriod) @(negedge clk);
+    repeat(10) fixture.vip.wait_for_sdclk();
 
-    // Read out error register
-    obi_req.req     = '1;
-    obi_req.a.we      = '0;
-    obi_req.a.addr  = 'h030;
-    obi_req.a.be    = 'b1100;
-
-    @(negedge clk);
-    error_status = obi_rsp.r.rdata[31:16];
+    fixture.vip.get_interrupt_status(
+      .normal_interrupt_status(normal_status),
+      .error_interrupt_status(error_status)
+    );
     error_status[15:4] = '0; // Only care about cmd errors
 
-    obi_req.a.addr  = 'h03C;
-    obi_req.a.be    = 'b0011;
-
-    @(negedge clk);
-    cmd12_error_status = obi_rsp.r.rdata;
-
-    obi_req.req = '0;
+    fixture.vip.get_acmd_error_status(cmd12_error_status);
 
     // leave some time so we get a cleaner waveform
-    repeat(10) @(negedge clk);
+    repeat(10) fixture.vip.wait_for_clk();
 
     if (IsFirstResponseValid) begin
       if (|(error_status)) begin
