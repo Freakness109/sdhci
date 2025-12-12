@@ -9,7 +9,7 @@
 module tb_acmd12 #(
     parameter time         ClkPeriod     = 50ns,
     parameter int unsigned RstCycles     = 1
-  )();
+)();
 
   int ClkEnPeriod;
 
