@@ -119,11 +119,11 @@ module cmd_logic (
         if (rsp_receiving) begin
           cmd_state_d = READ_RSP;
         end else begin
-          if (cmd_q == 'd02 && cycles_waiting == N_ID) begin
+          if ((cmd_q == 'd01 || cmd_q == 'd02) && cycles_waiting == N_ID + 1) begin
             // The identification command (CMD2) has a shorter timeout period,
             // see 7.2.5
             cmd_state_d = RSP_TIMEOUT;
-          end else if (cycles_waiting == N_CR_MAX) begin
+          end else if (cycles_waiting == N_CR_MAX + 1) begin
             cmd_state_d = RSP_TIMEOUT;
           end
         end
@@ -220,11 +220,11 @@ module cmd_logic (
   ) i_counter (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (clear_cycle_counter),
+    .clear_i    (1'b0),
     .en_i       (clk_en_p_i),
-    .load_i     (1'b0),
+    .load_i     (clear_cycle_counter),
     .down_i     (1'b0),
-    .d_i        ('0),
+    .d_i        ({'0, div_1_i}),
     .q_o        (cycles_waiting),
     .overflow_o ()
   );
