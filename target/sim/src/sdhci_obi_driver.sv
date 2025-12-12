@@ -192,4 +192,16 @@ module sdhci_obi_driver #(
     obi_read('h03C, be, response);
     error_status = response[7:0];
   endtask
+
+  task automatic get_present_status_buffer_enable(
+    output logic buffer_read_enable,
+    output logic buffer_write_enable
+  );
+    logic [3:0] be;
+    logic [31:0] response;
+    be = 4'b0011;
+    obi_read('h024, be, response);
+    buffer_read_enable = response[11];
+    buffer_read_enable = response[10];
+  endtask
 endmodule

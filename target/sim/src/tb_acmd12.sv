@@ -28,6 +28,8 @@ module tb_acmd12 #(
   logic [15:0] normal_status;
   logic [15:0] error_status;
   logic [15:0] cmd12_error_status;
+  logic buf_read_en;
+  logic buf_write_en;
   logic response_done;
 
   initial begin : cmd_response
@@ -132,10 +134,31 @@ module tb_acmd12 #(
       .finish_transaction(1'b1)
     );
 
-    repeat(10) fixture.vip.wait_for_sdclk();
-    repeat (64 / 4) begin
-      fixture.vip.obi.write_buffer_data('hDEAD_BEEF);
-      fixture.vip.wait_for_sdclk();
+    fixture.vip.obi.get_present_status_buffer_enable(
+      .buffer_read_enable(buf_read_en),
+      .buffer_write_enable(buf_write_en)
+    );
+
+    while (buf_write_en != 1'b0) begin
+      fixture.vip.obi.get_present_status_buffer_enable(
+        .buffer_read_enable(buf_read_en),
+        .buffer_write_enable(buf_write_en)
+      );
+    end
+
+    repeat (64 / 4 - 1) begin
+      fixture.vip.obi.write_buffer_data(.data('hDEAD_BEEF), .finish_transaction(1'b0));
+    end
+    fixture.vip.obi.write_buffer_data(.data('hDEAD_BEEF), .finish_transaction(1'b1));
+
+    fixture.vip.obi.get_present_status_buffer_enable(
+      .buffer_read_enable(buf_read_en),
+      .buffer_write_enable(buf_write_en)
+    );
+
+    if (buf_write_en) begin
+      // we submitted all the data for the block
+      $fatal("Buffer write enable should be off");
     end
 
     fixture.vip.sd.wait_for_dat_held();
