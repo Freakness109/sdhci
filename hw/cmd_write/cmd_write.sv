@@ -132,6 +132,7 @@ module cmd_write (
         sd_cmd    = 1'b1; // end bit
         cmd_en_o  = 1'b1; // we write to bus
         tx_ongoing_d = 1'b0;
+        tx_done_o     = 1'b0;
       end
 
       default: ;
