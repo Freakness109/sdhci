@@ -32,6 +32,14 @@ module tb_acmd12 #(
   logic dat_en;
 
   initial begin
+    fixture.vip.wait_for_reset();
+    fixture.vip.sd.wait_for_dat_held();
+    fixture.vip.sd.wait_for_dat_released();
+    fixture.vip.wait_for_sdclk();
+    fixture.vip.sd.send_response_dat(.is_ok(1'b1));
+  end
+
+  initial begin
     $timeformat(-9, 0, "ns", 12);
     $dumpfile("tb_acmd12.vcd");
     $dumpvars(0);
@@ -153,7 +161,6 @@ module tb_acmd12 #(
       .normal_interrupt_status(normal_status),
       .error_interrupt_status(error_status)
     );
-    error_status[15:4] = '0; // Only care about cmd errors
 
     fixture.vip.obi.get_acmd_error_status(cmd12_error_status);
 
