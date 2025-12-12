@@ -5,7 +5,7 @@
 // Authors:
 // - Axel Vanoni <axvanoni@student.ethz.ch>
 
-module tb_timeout #(
+module tb_cmd_timeout #(
   parameter time         ClkPeriod = 50ns,
   parameter int unsigned RstCycles = 1
 )();
