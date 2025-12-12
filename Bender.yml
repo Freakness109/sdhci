@@ -67,6 +67,7 @@ sources:
       - target/sim/model/sd_crc_7.v
       - target/sim/model/sd_crc_16.v
       - target/sim/src/sdhci_obi_driver.sv
+      - target/sim/src/sdhci_sd_driver.sv
       # Level 2
       - target/sim/model/sdModel.v # sd_crc_7, sd_crc_16
       - target/sim/src/sdhci_vip.sv # sdhci_obi_driver

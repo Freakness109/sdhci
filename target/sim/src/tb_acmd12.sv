@@ -121,28 +121,28 @@ module tb_acmd12 #(
     if (IsFirstResponseValid) begin
       // valid response, next command should run
       if (AutoCMD12First)
-        fixture.vip.send_response_48(12, 'h7A);
+        fixture.vip.sd.send_response_48(12, 'h7A);
       else
-        fixture.vip.send_response_48(0, '0);
+        fixture.vip.sd.send_response_48(0, '0);
     end else
       // invalid response, next command should not run
-      fixture.vip.send_response_48('1, '1);
+      fixture.vip.sd.send_response_48('1, '1);
 
     if (IsFirstResponseValid) begin
       repeat(80) fixture.vip.wait_for_sdclk();
 
       // Valid response for the second command
       if (AutoCMD12First) begin
-        fixture.vip.send_response_48(0, '0);
+        fixture.vip.sd.send_response_48(0, '0);
       end else begin
-        fixture.vip.send_response_48(12, 'h7A);
+        fixture.vip.sd.send_response_48(12, 'h7A);
       end
     end else begin
       repeat (80*ClkEnPeriod) begin
         // TODO: make a wait for command
         fixture.vip.wait_for_clk();
         fixture.vip.test_delay();
-        fixture.vip.is_cmd_held(cmd_en);
+        fixture.vip.sd.is_cmd_held(cmd_en);
         if (cmd_en) $fatal("Second command should not have been sent");
       end
     end

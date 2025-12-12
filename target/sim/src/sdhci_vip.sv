@@ -55,6 +55,23 @@ module sdhci_vip #(
     .obi_rsp_i(obi_rsp_i)
   );
 
+  sdhci_sd_driver #(
+    .TA(TA),
+    .TT(TT)
+  ) sd (
+    .sd_clk_i(sd_clk_i),
+    .sd_cmd_o(sd_cmd_o),
+    .sd_cmd_i(sd_cmd_i),
+    .sd_cmd_en_i(sd_cmd_en_i),
+    .sd_dat_o(sd_dat_o),
+    .sd_dat_i(sd_dat_i),
+    .sd_dat_en_i(sd_dat_en_i)
+  );
+
+  initial begin
+    sd_cd_no  = 1'b1;
+  end
+
   task automatic wait_for_reset();
     @(posedge rst_no);
     @(posedge clk_o);
@@ -68,73 +85,23 @@ module sdhci_vip #(
     @(posedge sd_clk_i);
   endtask
 
-  initial begin
-    sd_cd_no  = 1'b1;
-    sd_cmd_o  = 1'b1;
-    sd_dat_o  = '1;
-  end
-
-  task automatic apply_logic (
-    logic value,
-    output logic to_write
-  );
-    @(posedge sd_clk_i);
-    #(TA);
-    to_write = value;
+  task automatic wait_for_interrupt();
+    @(posedge clk_o);
+    #(TT);
+    while (interrupt_i != 1'b1) begin
+      @(posedge clk_o);
+      #(TT);
+    end
   endtask
 
   task automatic test_delay();
     #(TT);
   endtask
 
-  task automatic is_cmd_held(output logic cmd_en);
-    cmd_en = sd_cmd_en_i;
+  task automatic set_cd(logic card_absent);
+    @(posedge clk_o);
+    #(TA);
+    sd_cd_no = card_absent;
   endtask
-
-  task automatic is_dat_held(output logic dat_en);
-    dat_en = sd_dat_en_i;
-  endtask
-
-  task automatic send_response_48 (
-    input logic [5:0] index,
-    input logic [6:0] crc,
-    input logic [31:0] card_status = '0,
-    input int busy_cycles = -1,
-    input logic end_bit = 1'b1
-  );
-    // start bit
-    apply_logic(1'b0, sd_cmd_o);
-
-    if (busy_cycles >= 0) begin
-      // signal busy
-      sd_dat_o[0] = 1'b0;
-    end
-
-    // transmission bit
-    apply_logic(1'b0, sd_cmd_o);
-
-    for (int i = 0; i < 6; i += 1) begin
-      apply_logic(index[5-i], sd_cmd_o);
-    end
-
-    for (int i = 0; i < 32; i += 1) begin
-      apply_logic(card_status[31-i], sd_cmd_o);
-    end
-
-    for (int i = 0; i < 7; i += 1) begin
-      apply_logic(crc[6-i], sd_cmd_o);
-    end
-
-    apply_logic(end_bit, sd_cmd_o);
-    
-    if (busy_cycles == 0) begin
-      sd_dat_o[0] = 1'b1;
-    end else if (busy_cycles > 0) begin
-      repeat(busy_cycles) @(posedge sd_clk_i);
-      #(TA);
-      sd_dat_o[0] = 1'b1;
-    end
-  endtask
-
 
 endmodule
