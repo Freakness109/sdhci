@@ -99,6 +99,24 @@ module sdhci_obi_driver #(
     obi_write('h034, be, {error_interrupt_status_enable, normal_interrupt_status_enable}, finish_transaction);
   endtask
 
+  task automatic set_interrupt_signal_enable(
+    logic [15:0] normal_interrupt_signal_enable = '0,
+    logic [15:0] error_interrupt_signal_enable  = '0,
+    logic set_normal_ise = 1'b1,
+    logic set_error_ise = 1'b1,
+    logic finish_transaction = 1'b1
+  );
+    logic [3:0] be;
+    if (set_normal_ise) begin
+      be[1:0] = '1;
+    end
+    if (set_error_ise) begin
+      be[3:2] = '1;
+    end
+
+    obi_write('h038, be, {error_interrupt_signal_enable, normal_interrupt_signal_enable}, finish_transaction);
+  endtask
+
   task automatic set_frequency_select(
     logic [7:0] divider,
     logic finish_transaction = 1'b1
@@ -181,6 +199,15 @@ module sdhci_obi_driver #(
     logic [3:0] be;
     be = 4'b1111;
     obi_read('h030, be, {error_interrupt_status, normal_interrupt_status});
+  endtask
+
+  task automatic clear_interrupt_status(
+    input logic [15:0] normal_interrupt_status,
+    input logic [15:0] error_interrupt_status
+  );
+    logic [3:0] be;
+    be = 4'b1111;
+    obi_write('h030, be, {error_interrupt_status, normal_interrupt_status}, 1'b1);
   endtask
 
   task automatic get_acmd_error_status(
