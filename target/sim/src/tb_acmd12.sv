@@ -28,8 +28,41 @@ module tb_acmd12 #(
   logic [15:0] normal_status;
   logic [15:0] error_status;
   logic [15:0] cmd12_error_status;
-  logic cmd_en;
-  logic dat_en;
+  logic response_done;
+
+  initial begin : cmd_response
+    response_done = 1'b0;
+    fixture.vip.wait_for_reset();
+
+    fixture.vip.sd.wait_for_cmd_held();
+    fixture.vip.sd.wait_for_cmd_released();
+    // bus is idle for 2 cycles
+    fixture.vip.wait_for_sdclk();
+    if (IsFirstResponseValid) begin
+      // valid response, next command should run
+      if (AutoCMD12First)
+        fixture.vip.sd.send_response_48(12, 'h7A);
+      else
+        fixture.vip.sd.send_response_48(0, '0);
+    end else begin
+      // invalid response, next command should not run
+      fixture.vip.sd.send_response_48('1, '1);
+    end
+
+    fixture.vip.sd.wait_for_cmd_held();
+    fixture.vip.sd.wait_for_cmd_released();
+    // bus is idle for 2 cycles
+    fixture.vip.wait_for_sdclk();
+    if (IsFirstResponseValid) begin
+      // Valid response for the second command
+      if (AutoCMD12First) begin
+        fixture.vip.sd.send_response_48(0, '0);
+      end else begin
+        fixture.vip.sd.send_response_48(12, 'h7A);
+      end
+    end
+    response_done = 1'b1;
+  end : cmd_response
 
   initial begin
     fixture.vip.wait_for_reset();
@@ -123,39 +156,29 @@ module tb_acmd12 #(
       .response_type(2'b10) // 48bit no busy
     );
 
-    fixture.vip.wait_for_sdclk();
-    repeat(80) fixture.vip.wait_for_sdclk();
+    // wait for first response
+    fixture.vip.sd.wait_for_cmd_held();
+    fixture.vip.sd.wait_for_cmd_released();
 
-    if (IsFirstResponseValid) begin
-      // valid response, next command should run
-      if (AutoCMD12First)
-        fixture.vip.sd.send_response_48(12, 'h7A);
-      else
-        fixture.vip.sd.send_response_48(0, '0);
-    end else
-      // invalid response, next command should not run
-      fixture.vip.sd.send_response_48('1, '1);
-
-    if (IsFirstResponseValid) begin
-      repeat(80) fixture.vip.wait_for_sdclk();
-
-      // Valid response for the second command
-      if (AutoCMD12First) begin
-        fixture.vip.sd.send_response_48(0, '0);
-      end else begin
-        fixture.vip.sd.send_response_48(12, 'h7A);
-      end
-    end else begin
-      repeat (80*ClkEnPeriod) begin
-        // TODO: make a wait for command
-        fixture.vip.wait_for_clk();
-        fixture.vip.test_delay();
-        fixture.vip.sd.is_cmd_held(cmd_en);
-        if (cmd_en) $fatal("Second command should not have been sent");
-      end
+    if (!IsFirstResponseValid) begin
+      fork
+        begin
+          fork
+            begin
+              fixture.vip.sd.wait_for_cmd_held();
+              $fatal("Second command should not have been sent");
+            end
+            begin
+              repeat (80) fixture.vip.wait_for_sdclk();
+            end
+          join_any
+          disable fork;
+        end
+      join
     end
 
-    repeat(10) fixture.vip.wait_for_sdclk();
+    // wait for the response to be sent
+    wait(response_done);
 
     fixture.vip.obi.get_interrupt_status(
       .normal_interrupt_status(normal_status),

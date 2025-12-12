@@ -34,14 +34,6 @@ module sdhci_sd_driver #(
     to_write = value;
   endtask
 
-  task automatic is_cmd_held(output logic cmd_en);
-    cmd_en = sd_cmd_en_i;
-  endtask
-
-  task automatic is_dat_held(output logic dat_en);
-    dat_en = sd_dat_en_i;
-  endtask
-
   task automatic wait_for_cmd_released();
     @(posedge sd_clk_i);
     #(TT);
