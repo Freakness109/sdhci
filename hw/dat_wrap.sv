@@ -16,7 +16,7 @@ module dat_wrap #(
   input  logic sd_clk_en_n_i,
   input  logic div_1_i,
   input  logic rst_ni,
-  
+
   input  logic [3:0] dat_i,
   output logic       dat_en_o,
   output logic [3:0] dat_o,
@@ -90,9 +90,21 @@ module dat_wrap #(
         end
       end
 
-      WAIT_FOR_CMD:         if (sd_cmd_done_i) state_d = START_READING;
-      WAIT_FOR_READ_BUFFER: if (buffer_write_ready) state_d = START_READING;
-      START_READING:        if (sd_clk_en_p_i) state_d = READING;
+      WAIT_FOR_CMD: begin
+        if (sd_cmd_done_i) begin
+          state_d = START_READING;
+        end
+      end
+      WAIT_FOR_READ_BUFFER: begin
+        if (buffer_write_ready) begin
+          state_d = START_READING;
+        end
+      end
+      START_READING: begin
+        if (sd_clk_en_p_i) begin
+          state_d = READING;
+        end
+      end
       READING: begin
         if (read_timeout) begin
           state_d = TIMEOUT_READING;
@@ -110,25 +122,59 @@ module dat_wrap #(
           state_d = WAIT_FOR_READ_BUFFER;
         end
       end
-      READING_BUSY:       if (buffer_empty) state_d = DONE_READING;
-      TIMEOUT_READING:    state_d = DONE_READING;
-      DONE_READING:       state_d = READY;
+      READING_BUSY: begin
+        if (buffer_empty) begin
+          state_d = DONE_READING;
+        end
+      end
+      TIMEOUT_READING: begin
+        state_d = DONE_READING;
+      end
+      DONE_READING: begin
+        state_d = READY;
+      end
 
-      WAIT_FOR_RSP:          if (sd_rsp_done_i) state_d = WAIT_FOR_WRITE_BUFFER;
-      WAIT_FOR_WRITE_BUFFER: if (buffer_read_valid) state_d = START_WRITING;
-      START_WRITING:         if (sd_clk_en_p_i) state_d = WRITING;
-      WRITING:               if (write_done) state_d = DONE_WRITING_BLOCK;
-      DONE_WRITING_BLOCK:    state_d = transmitted_block_counter_q == 'b1 ? DONE_WRITING : WAIT_FOR_WRITE_BUFFER;
-      DONE_WRITING:          state_d = READY;
+      WAIT_FOR_RSP: begin
+        if (sd_rsp_done_i) begin
+          state_d = WAIT_FOR_WRITE_BUFFER;
+        end
+      end
+      WAIT_FOR_WRITE_BUFFER: begin
+        if (buffer_read_valid) begin
+          state_d = START_WRITING;
+        end
+      end
+      START_WRITING: begin
+        if (sd_clk_en_p_i) begin
+          state_d = WRITING;
+        end
+      end
+      WRITING: begin
+        if (write_done) begin
+          state_d = DONE_WRITING_BLOCK;
+        end
+      end
+      DONE_WRITING_BLOCK: begin
+        if (transmitted_block_counter_q == 'b1) begin
+          state_d = DONE_WRITING;
+        end else begin
+          state_d = WAIT_FOR_WRITE_BUFFER;
+        end
+      end
+      DONE_WRITING: begin
+        state_d = READY;
+      end
 
-      default: state_d = READY;
+      default: begin
+        state_d = READY;
+      end
     endcase
   end
 
   logic [MaxBlockBitSize-1:0] block_size;
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
-  
+
   logic read_run_timeout;
   logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
   logic [31:0] write_data, read_data;
@@ -223,7 +269,7 @@ module dat_wrap #(
         write_transfer_active_o.d = '1;
 
         if (write_requests_next_word) buffer_read_ready = '1;
-        write_data = buffer_read_data; 
+        write_data = buffer_read_data;
 
         if (write_done) begin
           data_crc_error_o.de     = write_crc_err;
@@ -240,11 +286,11 @@ module dat_wrap #(
 
         if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) request_cmd12_o = '1;
       end
-      
+
       default: ;
     endcase
   end
-  
+
   // Read timeout
   dat_read_timeout i_read_timeout (
     .clk_i,
@@ -256,7 +302,7 @@ module dat_wrap #(
     .timeout_o      (read_timeout)
   );
 
-  
+
   dat_buffer #(
     // .NumWords        (256), // = 1024, Just enough to double buffer 512 byte blocks
     .NumWords        (512), // = 2048, because ihp13 doesnt have a 1kB SRAM block with 32bit word width
@@ -277,7 +323,7 @@ module dat_wrap #(
     .write_ready_o (buffer_write_ready),
 
     .empty_o       (buffer_empty),
-  
+
     .reg2hw_i,
     .buffer_data_port_d_o,
     .buffer_read_enable_o,
@@ -297,10 +343,10 @@ module dat_wrap #(
     .timeout_i        (read_timeout),
     .block_size_i     (block_size),
     .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
-    
+
     .data_valid_o  (read_valid),
     .data_o        (read_data),
-    
+
     .done_o        (read_done),
     .crc_err_o     (read_crc_err),
     .end_bit_err_o (read_end_bit_err)
