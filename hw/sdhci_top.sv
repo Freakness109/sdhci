@@ -9,7 +9,6 @@
 
 `include "common_cells/registers.svh"
 `include "defines.svh"
-//`define CMD_RESET_ON_TIMEOUT  //reset command when response times out. Not to spec, but helps with driver.
 
 module sdhci_top #(
   parameter int unsigned AddrWidth = 32'd32,
@@ -49,38 +48,27 @@ module sdhci_top #(
   sdhci_reg_pkg::sdhci_reg2hw_t reg2hw, reg2hw_orig;
   sdhci_reg_pkg::sdhci_hw2reg_t hw2reg;
 
-  //Soft Reset Logic/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Soft Reset Logic /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   logic software_reset_all_q, software_reset_all_d, software_reset_cmd_q, software_reset_cmd_d, software_reset_dat_q, software_reset_dat_d;
   
   assign software_reset_all_d = reg2hw.software_reset.software_reset_for_all.q;
   `FF(software_reset_all_q, software_reset_all_d, '0, clk_i, rst_ni);
   
-  assign software_reset_cmd_d = reg2hw.software_reset.software_reset_for_cmd_line.q;  //comand circuit soft reset
+  assign software_reset_cmd_d = reg2hw.software_reset.software_reset_for_cmd_line.q;  // command circuit soft reset
   `FF(software_reset_cmd_q, software_reset_cmd_d, '1, clk_i, rst_ni);
 
-  assign software_reset_dat_d = reg2hw.software_reset.software_reset_for_dat_line.q;  //dat circuit soft reset
+  assign software_reset_dat_d = reg2hw.software_reset.software_reset_for_dat_line.q;  // dat circuit soft reset
   `FF(software_reset_dat_q, software_reset_dat_d, '1, clk_i, rst_ni);
 
   assign sd_rst_n = rst_ni && !software_reset_all_q;
   assign sd_rst_cmd_n = sd_rst_n && !software_reset_cmd_q;
   assign sd_rst_dat_n = sd_rst_n && !software_reset_dat_q;
   
-  always_comb begin : reset_reset_bits
-    hw2reg.software_reset.software_reset_for_dat_line.d   = 1'b0;
-    hw2reg.software_reset.software_reset_for_dat_line.de  = 1'b0;
-    hw2reg.software_reset.software_reset_for_cmd_line.d   = 1'b0;
-    hw2reg.software_reset.software_reset_for_cmd_line.de  = 1'b0;
+  assign hw2reg.software_reset.software_reset_for_dat_line.d = 1'b0;
+  assign hw2reg.software_reset.software_reset_for_cmd_line.d = 1'b0;
 
-    if(software_reset_dat_q) hw2reg.software_reset.software_reset_for_dat_line.de = 1'b1;
-    if(software_reset_cmd_q) hw2reg.software_reset.software_reset_for_cmd_line.de = 1'b1;
-
-    `ifdef CMD_RESET_ON_TIMEOUT
-      if(reg2hw.error_interrupt_status.command_timeout_error.q) begin //evtl noch error status resetten?
-        hw2reg.software_reset.software_reset_for_cmd_line.d = 1'b1;
-        hw2reg.software_reset.software_reset_for_cmd_line.de = 1'b1;
-      end
-    `endif
-  end
+  assign hw2reg.software_reset.software_reset_for_dat_line.de = software_reset_dat_q;
+  assign hw2reg.software_reset.software_reset_for_cmd_line.de = software_reset_cmd_q;
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   sdhci_reg_top #(
