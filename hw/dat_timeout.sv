@@ -4,10 +4,18 @@
 
 // Authors:
 // - Micha Wehrli <miwehrli@student.ethz.ch>
+// - Axel Vanoni <axvanoni@student.ethz.ch>
 
 `include "common_cells/registers.svh"
 
 module dat_timeout #(
+  parameter int unsigned ClockDiv = 1, // by how much to divide the clock to get the timeout clock
+                              // make sure that the chosen divider allows at
+                              // least the 500ms of timeout required for newer SD cards
+                              // with the maximum timeout of 2**27 cycles
+                              // Note: Linux also has larger timeouts that
+                              // span to 60s, so err on the side of caution
+  localparam int unsigned ClockDivWidth = $clog2(ClockDiv)
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -20,6 +28,26 @@ module dat_timeout #(
   // maximum timeout is 2**27
   logic [27:0] timeout_counter_q, timeout_counter_d;
   `FF (timeout_counter_q, timeout_counter_d, 0, clk_i, rst_ni);
+
+  logic do_increment;
+
+  generate
+    if (ClockDiv > 1) begin
+      logic [ClockDivWidth-1:0] clock_div_q, clock_div_d;
+      `FF(clock_div_q, clock_div_d, '0, clk_i, rst_ni);
+      
+      always_comb begin
+        clock_div_d = clock_div_q + 1;
+        if (clock_div_q == ClockDiv - 1) begin
+          clock_div_d = '0;
+        end
+      end
+
+      assign do_increment = clock_div_q == '0;
+    end else begin
+      assign do_increment = 1'b1;
+    end
+  endgenerate
   
   always_comb begin
     timeout_counter_d = timeout_counter_q;
@@ -27,7 +55,7 @@ module dat_timeout #(
     if (!running_i) begin
       timeout_counter_d = '0;
     end
-    if (!timeout_o) begin
+    if (!timeout_o && do_increment) begin
       timeout_counter_d = timeout_counter_q + 1;
     end
   end

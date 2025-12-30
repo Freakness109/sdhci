@@ -22,6 +22,9 @@ module sdhci_top #(
   parameter int unsigned       ClkPreDivLog   = 1,
   //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
 
+  parameter int TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
+                                    // see dat_timeout for details
+
   // clock runs at 50MHz, so 1ms is 50_000 cycles
   parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
 ) (
@@ -42,7 +45,7 @@ module sdhci_top #(
   output logic       sd_dat_en_o,
 
   output logic interrupt_o
-  
+
 );
   logic sd_rst_n, sd_rst_cmd_n, sd_rst_dat_n;
   sdhci_reg_pkg::sdhci_reg2hw_t reg2hw, reg2hw_orig;
@@ -50,10 +53,10 @@ module sdhci_top #(
 
   // Soft Reset Logic /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   logic software_reset_all_q, software_reset_all_d, software_reset_cmd_q, software_reset_cmd_d, software_reset_dat_q, software_reset_dat_d;
-  
+
   assign software_reset_all_d = reg2hw.software_reset.software_reset_for_all.q;
   `FF(software_reset_all_q, software_reset_all_d, '0, clk_i, rst_ni);
-  
+
   assign software_reset_cmd_d = reg2hw.software_reset.software_reset_for_cmd_line.q;  // command circuit soft reset
   `FF(software_reset_cmd_q, software_reset_cmd_d, '1, clk_i, rst_ni);
 
@@ -63,7 +66,7 @@ module sdhci_top #(
   assign sd_rst_n = rst_ni && !software_reset_all_q;
   assign sd_rst_cmd_n = sd_rst_n && !software_reset_cmd_q;
   assign sd_rst_dat_n = sd_rst_n && !software_reset_dat_q;
-  
+
   assign hw2reg.software_reset.software_reset_for_dat_line.d = 1'b0;
   assign hw2reg.software_reset.software_reset_for_cmd_line.d = 1'b0;
 
@@ -157,7 +160,7 @@ module sdhci_top #(
     .stable_o (sd_card_detected_stable),
     .data_o   (sd_card_detected_debounced)
   );
-  
+
   assign hw2reg.present_state.dat_line_signal_level = '{ de: '1, d: sd_dat_i };
   assign hw2reg.present_state.cmd_line_signal_level = '{ de: '1, d: sd_cmd_i };
 
@@ -204,7 +207,9 @@ module sdhci_top #(
   );
 
 
-  dat_wrap i_dat_wrap (
+  dat_wrap #(
+    .TimeoutDivider(TimeoutDivider)
+  ) i_dat_wrap (
     .clk_i,
     .sd_clk_en_p_i  (sd_clk_en_p),
     .sd_clk_en_n_i  (sd_clk_en_n),
@@ -236,5 +241,5 @@ module sdhci_top #(
 
     .block_count_o           (block_count_hw)
   );
-  
+
 endmodule

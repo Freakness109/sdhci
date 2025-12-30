@@ -9,7 +9,9 @@
 `include "defines.svh"
 
 module dat_wrap #(
-  parameter int MaxBlockBitSize = 10 // max_block_length = 512 in caps
+  parameter int MaxBlockBitSize = 10, // max_block_length = 512 in caps
+  parameter int TimeoutDivider = 1 // by how much to divide clk_i to get the timeout count frequency,
+                                   // see dat_timeout for details
 ) (
   input  logic clk_i,
   input  logic sd_clk_en_p_i,
@@ -292,7 +294,9 @@ module dat_wrap #(
   end
 
   // Read timeout
-  dat_timeout i_timeout (
+  dat_timeout #(
+    .ClockDiv(TimeoutDivider)
+  ) i_timeout (
     .clk_i,
     .rst_ni,
 
