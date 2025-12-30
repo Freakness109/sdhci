@@ -292,7 +292,7 @@ module dat_wrap #(
   end
 
   // Read timeout
-  dat_read_timeout i_read_timeout (
+  dat_timeout i_timeout (
     .clk_i,
     .rst_ni,
 

@@ -29,7 +29,7 @@ sources:
   # Level 1
   - hw/cmd_write/crc7_write.sv
   - hw/dat_read/crc16_read.sv
-  - hw/dat_read/dat_read_timeout.sv
+  - hw/dat_timeout.sv
   - hw/dat_write/crc16_write.sv
   # - hw/dat_write/crc16_write_copy.sv TODO: this also has the module name crc16_write, which one is the correct one?
   - hw/par_ser_shift_reg.sv

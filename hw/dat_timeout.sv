@@ -7,7 +7,7 @@
 
 `include "common_cells/registers.svh"
 
-module dat_read_timeout #(
+module dat_timeout #(
   parameter int TIMEOUT_COUNTER_WIDTH = 28 // maximum timeout is 2**27
 ) (
   input  logic clk_i,
