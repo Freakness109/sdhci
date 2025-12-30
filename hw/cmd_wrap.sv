@@ -61,7 +61,6 @@ module cmd_wrap (
   logic running_autocmd12_q, running_autocmd12_d;
   `FF(running_autocmd12_q, running_autocmd12_d, '0, clk_i, rst_ni);
 
-  // TODO: implement same-cycle forwarding
   logic command_queued;
   assign command_queued = driver_cmd_queued_q || autocmd12_queued_q;
 
@@ -143,7 +142,8 @@ module cmd_wrap (
   ///////////////////
 
   assign command_inhibit_cmd_o.de = '1;
-  assign command_inhibit_cmd_o.d  = command_queued | ~command_ready;
+  // autocmd12 execution should not inhibit the driver
+  assign command_inhibit_cmd_o.d  = command_queued | (~command_ready && ~running_autocmd12_q);
 
   logic [31:0] rsp0, rsp1, rsp2, rsp3;
   logic [119:0] rsp;
