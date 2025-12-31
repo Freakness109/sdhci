@@ -83,8 +83,21 @@ module cmd_wrap (
   assign current_arg = autocmd12_queued_q ? '0 : reg2hw.argument.q;
 
   sdhci_pkg::response_type_e current_rsp_type;
-  assign current_rsp_type = autocmd12_queued_q ? sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY :
-    sdhci_pkg::response_type_e'(reg2hw.command.response_type_select.q);
+
+  always_comb begin : rsp_type
+    current_rsp_type = sdhci_pkg::response_type_e'(reg2hw.command.response_type_select.q);
+
+    // according to electrical spec 7.8.4, CMD12 is R1 on reads and R1b on writes
+    if (autocmd12_queued_q) begin
+      if (reg2hw.transfer_mode.data_transfer_direction_select.q == 1'b0) begin
+        // write -> R1b
+        current_rsp_type = sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
+      end else begin
+        // read -> R1
+        current_rsp_type = sdhci_pkg::RESPONSE_LENGTH_48;
+      end
+    end
+  end
 
   always_comb begin : request_commands
     driver_cmd_queued_d = driver_cmd_queued_q;
