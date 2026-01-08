@@ -23,13 +23,10 @@ module cmd_wrap (
   output  logic sd_bus_cmd_en_o,
 
   input   sdhci_reg2hw_t reg2hw,
-
-  input   logic dat0_i,     // busy signal is on dat0 line
   input   logic request_cmd12_i,
 
   output  logic sd_cmd_done_o,
   output  logic sd_rsp_done_o,
-  output  logic sd_cmd_dat_busy_o,
 
   output  logic [31:0] response0_d_o,
   output  logic [31:0] response1_d_o,
@@ -264,11 +261,9 @@ module cmd_wrap (
     .sd_bus_cmd_i      (sd_bus_cmd_i),
     .sd_bus_cmd_o      (sd_bus_cmd_o),
     .sd_bus_cmd_en_o   (sd_bus_cmd_en_o),
-    .sd_bus_busy_ni    (dat0_i),
 
     .cmd_done_o        (sd_cmd_done_o),
     .rsp_done_o        (sd_rsp_done_o),
-    .dat_busy_o        (sd_cmd_dat_busy_o),
 
     .cmd_i             (current_cmd),
     .cmd_arg_i         (current_arg),

@@ -7,7 +7,6 @@
 
 `include "common_cells/registers.svh"
 
-// TODO: find better name
 module cmd_logic (
   input  logic clk_i,
   input  logic rst_ni,
@@ -18,11 +17,9 @@ module cmd_logic (
   input  logic sd_bus_cmd_i,
   output logic sd_bus_cmd_o,
   output logic sd_bus_cmd_en_o,
-  input  logic sd_bus_busy_ni,
 
   output logic cmd_done_o,
   output logic rsp_done_o,
-  output logic dat_busy_o,
 
   input  sdhci_pkg::cmd_t cmd_i,
   input  sdhci_pkg::cmd_arg_t cmd_arg_i,
@@ -45,7 +42,6 @@ module cmd_logic (
     SEND_CMD,
     WAIT_RSP,
     READ_RSP,
-    WAIT_BUSY,
     BUS_COOLDOWN,
     RSP_TIMEOUT
   } cmd_fsm_t;
@@ -130,17 +126,6 @@ module cmd_logic (
       end
       READ_RSP: begin
         if (rsp_received) begin
-          if (response_type_q == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY) begin
-            // TODO: maybe we can skip this state if we notice that busy has
-            // already been de-asserted
-            cmd_state_d = WAIT_BUSY;
-          end else begin
-            cmd_state_d = BUS_COOLDOWN;
-          end
-        end
-      end
-      WAIT_BUSY: begin
-        if (sd_bus_busy_ni) begin
           cmd_state_d = BUS_COOLDOWN;
         end
       end
@@ -162,9 +147,6 @@ module cmd_logic (
   assign rsp_done_o  = cmd_state_d == BUS_COOLDOWN && cmd_state_q != BUS_COOLDOWN &&
                        response_type_q != sdhci_pkg::NO_RESPONSE;
 
-  // claim the dat line during the entire command if we have busy signalling
-  // in the response
-  assign dat_busy_o  = cmd_state_q != IDLE && response_type_q == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
   assign cmd_ready_o = cmd_ready;
 
   assign timeout_error_o    = cmd_state_q == RSP_TIMEOUT;

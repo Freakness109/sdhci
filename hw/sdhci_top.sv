@@ -183,12 +183,10 @@ module sdhci_top #(
     .sd_bus_cmd_en_o (sd_cmd_en_o),
     .reg2hw          (reg2hw),
 
-    .dat0_i          (sd_dat_i[0]),
     .request_cmd12_i (request_cmd12),
 
     .sd_cmd_done_o     (sd_cmd_done),
     .sd_rsp_done_o     (sd_rsp_done),
-    .sd_cmd_dat_busy_o (sd_cmd_dat_busy),
 
     .response0_d_o  (hw2reg.response0.d),
     .response1_d_o  (hw2reg.response1.d),
