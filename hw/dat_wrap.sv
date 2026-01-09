@@ -4,6 +4,7 @@
 
 // Authors:
 // - Micha Wehrli <miwehrli@student.ethz.ch>
+// - Axel Vanoni <axvanoni@student.ethz.ch>
 
 `include "common_cells/registers.svh"
 `include "defines.svh"
@@ -53,10 +54,13 @@ module dat_wrap #(
   logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
   `FF (transmitted_block_counter_q, transmitted_block_counter_d, '0);
 
-  typedef enum logic [3:0] {
+  typedef enum logic [1:0] {
     READY,
+    READ,
+    WRITE
+  } dat_state_e;
 
-    // Read
+  typedef enum logic [2:0] {
     WAIT_FOR_CMD,
     WAIT_FOR_READ_BUFFER,
     START_READING,
@@ -64,113 +68,159 @@ module dat_wrap #(
     DONE_READING_BLOCK,
     READING_BUSY,
     TIMEOUT_READING,
-    DONE_READING,
+    DONE_READING
+  } read_state_e;
 
-    // Write
+  typedef enum logic [2:0] {
     WAIT_FOR_RSP,
     WAIT_FOR_WRITE_BUFFER,
     START_WRITING,
     WRITING,
     DONE_WRITING_BLOCK,
     DONE_WRITING
-  } dat_state_e;
+  } write_state_e;
 
-  dat_state_e state_q, state_d;
-  `FF (state_q, state_d, READY, clk_i, rst_ni);
+  dat_state_e dat_state_q, dat_state_d;
+  `FF (dat_state_q, dat_state_d, READY, clk_i, rst_ni);
 
-  always_comb begin
-    state_d = state_q;
+  read_state_e read_state_q, read_state_d;
+  `FF (read_state_q, read_state_d, WAIT_FOR_CMD, clk_i, rst_ni);
 
-    unique case (state_q)
+  write_state_e write_state_q, write_state_d;
+  `FF (write_state_q, write_state_d, WAIT_FOR_RSP, clk_i, rst_ni);
+
+  always_comb begin : main_fsm
+    dat_state_d = dat_state_q;
+
+    unique case (dat_state_q)
       READY: begin
         if (reg2hw_i.command.command_index.qe && reg2hw_i.command.data_present_select.q) begin
           if (reg2hw_i.transfer_mode.data_transfer_direction_select.q) begin
-            state_d = WAIT_FOR_CMD;
+            dat_state_d = READ;
           end else begin
-            state_d = WAIT_FOR_WRITE_BUFFER;
+            dat_state_d = WRITE;
           end
         end
       end
 
-      WAIT_FOR_CMD: begin
-        if (sd_cmd_done_i) begin
-          state_d = START_READING;
+      READ: begin
+        if (read_state_q == DONE_READING) begin
+          dat_state_d = READY;
         end
-      end
-      WAIT_FOR_READ_BUFFER: begin
-        if (buffer_write_ready) begin
-          state_d = START_READING;
-        end
-      end
-      START_READING: begin
-        if (sd_clk_en_p_i) begin
-          state_d = READING;
-        end
-      end
-      READING: begin
-        if (read_timeout) begin
-          state_d = TIMEOUT_READING;
-          // Reset reader
-        end else if (read_done) begin
-          state_d = DONE_READING_BLOCK;
-        end
-      end
-      DONE_READING_BLOCK: begin
-        if (transmitted_block_counter_q == 'b1) begin
-          state_d = READING_BUSY;
-        end else if (buffer_write_ready) begin
-          state_d = START_READING;
-        end else begin
-          state_d = WAIT_FOR_READ_BUFFER;
-        end
-      end
-      READING_BUSY: begin
-        if (buffer_empty) begin
-          state_d = DONE_READING;
-        end
-      end
-      TIMEOUT_READING: begin
-        state_d = DONE_READING;
-      end
-      DONE_READING: begin
-        state_d = READY;
       end
 
-      WAIT_FOR_RSP: begin
-        if (sd_rsp_done_i) begin
-          state_d = WAIT_FOR_WRITE_BUFFER;
+      WRITE: begin
+        if (write_state_q == DONE_WRITING) begin
+          dat_state_d = READY;
         end
-      end
-      WAIT_FOR_WRITE_BUFFER: begin
-        if (buffer_read_valid) begin
-          state_d = START_WRITING;
-        end
-      end
-      START_WRITING: begin
-        if (sd_clk_en_p_i) begin
-          state_d = WRITING;
-        end
-      end
-      WRITING: begin
-        if (write_done) begin
-          state_d = DONE_WRITING_BLOCK;
-        end
-      end
-      DONE_WRITING_BLOCK: begin
-        if (transmitted_block_counter_q == 'b1) begin
-          state_d = DONE_WRITING;
-        end else begin
-          state_d = WAIT_FOR_WRITE_BUFFER;
-        end
-      end
-      DONE_WRITING: begin
-        state_d = READY;
       end
 
       default: begin
-        state_d = READY;
+        dat_state_d = READY;
       end
     endcase
+  end
+
+  always_comb begin : read_fsm
+    read_state_d = read_state_q;
+
+    if (dat_state_q != READ) begin
+      read_state_d = WAIT_FOR_CMD;
+    end else begin
+      unique case (read_state_q)
+        WAIT_FOR_CMD: begin
+          if (sd_cmd_done_i) begin
+            read_state_d = START_READING;
+          end
+        end
+        WAIT_FOR_READ_BUFFER: begin
+          if (buffer_write_ready) begin
+            read_state_d = START_READING;
+          end
+        end
+        START_READING: begin
+          if (sd_clk_en_p_i) begin
+            read_state_d = READING;
+          end
+        end
+        READING: begin
+          if (read_timeout) begin
+            read_state_d = TIMEOUT_READING;
+            // Reset reader
+          end else if (read_done) begin
+            read_state_d = DONE_READING_BLOCK;
+          end
+        end
+        DONE_READING_BLOCK: begin
+          if (transmitted_block_counter_q == 'b1) begin
+            read_state_d = READING_BUSY;
+          end else if (buffer_write_ready) begin
+            read_state_d = START_READING;
+          end else begin
+            read_state_d = WAIT_FOR_READ_BUFFER;
+          end
+        end
+        READING_BUSY: begin
+          if (buffer_empty) begin
+            read_state_d = DONE_READING;
+          end
+        end
+        TIMEOUT_READING: begin
+          read_state_d = DONE_READING;
+        end
+        DONE_READING: begin
+          read_state_d = DONE_READING;
+        end
+        default: begin
+          read_state_d = WAIT_FOR_CMD;
+        end
+      endcase
+    end
+  end
+
+  always_comb begin : write_fsm
+    write_state_d = write_state_q;
+
+    if (dat_state_q != WRITE) begin
+      write_state_d = WAIT_FOR_RSP;
+    end else begin
+      unique case (write_state_q)
+        WAIT_FOR_RSP: begin
+          if (sd_rsp_done_i) begin
+            write_state_d = WAIT_FOR_WRITE_BUFFER;
+          end
+        end
+        WAIT_FOR_WRITE_BUFFER: begin
+          if (buffer_read_valid) begin
+            write_state_d = START_WRITING;
+          end
+        end
+        START_WRITING: begin
+          if (sd_clk_en_p_i) begin
+            write_state_d = WRITING;
+          end
+        end
+        WRITING: begin
+          if (write_done) begin
+            write_state_d = DONE_WRITING_BLOCK;
+          end
+        end
+        DONE_WRITING_BLOCK: begin
+          if (transmitted_block_counter_q == 'b1) begin
+            write_state_d = DONE_WRITING;
+          end else begin
+            write_state_d = WAIT_FOR_WRITE_BUFFER;
+          end
+        end
+        DONE_WRITING: begin
+          write_state_d = DONE_WRITING;
+        end
+
+        default: begin
+          write_state_d = WAIT_FOR_RSP;
+        end
+      endcase
+    end
   end
 
   logic [MaxBlockBitSize-1:0] block_size;
@@ -181,114 +231,116 @@ module dat_wrap #(
   logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
   logic [31:0] write_data, read_data;
 
-  logic requested_cmd12_q, requested_cmd12_d;
-  `FF(requested_cmd12_q, requested_cmd12_d, '0)
-
-  always_comb begin
-    read_run_timeout = '0;
-
+  always_comb begin : autocmd12
     request_cmd12_o   = '0;
-    requested_cmd12_d = '0;
-    pause_sd_clk_o    = '0;
+    if ((write_state_d == DONE_WRITING && write_state_q != DONE_WRITING) |
+        ( read_state_d == READING_BUSY &&  read_state_q != READING_BUSY)) begin
+      if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) begin
+        request_cmd12_o = '1;
+      end
+    end
+  end
 
+  assign read_transfer_active_o = '{de: '1, d: dat_state_q == READ};
+  assign write_transfer_active_o = '{de: '1, d: dat_state_q == WRITE};
+
+  always_comb begin : error_reporting
     data_crc_error_o     = '{ de: '0, d: '1};
     data_end_bit_error_o = '{ de: '0, d: '1};
     data_timeout_error_o = '{ de: '0, d: '1};
 
-    read_transfer_active_o  = '{ de: '1, d: '0};
-    write_transfer_active_o = '{ de: '1, d: '0};
+    if (dat_state_q == READ) begin
+      if (read_state_q == READING) begin
+        if (read_done) begin
+          data_crc_error_o.de     = read_crc_err;
+          data_end_bit_error_o.de = read_end_bit_err;
+        end
+      end
+      if (read_state_q == TIMEOUT_READING) begin
+        data_timeout_error_o.de  = '1;
+      end
+    end
 
+    if (dat_state_q == WRITE) begin
+      if (write_state_q == WRITING) begin
+        if (write_done) begin
+          data_crc_error_o.de     = write_crc_err;
+          data_end_bit_error_o.de = write_end_bit_err;
+        end
+      end
+    end
+  end
+
+  always_comb begin : block_counter
     transmitted_block_counter_d = transmitted_block_counter_q;
+    if (dat_state_q == READ) begin
+      if (read_state_q == WAIT_FOR_CMD) begin
+        transmitted_block_counter_d = reg2hw_i.block_count.q;
+      end else if (read_state_q == DONE_READING_BLOCK) begin
+        transmitted_block_counter_d = transmitted_block_counter_q - 1;
+      end
+    end else if (dat_state_q == WRITE) begin
+      if (write_state_q == WAIT_FOR_RSP) begin
+        transmitted_block_counter_d = reg2hw_i.block_count.q;
+      end else if (write_state_q == DONE_WRITING_BLOCK) begin
+        transmitted_block_counter_d = transmitted_block_counter_q - 1;
+      end
+    end
+  end
 
+  always_comb begin : read_control
+    read_run_timeout = '0;
+
+    pause_sd_clk_o    = '0;
     start_read  = '0;
-    start_write = '0;
-    write_data  = 'X;
 
-    buffer_read_ready  = '0;
     buffer_write_valid = '0;
     buffer_write_data  = 'X;
 
-    unique case (state_q)
-      READY: begin
-        transmitted_block_counter_d = reg2hw_i.block_count.q;
-      end
-      WAIT_FOR_CMD: begin
-        read_transfer_active_o.d  = '1;
-      end
+    unique case (read_state_q)
+      WAIT_FOR_CMD: ;
       WAIT_FOR_READ_BUFFER: begin
-        read_transfer_active_o.d = '1;
         pause_sd_clk_o = '1;
       end
       START_READING: begin
-        read_transfer_active_o.d = '1;
         start_read = '1;
       end
       READING: begin
-        read_transfer_active_o.d = '1;
         read_run_timeout = '1;
 
         if (read_valid) begin
           buffer_write_valid = '1;
           buffer_write_data  = read_data;
         end
+      end
+      DONE_READING_BLOCK: ;
+      READING_BUSY: ;
+      TIMEOUT_READING: ;
+      DONE_READING: ;
+      default: ;
+    endcase
+  end
 
-        if (read_done) begin
-          data_crc_error_o.de     = read_crc_err;
-          data_end_bit_error_o.de = read_end_bit_err;
-        end
-      end
-      DONE_READING_BLOCK: begin
-        read_transfer_active_o.d = '1;
-        transmitted_block_counter_d = transmitted_block_counter_q - 1;
-      end
-      READING_BUSY: begin
-        read_transfer_active_o.d = '1;
+  always_comb begin : write_control
+    start_write = '0;
+    write_data  = 'X;
+    buffer_read_ready  = '0;
 
-        if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) begin
-          requested_cmd12_d = '1;
-          if (!requested_cmd12_q) request_cmd12_o = '1;
-        end
-      end
-      TIMEOUT_READING: begin
-        read_transfer_active_o.d = '1;
-        data_timeout_error_o.de  = '1;
-      end
-      DONE_READING: begin
-        read_transfer_active_o.d = '1;
-      end
-
-      WAIT_FOR_RSP: begin
-        write_transfer_active_o.d = '1;
-      end
-      WAIT_FOR_WRITE_BUFFER: begin
-        write_transfer_active_o.d = '1;
-      end
+    unique case (write_state_q)
+      WAIT_FOR_RSP: ;
+      WAIT_FOR_WRITE_BUFFER: ;
       START_WRITING: begin
-        write_transfer_active_o.d = '1;
         start_write = '1;
       end
       WRITING: begin
-        write_transfer_active_o.d = '1;
-
-        if (write_requests_next_word) buffer_read_ready = '1;
-        write_data = buffer_read_data;
-
-        if (write_done) begin
-          data_crc_error_o.de     = write_crc_err;
-          data_end_bit_error_o.de = write_end_bit_err;
+        if (write_requests_next_word) begin
+          buffer_read_ready = '1;
         end
-      end
-      DONE_WRITING_BLOCK: begin
-        write_transfer_active_o.d = '1;
 
-        transmitted_block_counter_d = transmitted_block_counter_q - 1;
+        write_data = buffer_read_data;
       end
-      DONE_WRITING: begin
-        write_transfer_active_o.d = '1;
-
-        if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) request_cmd12_o = '1;
-      end
-
+      DONE_WRITING_BLOCK: ;
+      DONE_WRITING: ;
       default: ;
     endcase
   end
