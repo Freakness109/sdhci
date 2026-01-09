@@ -125,11 +125,17 @@ module sdhci_reg_logic (
   assign buffer_write_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_write_enable);
 
 
+  // technically, dat_line_active should be 0 once the last block of a read
+  // transfer has been transferred into the buffer, at which point
+  // read_transfer_active is still 1
   assign dat_line_active_o.de = '1;
   assign dat_line_active_o.d = rst_dat_ni & (sd_cmd_dat_busy_i |
     `instant_reg_value(present_state, write_transfer_active) |
     `instant_reg_value(present_state, read_transfer_active));
 
+  // technically, command_inhibit_dat should be
+  // dat_line_active | read_transfer_active, but as we or read_transfer_active
+  // already into dat_line_active, this should be fine
   assign command_inhibit_dat_o.de = '1;
   assign command_inhibit_dat_o.d = rst_dat_ni &
     `instant_reg_value(present_state, dat_line_active);
