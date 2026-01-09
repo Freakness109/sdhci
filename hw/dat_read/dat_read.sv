@@ -26,6 +26,7 @@ module dat_read #(
   output logic        data_valid_o,
   output logic [31:0] data_o,
 
+  output logic waiting_o,
   output logic done_o,
   output logic crc_err_o,     // Only valid while done_o = 1
   output logic end_bit_err_o  // Only valid while done_o = 1
@@ -100,12 +101,16 @@ module dat_read #(
     data_valid_o = '0;
     data_o       = '0;
 
+    waiting_o     = '0;
     calculate_crc = '0;
     done_o        = '0;
     crc_err_o     = 'X;
     end_bit_err_o = 'X;
 
     unique case (state_q)
+      READY: begin
+        waiting_o = '1;
+      end
       DAT: begin
         calculate_crc = '1;
         counter_d = counter_q + 1;

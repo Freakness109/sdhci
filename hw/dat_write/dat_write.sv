@@ -29,6 +29,7 @@ module dat_write #(
   input  logic [31:0] data_i,
   output logic        next_word_o, //active for one cycle when next data word should be made available. Got time for 7 sd clock cycles after to provide data
 
+  output logic waiting_o,
   output logic done_o,
   output logic crc_err_o,
   output logic end_bit_err_o
@@ -123,6 +124,7 @@ module dat_write #(
 
     next_word_o     = '0;
     shift_out_crc   = '1;
+    waiting_o       = '0;
 
     unique case (dat_tx_state_q)
       START_BIT: begin
@@ -198,6 +200,10 @@ module dat_write #(
         status_d = { status_q[1:0], dat0_i };
       end
       STATUS_END_BIT: if (dat0_i != '1) end_bit_err_d = '1;
+
+      BUSY: begin
+        waiting_o = 1'b1;
+      end
 
       DONE: begin
         done_o        = sd_clk_en_p_i;

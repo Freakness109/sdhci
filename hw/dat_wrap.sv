@@ -48,8 +48,9 @@ module dat_wrap #(
 
   logic buffer_write_ready, buffer_write_valid, buffer_read_ready, buffer_read_valid, buffer_empty;
   logic [31:0] buffer_write_data, buffer_read_data;
-  logic start_read, read_valid, read_done, read_crc_err, read_end_bit_err, read_timeout;
+  logic start_read, read_valid, read_done, read_crc_err, read_end_bit_err;
   logic write_done;
+  logic timeout_elapsed;
 
   logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
   `FF (transmitted_block_counter_q, transmitted_block_counter_d, '0);
@@ -77,6 +78,7 @@ module dat_wrap #(
     START_WRITING,
     WRITING,
     DONE_WRITING_BLOCK,
+    TIMEOUT_WRITING,
     DONE_WRITING
   } write_state_e;
 
@@ -144,7 +146,7 @@ module dat_wrap #(
           end
         end
         READING: begin
-          if (read_timeout) begin
+          if (timeout_elapsed) begin
             read_state_d = TIMEOUT_READING;
             // Reset reader
           end else if (read_done) begin
@@ -204,6 +206,9 @@ module dat_wrap #(
           if (write_done) begin
             write_state_d = DONE_WRITING_BLOCK;
           end
+          if (timeout_elapsed) begin
+            write_state_d = TIMEOUT_WRITING;
+          end
         end
         DONE_WRITING_BLOCK: begin
           if (transmitted_block_counter_q == 'b1) begin
@@ -211,6 +216,9 @@ module dat_wrap #(
           end else begin
             write_state_d = WAIT_FOR_WRITE_BUFFER;
           end
+        end
+        TIMEOUT_WRITING: begin
+          write_state_d = DONE_WRITING;
         end
         DONE_WRITING: begin
           write_state_d = DONE_WRITING;
@@ -227,7 +235,12 @@ module dat_wrap #(
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
 
-  logic read_run_timeout;
+  logic read_waiting;
+  logic write_waiting;
+  logic run_timeout_clock;
+
+  assign run_timeout_clock = read_waiting | write_waiting;
+
   logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
   logic [31:0] write_data, read_data;
 
@@ -241,7 +254,7 @@ module dat_wrap #(
     end
   end
 
-  assign read_transfer_active_o = '{de: '1, d: dat_state_q == READ};
+  assign read_transfer_active_o  = '{de: '1, d: dat_state_q == READ};
   assign write_transfer_active_o = '{de: '1, d: dat_state_q == WRITE};
 
   always_comb begin : error_reporting
@@ -257,7 +270,7 @@ module dat_wrap #(
         end
       end
       if (read_state_q == TIMEOUT_READING) begin
-        data_timeout_error_o.de  = '1;
+        data_timeout_error_o.de = '1;
       end
     end
 
@@ -267,6 +280,9 @@ module dat_wrap #(
           data_crc_error_o.de     = write_crc_err;
           data_end_bit_error_o.de = write_end_bit_err;
         end
+      end
+      if (write_state_q == TIMEOUT_WRITING) begin
+        data_timeout_error_o.de = '1;
       end
     end
   end
@@ -289,8 +305,6 @@ module dat_wrap #(
   end
 
   always_comb begin : read_control
-    read_run_timeout = '0;
-
     pause_sd_clk_o    = '0;
     start_read  = '0;
 
@@ -306,8 +320,6 @@ module dat_wrap #(
         start_read = '1;
       end
       READING: begin
-        read_run_timeout = '1;
-
         if (read_valid) begin
           buffer_write_valid = '1;
           buffer_write_data  = read_data;
@@ -340,6 +352,7 @@ module dat_wrap #(
         write_data = buffer_read_data;
       end
       DONE_WRITING_BLOCK: ;
+      TIMEOUT_WRITING: ;
       DONE_WRITING: ;
       default: ;
     endcase
@@ -352,10 +365,10 @@ module dat_wrap #(
     .clk_i,
     .rst_ni,
 
-    .running_i      (read_run_timeout),
+    .running_i      (run_timeout_clock),
     .timeout_bits_i (reg2hw_i.timeout_control.data_timeout_counter_value),
 
-    .timeout_o      (read_timeout)
+    .timeout_o      (timout_elapsed)
   );
 
 
@@ -396,13 +409,14 @@ module dat_wrap #(
     .dat_i,
 
     .start_i          (start_read),
-    .timeout_i        (read_timeout),
+    .timeout_i        (timeout_elapsed),
     .block_size_i     (block_size),
     .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
 
     .data_valid_o  (read_valid),
     .data_o        (read_data),
 
+    .waiting_o     (read_waiting),
     .done_o        (read_done),
     .crc_err_o     (read_crc_err),
     .end_bit_err_o (read_end_bit_err)
@@ -427,6 +441,7 @@ module dat_wrap #(
     .data_i        (write_data),
     .next_word_o   (write_requests_next_word),
 
+    .waiting_o     (write_waiting),
     .done_o        (write_done),
     .crc_err_o     (write_crc_err),
     .end_bit_err_o (write_end_bit_err)
