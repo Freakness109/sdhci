@@ -36,6 +36,13 @@ module tb_acmd12 #(
     response_done = 1'b0;
     fixture.vip.wait_for_reset();
 
+    // response to the request that triggers autocmd12
+    fixture.vip.sd.wait_for_cmd_held();
+    fixture.vip.sd.wait_for_cmd_released();
+    // bus is idle for 2 cycles
+    fixture.vip.wait_for_sdclk();
+    fixture.vip.sd.send_response_48(0, '0);
+
     fixture.vip.sd.wait_for_cmd_held();
     fixture.vip.sd.wait_for_cmd_released();
     // bus is idle for 2 cycles
@@ -51,11 +58,12 @@ module tb_acmd12 #(
       fixture.vip.sd.send_response_48('1, '1);
     end
 
-    fixture.vip.sd.wait_for_cmd_held();
-    fixture.vip.sd.wait_for_cmd_released();
-    // bus is idle for 2 cycles
-    fixture.vip.wait_for_sdclk();
     if (IsFirstResponseValid) begin
+      fixture.vip.sd.wait_for_cmd_held();
+      fixture.vip.sd.wait_for_cmd_released();
+      // bus is idle for 2 cycles
+      fixture.vip.wait_for_sdclk();
+
       // Valid response for the second command
       if (AutoCMD12First) begin
         fixture.vip.sd.send_response_48(0, '0);
@@ -63,6 +71,9 @@ module tb_acmd12 #(
         fixture.vip.sd.send_response_48(12, 'h7A);
       end
     end
+
+    // give time for the status to propagate
+    repeat (20) fixture.vip.wait_for_clk();
     response_done = 1'b1;
   end : cmd_response
 
@@ -127,10 +138,9 @@ module tb_acmd12 #(
       .command_index(6'd0),
       .command_type (2'b00), // normal command
       .data_present (1'b1),
-      // no response -> no checking
       .index_check_enable(1'b0),
       .crc_check_enable(1'b0),
-      .response_type(2'b00), // no response
+      .response_type(2'b10), // 48 bit no busy
       .finish_transaction(1'b1)
     );
 
@@ -167,8 +177,8 @@ module tb_acmd12 #(
     // These values are slightly random because of the offset between command start and sd clk period
     case (ClkEnPeriod)
       1: repeat(7 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
-      2: repeat(17 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
-      4: repeat(35 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      2: repeat(16 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      4: repeat(34 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
       default: $fatal("ClkEnPeriod not supported");
     endcase
 
@@ -226,7 +236,7 @@ module tb_acmd12 #(
       end
     end else begin
       if (AutoCMD12First) begin
-        if (|(error_status)) begin
+        if (error_status != 'b1_0000_0000 /* acmd error */) begin
           $error("Got an error when we shouldnt have 0x%h", error_status);
           $fatal();
         end
@@ -235,7 +245,7 @@ module tb_acmd12 #(
           $fatal();
         end
       end else begin
-        if (error_status != /* crc error + index error */ 'b1010) begin
+        if (error_status != /* acmd error + crc error + index error */ 'b1_0000_1010) begin
           $error("Got an error when we shouldnt have 0x%h", error_status);
           $fatal();
         end
