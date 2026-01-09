@@ -27,6 +27,7 @@ module dat_wrap #(
   input  logic sd_cmd_done_i,
   input  logic sd_rsp_done_i,
 
+  output logic sd_busy_o,
   output logic request_cmd12_o,
   output logic pause_sd_clk_o,
 
@@ -57,9 +58,18 @@ module dat_wrap #(
 
   typedef enum logic [1:0] {
     READY,
+    BUSY,
     READ,
     WRITE
   } dat_state_e;
+
+  typedef enum logic [2:0] {
+    BUSY_WAIT_FOR_CMD,
+    BUSY_WAIT_FOR_LOW,
+    BUSY_WAIT_FOR_HIGH,
+    BUSY_TIMEOUT,
+    BUSY_DONE
+  } busy_state_e;
 
   typedef enum logic [2:0] {
     WAIT_FOR_CMD,
@@ -85,6 +95,9 @@ module dat_wrap #(
   dat_state_e dat_state_q, dat_state_d;
   `FF (dat_state_q, dat_state_d, READY, clk_i, rst_ni);
 
+  busy_state_e busy_state_q, busy_state_d;
+  `FF (busy_state_q, busy_state_d, BUSY_WAIT_FOR_CMD, clk_i, rst_ni);
+
   read_state_e read_state_q, read_state_d;
   `FF (read_state_q, read_state_d, WAIT_FOR_CMD, clk_i, rst_ni);
 
@@ -96,12 +109,23 @@ module dat_wrap #(
 
     unique case (dat_state_q)
       READY: begin
-        if (reg2hw_i.command.command_index.qe && reg2hw_i.command.data_present_select.q) begin
-          if (reg2hw_i.transfer_mode.data_transfer_direction_select.q) begin
-            dat_state_d = READ;
-          end else begin
-            dat_state_d = WRITE;
+        if (reg2hw_i.command.command_index.qe) begin
+          if (reg2hw_i.command.data_present_select.q) begin
+            if (reg2hw_i.transfer_mode.data_transfer_direction_select.q) begin
+              dat_state_d = READ;
+            end else begin
+              dat_state_d = WRITE;
+            end
+          end else if (sdhci_pkg::response_type_e'(
+                        reg2hw_i.command.response_type_select.q) == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY) begin
+            dat_state_d = BUSY;
           end
+        end
+      end
+
+      BUSY: begin
+        if (busy_state_q == BUSY_DONE) begin
+          dat_state_d = READY;
         end
       end
 
@@ -121,6 +145,56 @@ module dat_wrap #(
         dat_state_d = READY;
       end
     endcase
+  end
+
+  assign sd_busy_o = dat_state_q == BUSY;
+
+  logic [1:0] busy_counter_q, busy_counter_d;
+  `FF(busy_counter_q, busy_counter_d, 2'b0, clk_i, rst_ni);
+
+  always_comb begin : busy_fsm
+    busy_state_d   = busy_state_q;
+    busy_counter_d = busy_counter_q;
+
+    if (dat_state_q != BUSY) begin
+      busy_state_d = BUSY_WAIT_FOR_CMD;
+    end else begin
+      unique case (busy_state_q)
+        BUSY_WAIT_FOR_CMD: begin
+          if (sd_cmd_done_i) begin
+            busy_state_d   = BUSY_WAIT_FOR_LOW;
+            busy_counter_d = 2'b0;
+          end
+        end
+        BUSY_WAIT_FOR_LOW: begin
+          busy_counter_d = busy_counter_q + sd_clk_en_p_i;
+          if (dat_i[0] == 1'b0) begin
+            busy_state_d = BUSY_WAIT_FOR_HIGH;
+          end else if (busy_counter_q == 2'b11) begin
+            // if the card wants to signal busy, it needs to do
+            // so within 2 cycles of the command complete,
+            // refer to 7.13.1 electrical. We allow for 4.
+            busy_state_d = BUSY_DONE;
+          end
+        end
+        BUSY_WAIT_FOR_HIGH: begin
+          if (dat_i[0] == 1'b1) begin
+            busy_state_d = BUSY_DONE;
+          end else if (timeout_elapsed) begin
+            busy_state_d = BUSY_TIMEOUT;
+          end
+        end
+        BUSY_TIMEOUT: begin
+          busy_state_d = BUSY_DONE;
+        end
+        BUSY_DONE: begin
+          busy_state_d = BUSY_DONE;
+        end
+        default: begin
+          busy_state_d = BUSY_WAIT_FOR_CMD;
+        end
+      endcase
+    end
   end
 
   always_comb begin : read_fsm
@@ -235,11 +309,12 @@ module dat_wrap #(
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
 
+  logic busy_waiting;
   logic read_waiting;
   logic write_waiting;
   logic run_timeout_clock;
 
-  assign run_timeout_clock = read_waiting | write_waiting;
+  assign run_timeout_clock = busy_waiting | read_waiting | write_waiting;
 
   logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
   logic [31:0] write_data, read_data;
@@ -261,6 +336,12 @@ module dat_wrap #(
     data_crc_error_o     = '{ de: '0, d: '1};
     data_end_bit_error_o = '{ de: '0, d: '1};
     data_timeout_error_o = '{ de: '0, d: '1};
+
+    if (dat_state_q == BUSY) begin
+      if (busy_state_q == BUSY_TIMEOUT) begin
+        data_timeout_error_o.de = '1;
+      end
+    end
 
     if (dat_state_q == READ) begin
       if (read_state_q == READING) begin
@@ -301,6 +382,22 @@ module dat_wrap #(
       end else if (write_state_q == DONE_WRITING_BLOCK) begin
         transmitted_block_counter_d = transmitted_block_counter_q - 1;
       end
+    end
+  end
+
+  always_comb begin : busy_control
+    busy_waiting = '0;
+    if (dat_state_q == BUSY) begin
+      unique case (busy_state_q)
+        BUSY_WAIT_FOR_CMD: ;
+        BUSY_WAIT_FOR_LOW: ;
+        BUSY_WAIT_FOR_HIGH: begin
+          busy_waiting = '1;
+        end
+        BUSY_TIMEOUT: ;
+        BUSY_DONE: ;
+        default: ;
+      endcase
     end
   end
 

@@ -221,6 +221,7 @@ module sdhci_top #(
     .sd_cmd_done_i   (sd_cmd_done),
     .sd_rsp_done_i   (sd_rsp_done),
 
+    .sd_busy_o       (sd_cmd_dat_busy),
     .request_cmd12_o (request_cmd12),
     .pause_sd_clk_o  (pause_sd_clk),
 
