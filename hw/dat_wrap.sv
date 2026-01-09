@@ -455,7 +455,6 @@ module dat_wrap #(
     endcase
   end
 
-  // Read timeout
   dat_timeout #(
     .ClockDiv(TimeoutDivider)
   ) i_timeout (
@@ -470,8 +469,7 @@ module dat_wrap #(
 
 
   dat_buffer #(
-    // .NumWords        (256), // = 1024, Just enough to double buffer 512 byte blocks
-    .NumWords        (512), // = 2048, because ihp13 doesnt have a 1kB SRAM block with 32bit word width
+    .NumWords        (256), // = 1024, Just enough to double buffer 512 byte blocks
     .MaxBlockBitSize (MaxBlockBitSize)
   ) i_dat_buffer (
     .clk_i,
