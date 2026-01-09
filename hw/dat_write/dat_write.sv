@@ -29,6 +29,7 @@ module dat_write #(
   input  logic [31:0] data_i,
   output logic        next_word_o, //active for one cycle when next data word should be made available. Got time for 7 sd clock cycles after to provide data
 
+  output logic data_timeout_o,
   output logic waiting_o,
   output logic done_o,
   output logic crc_err_o,
@@ -91,6 +92,9 @@ module dat_write #(
   logic end_bit_err_q, end_bit_err_d;
   `FFL (end_bit_err_q, end_bit_err_d, sd_clk_en_p_i, '0);
 
+  logic data_timeout_q, data_timeout_d;
+  `FFL (data_timeout_q, data_timeout_d, sd_clk_en_p_i, '0);
+
   logic [2:0] status_q, status_d;
   `FFL (status_q, status_d, sd_clk_en_p_i, '0);
 
@@ -113,13 +117,15 @@ module dat_write #(
     dat_en_o = '0;
     dat      = '1;
 
-    done_o        = '0;
-    end_bit_err_o = 'X;
-    crc_err_o     = 'X;
+    done_o         = '0;
+    end_bit_err_o  = 'X;
+    crc_err_o      = 'X;
+    data_timeout_o = 'X;
 
     counter_d       = '0;
     buffered_data_d = buffered_data_q;
     end_bit_err_d   = end_bit_err_q;
+    data_timeout_d  = data_timeout_q;
     status_d        = status_q;
 
     next_word_o     = '0;
@@ -135,6 +141,7 @@ module dat_write #(
         buffered_data_d = data_i;
         end_bit_err_d   = '0;
         status_d        = 0;
+        data_timeout_d  = '0;
       end
       DAT: begin
         counter_d     = counter_q + 1;
@@ -194,7 +201,7 @@ module dat_write #(
 
       BUS_SWITCH: counter_d = counter_q + 1;
 
-      STATUS_START_BIT: if (dat0_i != '0) end_bit_err_d = '1;
+      STATUS_START_BIT: if (dat0_i != '0) data_timeout_d = '1;
       STATUS: begin
         counter_d = counter_q + 1;
         status_d = { status_q[1:0], dat0_i };
@@ -207,8 +214,14 @@ module dat_write #(
 
       DONE: begin
         done_o        = sd_clk_en_p_i;
-        end_bit_err_o = end_bit_err_q;
-        crc_err_o     = status_q != 3'b010;
+        if (!data_timeout_q) begin
+          end_bit_err_o = end_bit_err_q;
+          crc_err_o     = status_q != 3'b010;
+        end else begin
+          end_bit_err_o = 1'b0;
+          crc_err_o     = 1'b0;
+        end
+        data_timeout_o = data_timeout_q;
       end
       default: ;
     endcase

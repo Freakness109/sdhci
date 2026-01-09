@@ -49,7 +49,7 @@ module dat_wrap #(
   logic buffer_write_ready, buffer_write_valid, buffer_read_ready, buffer_read_valid, buffer_empty;
   logic [31:0] buffer_write_data, buffer_read_data;
   logic start_read, read_valid, read_done, read_crc_err, read_end_bit_err;
-  logic write_done;
+  logic write_done, write_crc_timeout;
   logic timeout_elapsed;
 
   logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
@@ -206,7 +206,7 @@ module dat_wrap #(
           if (write_done) begin
             write_state_d = DONE_WRITING_BLOCK;
           end
-          if (timeout_elapsed) begin
+          if (timeout_elapsed || write_crc_timeout) begin
             write_state_d = TIMEOUT_WRITING;
           end
         end
@@ -441,6 +441,7 @@ module dat_wrap #(
     .data_i        (write_data),
     .next_word_o   (write_requests_next_word),
 
+    .data_timeout_o(write_crc_timeout),
     .waiting_o     (write_waiting),
     .done_o        (write_done),
     .crc_err_o     (write_crc_err),
