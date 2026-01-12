@@ -168,6 +168,16 @@ module sdhci_obi_driver #(
     obi_write('h004, be, {block_count, 4'b0, block_size}, finish_transaction);
   endtask
 
+  task automatic set_data_timeout(
+    logic [3:0] exponent_minus_13,
+    logic finish_transaction = 1'b1
+  );
+    logic [3:0] be;
+    be = 4'b0100;
+
+    obi_write('h02c, be, {24'b0, 4'b0, exponent_minus_13}, finish_transaction);
+  endtask
+
   task automatic launch_command(
     logic [5:0] command_index,
     logic [1:0] command_type,
