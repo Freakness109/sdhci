@@ -65,6 +65,7 @@ module tb_dat_timeout #(
       .divider(ClkEnPeriod >> 1),
       .finish_transaction(1'b0)
     );
+    fixture.vip.obi.set_data_timeout(.exponent_minus_13(4'b0), .finish_transaction(1'b0));
     fixture.vip.obi.set_clock_enable(.enable(1'b1), .finish_transaction(1'b0));
     // prepare command
     fixture.vip.obi.set_transfer_mode(
@@ -125,8 +126,60 @@ module tb_dat_timeout #(
       $fatal(1, "Interrupt status wrong. Should be transfer complete ('h2), but got %x", normal_interrupt_status);
     end
 
-    wait (response_done);
+    fixture.vip.obi.launch_command(
+      .command_index(6'd0),
+      .command_type (2'b00), // normal command
+      .data_present (1'b0),
+      .index_check_enable(1'b1),
+      .crc_check_enable(1'b1),
+      .response_type(2'b11), // 48bit busy
+      .finish_transaction(1'b1)
+    );
 
+    wfi(200);
+
+    fixture.vip.obi.get_interrupt_status(
+      .normal_interrupt_status(normal_interrupt_status),
+      .error_interrupt_status(error_interrupt_status)
+    );
+
+    fixture.vip.obi.clear_interrupt_status(
+      .normal_interrupt_status(normal_interrupt_status),
+      .error_interrupt_status(error_interrupt_status)
+    );
+
+    if (error_interrupt_status != 'h0000) begin
+      $fatal(1, "Some error occured during the transaction");
+    end
+
+    if (normal_interrupt_status != 'h0001) begin
+      $fatal(1, "Interrupt status wrong. Should be command complete ('h1), but got %x", normal_interrupt_status);
+    end
+
+    // make sure that the timeout does not come earlier
+    repeat((TimeoutDivider) * (2 << 12) - 1000 * ClkEnPeriod) fixture.vip.wait_for_clk();
+    // if the timeout comes too early, we will have missed it by now
+    wfi(2000 * ClkEnPeriod);
+
+    fixture.vip.obi.get_interrupt_status(
+      .normal_interrupt_status(normal_interrupt_status),
+      .error_interrupt_status(error_interrupt_status)
+    );
+
+    fixture.vip.obi.clear_interrupt_status(
+      .normal_interrupt_status(normal_interrupt_status),
+      .error_interrupt_status(error_interrupt_status)
+    );
+
+    if (error_interrupt_status != 'h0010) begin
+      $fatal(1, "Error interrupt status wrong. Should be data timeout ('h10), but got %x", error_interrupt_status);
+    end
+
+    if (normal_interrupt_status != 'h8000) begin
+      $fatal(1, "Normal interrupt status wrong. Should be error interrupt ('h8000), but got %x", normal_interrupt_status);
+    end
+
+    wait (response_done);
     $display("All good");
     $finish();
   end
@@ -148,6 +201,23 @@ module tb_dat_timeout #(
     repeat(300) fixture.vip.wait_for_sdclk();
     fixture.vip.sd.release_busy();
 
+    response_done = 1'b1;
+    fixture.vip.wait_for_clk();
+    response_done = 1'b0;
+
+    fixture.vip.sd.wait_for_cmd_held();
+    fixture.vip.sd.wait_for_cmd_released();
+    // the response must come within 64 cycles
+    fixture.vip.wait_for_sdclk(); // cycle 1
+    fixture.vip.sd.claim_busy();     // cycle 2
+    repeat(61) fixture.vip.wait_for_sdclk(); // cycles 3-63
+    fixture.vip.sd.send_response_48(
+      .index(6'd0),
+      .crc  (7'h0)
+    );
+
+    // trigger the timeout
+    repeat(TimeoutDivider * (2<<12) + 50) fixture.vip.wait_for_clk();
     response_done = 1'b1;
   end
 
