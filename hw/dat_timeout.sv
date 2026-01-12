@@ -10,9 +10,11 @@
 
 module dat_timeout #(
   parameter int unsigned ClockDiv = 1, // by how much to divide the clock to get the timeout clock
-                              // make sure that the chosen divider allows at
-                              // least the 500ms of timeout required for newer SD cards
-                              // with the maximum timeout of 2**27 cycles
+                              // make sure that the chosen divider allows
+                              // enough time with the maximum timeout of 2**27 cycles:
+                              // 500ms timeout is required for some newer SD cards,
+                              // the spec specifies maximum timeout for erasing to be
+                              // up to 3 minutes.
                               // Note: Linux also has larger timeouts that
                               // span to 60s, so err on the side of caution
   localparam int unsigned ClockDivWidth = $clog2(ClockDiv)
