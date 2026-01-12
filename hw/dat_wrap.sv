@@ -11,8 +11,8 @@
 
 module dat_wrap #(
   parameter int MaxBlockBitSize = 10, // max_block_length = 512 in caps
-  parameter int TimeoutDivider = 1 // by how much to divide clk_i to get the timeout count frequency,
-                                   // see dat_timeout for details
+  parameter int unsigned TimeoutDivider = 1 // by how much to divide clk_i to get the timeout count frequency,
+                                            // see dat_timeout for details
 ) (
   input  logic clk_i,
   input  logic sd_clk_en_p_i,

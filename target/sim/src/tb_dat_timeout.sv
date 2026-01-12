@@ -5,16 +5,15 @@
 // Authors:
 // - Axel Vanoni <axvanoni@student.ethz.ch>
 
-// TODO: implement
-// TODO: implement dat timeout in cmd_wrap
-// TODO: lower timeout clock s.t. 500ms timeout can be achieved
 module tb_dat_timeout #(
   parameter time         ClkPeriod = 50ns,
-  parameter int unsigned RstCycles = 1
+  parameter int unsigned RstCycles = 1,
+  parameter int unsigned TimeoutDivider = 13
 )();
   sdhci_fixture #(
-    .ClkPeriod(ClkPeriod),
-    .RstCycles(RstCycles)
+    .ClkPeriod     (ClkPeriod),
+    .RstCycles     (RstCycles),
+    .TimeoutDivider(TimeoutDivider)
   ) fixture ();
 
   int ClkEnPeriod;

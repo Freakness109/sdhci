@@ -13,7 +13,8 @@ module sdhci_top_obi #(
   parameter type               obi_req_t         = logic,
   parameter type               obi_rsp_t         = logic,
   parameter int unsigned       ClkPreDivLog      = 1,
-  parameter int unsigned       NumDebounceCycles = 500_000
+  parameter int unsigned       NumDebounceCycles = 500_000,
+  parameter int                TimeoutDivider    = 1
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -65,7 +66,8 @@ module sdhci_top_obi #(
     .reg_req_t        (reg_req_t),
     .reg_rsp_t        (reg_rsp_t),
     .ClkPreDivLog     (ClkPreDivLog),
-    .NumDebounceCycles(NumDebounceCycles)
+    .NumDebounceCycles(NumDebounceCycles),
+    .TimeoutDivider   (TimeoutDivider)
   ) i_sdhci_impl (
     .clk_i,
     .rst_ni,

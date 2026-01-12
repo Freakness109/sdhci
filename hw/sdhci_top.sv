@@ -22,7 +22,7 @@ module sdhci_top #(
   parameter int unsigned       ClkPreDivLog   = 1,
   //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
 
-  parameter int TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
+  parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
                                     // see dat_timeout for details
 
   // clock runs at 50MHz, so 1ms is 50_000 cycles

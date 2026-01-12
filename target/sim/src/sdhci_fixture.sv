@@ -7,8 +7,9 @@
 // - Axel Vanoni <axvanoni@student.ethz.ch>
 
 module sdhci_fixture #(
-    parameter time         ClkPeriod     = 50ns,
-    parameter int unsigned RstCycles     = 1
+    parameter time         ClkPeriod      = 50ns,
+    parameter int unsigned RstCycles      = 1,
+    parameter int unsigned TimeoutDivider = 1
 )();
   `include "obi/typedef.svh"
 
@@ -30,7 +31,8 @@ module sdhci_fixture #(
       .obi_req_t        (sdhci_obi_req_t),
       .obi_rsp_t        (sdhci_obi_rsp_t),
       .ClkPreDivLog     (0),
-      .NumDebounceCycles(2)
+      .NumDebounceCycles(2),
+      .TimeoutDivider   (TimeoutDivider)
   ) i_sdhci_top (
       .clk_i  (clk),
       .rst_ni (rst_n),
