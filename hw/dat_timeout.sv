@@ -56,8 +56,7 @@ module dat_timeout #(
     // reset on low running_i
     if (!running_i) begin
       timeout_counter_d = '0;
-    end
-    if (!timeout_o && do_increment) begin
+    end else if (!timeout_o && do_increment) begin
       timeout_counter_d = timeout_counter_q + 1;
     end
   end

@@ -464,7 +464,7 @@ module dat_wrap #(
     .running_i      (run_timeout_clock),
     .timeout_bits_i (reg2hw_i.timeout_control.data_timeout_counter_value),
 
-    .timeout_o      (timout_elapsed)
+    .timeout_o      (timeout_elapsed)
   );
 
 
