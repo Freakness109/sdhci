@@ -37,7 +37,7 @@ module tb_dat_timeout #(
           end
           begin
             repeat(timeout_cycles) fixture.vip.wait_for_sdclk();
-            $fatal("Interrupt timed out");
+            $fatal(1, "Interrupt timed out");
           end
         join_any
         disable fork;
@@ -66,7 +66,7 @@ module tb_dat_timeout #(
       .finish_transaction(1'b0)
     );
     fixture.vip.obi.set_clock_enable(.enable(1'b1), .finish_transaction(1'b0));
-    // prepare identification command
+    // prepare command
     fixture.vip.obi.set_transfer_mode(
       .is_multi_block(1'b0),
       .is_read(1'b0),
@@ -81,7 +81,7 @@ module tb_dat_timeout #(
       .data_present (1'b0),
       .index_check_enable(1'b1),
       .crc_check_enable(1'b1),
-      .response_type(2'b11), // 48bit no busy
+      .response_type(2'b11), // 48bit busy
       .finish_transaction(1'b1)
     );
 
@@ -98,11 +98,11 @@ module tb_dat_timeout #(
     );
 
     if (error_interrupt_status != 'h0000) begin
-      $fatal("Some error occured during the transaction");
+      $fatal(1, "Some error occured during the transaction");
     end
 
-    if (error_interrupt_status != 'h0001) begin
-      $fatal("Interrupt status wrong. Should be command complete ('h1), but got %x", normal_interrupt_status);
+    if (normal_interrupt_status != 'h0001) begin
+      $fatal(1, "Interrupt status wrong. Should be command complete ('h1), but got %x", normal_interrupt_status);
     end
 
     wfi(400);
@@ -118,11 +118,11 @@ module tb_dat_timeout #(
     );
 
     if (error_interrupt_status != 'h0000) begin
-      $fatal("Some error occured during the transaction");
+      $fatal(1, "Some error occured during the transaction");
     end
 
-    if (error_interrupt_status != 'h0002) begin
-      $fatal("Interrupt status wrong. Should be transaction complete ('h2), but got %x", normal_interrupt_status);
+    if (normal_interrupt_status != 'h0002) begin
+      $fatal(1, "Interrupt status wrong. Should be transfer complete ('h2), but got %x", normal_interrupt_status);
     end
 
     wait (response_done);
@@ -137,12 +137,16 @@ module tb_dat_timeout #(
     fixture.vip.sd.wait_for_cmd_held();
     fixture.vip.sd.wait_for_cmd_released();
     // the response must come within 64 cycles
-    repeat(63) fixture.vip.wait_for_sdclk();
+    fixture.vip.wait_for_sdclk(); // cycle 1
+    fixture.vip.sd.claim_busy();     // cycle 2
+    repeat(61) fixture.vip.wait_for_sdclk(); // cycles 3-63
     fixture.vip.sd.send_response_48(
       .index(6'd0),
-      .crc  (7'h0),
-      .busy_cycles(300)
+      .crc  (7'h0)
     );
+
+    repeat(300) fixture.vip.wait_for_sdclk();
+    fixture.vip.sd.release_busy();
 
     response_done = 1'b1;
   end
