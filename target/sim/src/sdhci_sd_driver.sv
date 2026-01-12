@@ -74,16 +74,10 @@ module sdhci_sd_driver #(
     input logic [5:0] index,
     input logic [6:0] crc,
     input logic [31:0] card_status = '0,
-    input int busy_cycles = -1,
     input logic end_bit = 1'b1
   );
     // start bit
     apply_logic(1'b0, sd_cmd_o);
-
-    if (busy_cycles >= 0) begin
-      // signal busy
-      sd_dat_o[0] = 1'b0;
-    end
 
     // transmission bit
     apply_logic(1'b0, sd_cmd_o);
@@ -101,14 +95,14 @@ module sdhci_sd_driver #(
     end
 
     apply_logic(end_bit, sd_cmd_o);
-    
-    if (busy_cycles == 0) begin
-      sd_dat_o[0] = 1'b1;
-    end else if (busy_cycles > 0) begin
-      repeat(busy_cycles) @(posedge sd_clk_i);
-      #(TA);
-      sd_dat_o[0] = 1'b1;
-    end
+  endtask
+
+  task automatic claim_busy();
+    apply_logic(1'b0, sd_dat_o[0]);
+  endtask
+
+  task automatic release_busy();
+    apply_logic(1'b1, sd_dat_o[0]);
   endtask
 
   task automatic send_response_136(
