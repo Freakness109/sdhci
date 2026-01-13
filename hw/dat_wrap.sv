@@ -24,6 +24,11 @@ module dat_wrap #(
   output logic       dat_en_o,
   output logic [3:0] dat_o,
 
+  input  logic cmd_started_i,
+  input  logic cmd_needs_busy_i,
+  input  logic cmd_data_present_i,
+  input  logic cmd_transfer_direction_i,
+
   input  logic sd_cmd_done_i,
   input  logic sd_rsp_done_i,
 
@@ -109,15 +114,14 @@ module dat_wrap #(
 
     unique case (dat_state_q)
       READY: begin
-        if (reg2hw_i.command.command_index.qe) begin
-          if (reg2hw_i.command.data_present_select.q) begin
-            if (reg2hw_i.transfer_mode.data_transfer_direction_select.q) begin
+        if (cmd_started_i) begin
+          if (cmd_data_present_i) begin
+            if (cmd_transfer_direction_i) begin
               dat_state_d = READ;
             end else begin
               dat_state_d = WRITE;
             end
-          end else if (sdhci_pkg::response_type_e'(
-                        reg2hw_i.command.response_type_select.q) == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY) begin
+          end else if (cmd_needs_busy_i) begin
             dat_state_d = BUSY;
           end
         end
@@ -321,8 +325,8 @@ module dat_wrap #(
 
   always_comb begin : autocmd12
     request_cmd12_o   = '0;
-    if ((write_state_d == DONE_WRITING && write_state_q != DONE_WRITING) |
-        ( read_state_d == READING_BUSY &&  read_state_q != READING_BUSY)) begin
+    if ((dat_state_q == READ || dat_state_q == WRITE) &
+        (dat_state_d == READY)) begin
       if (reg2hw_i.transfer_mode.auto_cmd12_enable.q) begin
         request_cmd12_o = '1;
       end

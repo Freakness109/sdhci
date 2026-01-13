@@ -172,6 +172,8 @@ module sdhci_top #(
 
   logic sd_cmd_done, sd_rsp_done, request_cmd12;
 
+  logic cmd_started, cmd_needs_busy, cmd_data_present, cmd_transfer_direction;
+
   autocmd_wrap  i_autocmd_wrap (
     .clk_i           (clk_i),
     .rst_ni          (sd_rst_cmd_n),
@@ -187,6 +189,11 @@ module sdhci_top #(
 
     .sd_cmd_done_o     (sd_cmd_done),
     .sd_rsp_done_o     (sd_rsp_done),
+
+    .cmd_started_o            (cmd_started),
+    .cmd_needs_busy_o         (cmd_needs_busy),
+    .cmd_data_present_o       (cmd_data_present),
+    .cmd_transfer_direction_o (cmd_transfer_direction),
 
     .response0_d_o  (hw2reg.response0.d),
     .response1_d_o  (hw2reg.response1.d),
@@ -217,6 +224,11 @@ module sdhci_top #(
     .dat_i    (sd_dat_i),
     .dat_en_o (sd_dat_en_o),
     .dat_o    (sd_dat_o),
+
+    .cmd_started_i            (cmd_started),
+    .cmd_needs_busy_i         (cmd_needs_busy),
+    .cmd_data_present_i       (cmd_data_present),
+    .cmd_transfer_direction_i (cmd_transfer_direction),
 
     .sd_cmd_done_i   (sd_cmd_done),
     .sd_rsp_done_i   (sd_rsp_done),

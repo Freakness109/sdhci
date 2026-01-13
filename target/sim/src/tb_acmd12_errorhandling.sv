@@ -176,9 +176,9 @@ module tb_acmd12_errorhandling #(
 
     // These values are slightly random because of the offset between command start and sd clk period
     case (ClkEnPeriod)
-      1: repeat(7 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
-      2: repeat(16 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
-      4: repeat(34 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      1: repeat(8 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      2: repeat(17 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
+      4: repeat(35 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
       default: $fatal("ClkEnPeriod not supported");
     endcase
 

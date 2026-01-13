@@ -28,6 +28,11 @@ module autocmd_wrap (
   output logic sd_cmd_done_o,
   output logic sd_rsp_done_o,
 
+  output logic cmd_started_o,
+  output logic cmd_needs_busy_o,
+  output logic cmd_data_present_o,
+  output logic cmd_transfer_direction_o,
+
   output logic [31:0] response0_d_o,
   output logic [31:0] response1_d_o,
   output logic [31:0] response2_d_o,
@@ -61,8 +66,19 @@ module autocmd_wrap (
   logic command_queued;
   assign command_queued = driver_cmd_queued_q || autocmd12_queued_q;
 
+  always_comb begin
+    cmd_data_present_o = reg2hw.command.data_present_select.q;
+
+    if (autocmd12_queued_q) begin
+      cmd_data_present_o = 1'b0;
+    end
+  end
+
   logic cmd_result_valid;
   logic command_ready;
+  logic command_started;
+  assign command_started = command_queued & command_ready;
+  assign cmd_started_o   = command_started;
 
   logic end_bit_error;
   logic crc_error;
@@ -96,6 +112,9 @@ module autocmd_wrap (
     end
   end
 
+  assign cmd_needs_busy_o = current_rsp_type == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
+  assign cmd_transfer_direction_o = reg2hw.transfer_mode.data_transfer_direction_select.q;
+
   always_comb begin : request_commands
     driver_cmd_queued_d = driver_cmd_queued_q;
     autocmd12_queued_d = autocmd12_queued_q;
@@ -111,7 +130,7 @@ module autocmd_wrap (
       autocmd12_queued_d = 1'b1;
     end
 
-    if (command_queued & command_ready) begin
+    if (command_started) begin
       // A command has just been submitted
       running_autocmd12_d = autocmd12_queued_q;
       if (autocmd12_queued_q) begin
