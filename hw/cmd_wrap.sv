@@ -111,11 +111,6 @@ module cmd_wrap (
       autocmd12_queued_d = 1'b1;
     end
 
-    if (cmd_result_valid || timeout_error) begin
-      // Done with the current command
-      running_autocmd12_d = 1'b0;
-    end
-
     if (command_queued & command_ready) begin
       // A command has just been submitted
       running_autocmd12_d = autocmd12_queued_q;
@@ -153,7 +148,7 @@ module cmd_wrap (
 
   assign command_inhibit_cmd_o.de = '1;
   // autocmd12 execution should not inhibit the driver
-  assign command_inhibit_cmd_o.d  = command_queued | (~command_ready && ~running_autocmd12_q);
+  assign command_inhibit_cmd_o.d  = driver_cmd_queued_q | (~command_ready && ~running_autocmd12_q);
 
   logic [31:0] rsp0, rsp1, rsp2, rsp3;
   logic [119:0] rsp;

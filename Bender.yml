@@ -76,5 +76,6 @@ sources:
       - target/sim/src/sdhci_fixture.sv # sdhci_vip
       # Level 4
       - target/sim/src/tb_acmd12_errorhandling.sv # sdhci_fixture
+      - target/sim/src/tb_acmd12_interrupts.sv # sdhci_fixture
       - target/sim/src/tb_cmd_timeout.sv # sdhci_fixture
       - target/sim/src/tb_dat_timeout.sv # sdhci_fixture
