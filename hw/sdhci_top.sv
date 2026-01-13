@@ -172,7 +172,7 @@ module sdhci_top #(
 
   logic sd_cmd_done, sd_rsp_done, request_cmd12;
 
-  cmd_wrap  i_cmd_wrap (
+  autocmd_wrap  i_autocmd_wrap (
     .clk_i           (clk_i),
     .rst_ni          (sd_rst_cmd_n),
     .clk_en_p_i      (sd_clk_en_p),

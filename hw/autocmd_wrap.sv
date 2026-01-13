@@ -11,7 +11,7 @@ import sdhci_reg_pkg::*;
 `include "common_cells/registers.svh"
 `include "defines.svh"
 
-module cmd_wrap (
+module autocmd_wrap (
   input  logic clk_i,
   input  logic rst_ni,
   input  logic clk_en_p_i, // high before next sd_clk posedge

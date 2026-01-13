@@ -50,13 +50,15 @@ sources:
 
   # Level 3
   - hw/cmd_logic.sv # cmd_write, rsp_read, counter
-  - hw/cmd_wrap.sv # cmd_logic
   - hw/dat_wrap.sv # dat_read_timeout, dat_buffer, dat_read, dat_write
 
   # Level 4
-  - hw/sdhci_top.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
+  - hw/autocmd_wrap.sv # cmd_logic, dat_wrap
 
   # Level 5
+  - hw/sdhci_top.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
+
+  # Level 6
   - hw/sdhci_top_obi.sv # sdhci_top, external obi_pkg
 
   - target: any(simulation, test)
