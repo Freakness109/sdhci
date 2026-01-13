@@ -12,38 +12,38 @@ import sdhci_reg_pkg::*;
 `include "defines.svh"
 
 module cmd_wrap (
-  input   logic clk_i,
-  input   logic rst_ni,
-  input   logic clk_en_p_i, // high before next sd_clk posedge
-  input   logic clk_en_n_i, // high before next sd_clk negedge
-  input   logic div_1_i,
+  input  logic clk_i,
+  input  logic rst_ni,
+  input  logic clk_en_p_i, // high before next sd_clk posedge
+  input  logic clk_en_n_i, // high before next sd_clk negedge
+  input  logic div_1_i,
 
-  input   logic sd_bus_cmd_i,
-  output  logic sd_bus_cmd_o,
-  output  logic sd_bus_cmd_en_o,
+  input  logic sd_bus_cmd_i,
+  output logic sd_bus_cmd_o,
+  output logic sd_bus_cmd_en_o,
 
-  input   sdhci_reg2hw_t reg2hw,
-  input   logic request_cmd12_i,
+  input  sdhci_reg2hw_t reg2hw,
+  input  logic request_cmd12_i,
 
-  output  logic sd_cmd_done_o,
-  output  logic sd_rsp_done_o,
+  output logic sd_cmd_done_o,
+  output logic sd_rsp_done_o,
 
-  output  logic [31:0] response0_d_o,
-  output  logic [31:0] response1_d_o,
-  output  logic [31:0] response2_d_o,
-  output  logic [31:0] response3_d_o,
-  output  logic response0_de_o,
-  output  logic response1_de_o,
-  output  logic response2_de_o,
-  output  logic response3_de_o,
+  output logic [31:0] response0_d_o,
+  output logic [31:0] response1_d_o,
+  output logic [31:0] response2_d_o,
+  output logic [31:0] response3_d_o,
+  output logic response0_de_o,
+  output logic response1_de_o,
+  output logic response2_de_o,
+  output logic response3_de_o,
 
-  output  `writable_reg_t() command_inhibit_cmd_o,
-  output  `writable_reg_t() command_end_bit_error_o,
-  output  `writable_reg_t() command_crc_error_o,
-  output  `writable_reg_t() command_index_error_o,
-  output  `writable_reg_t() command_timeout_error_o,
+  output `writable_reg_t() command_inhibit_cmd_o,
+  output `writable_reg_t() command_end_bit_error_o,
+  output `writable_reg_t() command_crc_error_o,
+  output `writable_reg_t() command_index_error_o,
+  output `writable_reg_t() command_timeout_error_o,
 
-  output  sdhci_reg_pkg::sdhci_hw2reg_auto_cmd12_error_status_reg_t auto_cmd12_errors_o
+  output sdhci_reg_pkg::sdhci_hw2reg_auto_cmd12_error_status_reg_t auto_cmd12_errors_o
 );
   ////////////////
   // Main Logic //
