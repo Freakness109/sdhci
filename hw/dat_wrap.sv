@@ -156,13 +156,22 @@ module dat_wrap #(
   logic [1:0] busy_counter_q, busy_counter_d;
   `FF(busy_counter_q, busy_counter_d, 2'b0, clk_i, rst_ni);
 
+  logic busy_saw_response_q, busy_saw_response_d;
+  `FF(busy_saw_response_q, busy_saw_response_d, 1'b0, clk_i, rst_ni);
+
   always_comb begin : busy_fsm
-    busy_state_d   = busy_state_q;
-    busy_counter_d = busy_counter_q;
+    busy_state_d        = busy_state_q;
+    busy_counter_d      = busy_counter_q;
+    busy_saw_response_d = busy_saw_response_q;
 
     if (dat_state_q != BUSY) begin
       busy_state_d = BUSY_WAIT_FOR_CMD;
+      busy_saw_response_d = 1'b0;
     end else begin
+      if (sd_rsp_done_i) begin
+        busy_saw_response_d = 1'b1;
+      end
+
       unique case (busy_state_q)
         BUSY_WAIT_FOR_CMD: begin
           if (sd_cmd_done_i) begin
@@ -182,7 +191,11 @@ module dat_wrap #(
           end
         end
         BUSY_WAIT_FOR_HIGH: begin
-          if (dat_i[0] == 1'b1) begin
+          // according to SDHC simplified, present state register,
+          // dat_line_active, busy is held until after the response
+          // at least, independent of what the card is actually doing
+          // (wording: "when busy after the the response is de-asserted")
+          if (dat_i[0] == 1'b1 && busy_saw_response_q) begin
             busy_state_d = BUSY_DONE;
           end else if (timeout_elapsed) begin
             busy_state_d = BUSY_TIMEOUT;
