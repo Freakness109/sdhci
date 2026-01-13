@@ -6,7 +6,7 @@
 // - Micha Wehrli <miwehrli@student.ethz.ch>
 // - Axel Vanoni <axvanoni@student.ethz.ch>
 
-module tb_acmd12 #(
+module tb_acmd12_errorhandling #(
     parameter time         ClkPeriod     = 50ns,
     parameter int unsigned RstCycles     = 1
 )();
