@@ -149,6 +149,21 @@ module sdhci_obi_driver #(
                           auto_cmd12_enable, block_count_enable, dma_enable}, finish_transaction);
   endtask
 
+  task automatic set_host_control_1(
+    /* logic       card_detect_signal_selection, */
+    /* logic       card_detect_test_level, */
+    /* logic       do_8_bit_transfer, */
+    logic [1:0] dma_select,
+    logic       high_speed_enable,
+    logic       do_4_bit_transfer,
+    /* logic       led_control, */
+    logic finish_transaction
+  );
+    logic [3:0] be;
+    be = 4'b0001;
+    obi_write('h028, be, {24'b0, 3'b0, dma_select, high_speed_enable, do_4_bit_transfer, 1'b0}, finish_transaction);
+  endtask
+
   task automatic set_block_size_count(
     logic [11:0] block_size,
     logic [15:0] block_count,
@@ -191,6 +206,14 @@ module sdhci_obi_driver #(
     be = 4'b1100;
     obi_write('h00C, be, {2'b0, command_index, command_type, data_present, index_check_enable,
                           crc_check_enable, 1'b0, response_type, 16'b0}, finish_transaction);
+  endtask
+
+  task automatic read_buffer_data(
+    output logic [31:0] data
+  );
+    logic [3:0] be;
+    be = 4'b1111;
+    obi_read('h020, be, data);
   endtask
 
   task automatic write_buffer_data(

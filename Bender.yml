@@ -65,6 +65,7 @@ sources:
     files:
       # Level 1
       - target/sim/src/tb_dat.sv # sd_clk_generator, dat_write, dat_read
+      - target/sim/src/tb_driver_crc.sv
       - target/sim/model/sd_crc_7.v
       - target/sim/model/sd_crc_16.v
       - target/sim/src/sdhci_obi_driver.sv
@@ -80,3 +81,4 @@ sources:
       - target/sim/src/tb_acmd12_interrupts.sv # sdhci_fixture
       - target/sim/src/tb_cmd_timeout.sv # sdhci_fixture
       - target/sim/src/tb_dat_timeout.sv # sdhci_fixture
+      - target/sim/src/tb_block_read.sv # sdhci_fixture
