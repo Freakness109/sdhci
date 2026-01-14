@@ -185,8 +185,7 @@ module cmd_logic (
     .rst_ni            (rst_ni),
     .cmd_i             (sd_bus_cmd_i),
     .long_rsp_i        (response_type_q == sdhci_pkg::RESPONSE_LENGTH_136),
-    // TODO: make sure that there are no off-by-one errors here
-    .start_listening_i (cmd_state_q == WAIT_RSP && cycles_waiting == N_CR_MIN),
+    .start_listening_i (cmd_state_q == WAIT_RSP && (cycles_waiting == N_CR_MIN - 1)),
     .timeout_i         (cmd_state_q == RSP_TIMEOUT),
     .receiving_o       (rsp_receiving),
     .rsp_valid_o       (rsp_received),
