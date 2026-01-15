@@ -257,20 +257,12 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    wfi(200, "cmd12 complete");
+    wfi(200, "cmd12 complete and transfer complete");
     check_irq(
-      .expected_normal('h01), // cmd complete
+      .expected_normal('h03), // cmd complete
       .expected_error ('h0),  // no error
-      .error_context("cmd12 complete")
+      .error_context("cmd12 complete and transfer complete")
     );
-
-    wfi(200, "cmd12 transfer complete");
-    check_irq(
-      .expected_normal('h02), // cmd complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd12 transfer complete")
-    );
-
 
     $display("All good");
 

@@ -165,9 +165,12 @@ module autocmd_wrap (
   // Normal Status //
   ///////////////////
 
+  // inhibit status from cmd logic
+  logic cmd_inhibit_logic;
+
   assign command_inhibit_cmd_o.de = '1;
   // autocmd12 execution should not inhibit the driver
-  assign command_inhibit_cmd_o.d  = driver_cmd_queued_q | (~command_ready && ~running_autocmd12_q);
+  assign command_inhibit_cmd_o.d  = driver_cmd_queued_q | (cmd_inhibit_logic && ~running_autocmd12_q);
 
   logic [31:0] rsp0, rsp1, rsp2, rsp3;
   logic [119:0] rsp;
@@ -278,6 +281,7 @@ module autocmd_wrap (
 
     .cmd_done_o        (sd_cmd_done_o),
     .rsp_done_o        (sd_rsp_done_o),
+    .cmd_inhibit_cmd_o (cmd_inhibit_logic),
 
     .cmd_i             (current_cmd),
     .cmd_arg_i         (current_arg),

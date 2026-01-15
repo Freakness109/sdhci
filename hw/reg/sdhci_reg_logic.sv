@@ -139,15 +139,18 @@ module sdhci_reg_logic (
   assign command_inhibit_dat_o.de = '1;
   assign command_inhibit_dat_o.d = rst_dat_ni &
     `instant_reg_value(present_state, dat_line_active);
-  
-    
-  logic reading;
-  assign reading = transfer_mode_reg_o.data_transfer_direction_select.d; // this is actually q, the naming is weird
 
+  // transfer complete fires on:
+  // - read transfer active  1->0
+  // - write transfer active 1->0
+  // - dat line active       1->0
+  // - command inhibit dat   1->0
+  // command inhibit dat = (r/w tx | dat line),
+  // write active implies dat line active,
+  // so looking at command inhibit is enough
   assign transfer_complete_o.d = '1;
   assign transfer_complete_o.de = rst_dat_ni &
-    (`did_get_unset(present_state, read_transfer_active) |
-     (~reading & `did_get_unset(present_state, dat_line_active)));
+    (`did_get_unset(present_state, command_inhibit_dat));
 
   assign command_complete_o.d = '1;
   assign command_complete_o.de = rst_cmd_ni & `did_get_unset(present_state, command_inhibit_cmd);

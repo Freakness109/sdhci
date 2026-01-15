@@ -20,6 +20,7 @@ module cmd_logic (
 
   output logic cmd_done_o,
   output logic rsp_done_o,
+  output logic cmd_inhibit_cmd_o,
 
   input  sdhci_pkg::cmd_t cmd_i,
   input  sdhci_pkg::cmd_arg_t cmd_arg_i,
@@ -160,6 +161,33 @@ module cmd_logic (
   // this line could optionally be masked by the valid line, leave it for now
   assign index_error_o = (cmd_in_response != cmd_q) & (response_type_q == sdhci_pkg::RESPONSE_LENGTH_48 |
                                                        response_type_q == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY);
+
+  always_comb begin : cmd_inhibit
+    cmd_inhibit_cmd_o = 1'b1;
+    unique case (cmd_state_q)
+      IDLE: begin
+        cmd_inhibit_cmd_o = 1'b0;
+      end
+      START: begin
+        cmd_inhibit_cmd_o = 1'b1;
+      end
+      SEND_CMD: begin
+        cmd_inhibit_cmd_o = 1'b1;
+      end
+      WAIT_RSP: begin
+        cmd_inhibit_cmd_o = 1'b1;
+      end
+      READ_RSP: begin
+        cmd_inhibit_cmd_o = 1'b1;
+      end
+      BUS_COOLDOWN: begin
+        cmd_inhibit_cmd_o = 1'b0;
+      end
+      RSP_TIMEOUT: begin
+        cmd_inhibit_cmd_o = 1'b1;
+      end
+    endcase
+  end
 
   // TODO: this is clocked with clk_en_p_i
   cmd_write i_cmd_write (
