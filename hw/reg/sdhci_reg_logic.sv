@@ -86,12 +86,12 @@ module sdhci_reg_logic (
     `should_interrupt(error_interrupt, vendor_specific_error)*/;
 
 
-  logic interrupt_status_q, interrupt_status_d;
-  `FF(interrupt_status_q, interrupt_status_d, '0);
-  assign interrupt_status_d = interrupt_signal_for_each_slot_o[0];
+  /* logic interrupt_status_q, interrupt_status_d; */
+  /* `FF(interrupt_status_q, interrupt_status_d, '0); */
+  /* assign interrupt_status_d = interrupt_signal_for_each_slot_o[0]; */
 
   // Send interrupt if any interupt status went from 0 to 1
-  assign interrupt_o = !interrupt_status_q && interrupt_status_d;
+  assign interrupt_o = interrupt_signal_for_each_slot_o[0];
 
   // Automatically write to Error Interrupt Status
   assign error_interrupt_o.d = rst_ni &
