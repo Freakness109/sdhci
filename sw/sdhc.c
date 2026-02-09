@@ -18,8 +18,7 @@
 
 #define SDHCI_BASE_ADDR 0x01001000
 
-struct sdmmc_softc sc = { 0 };
-struct sdhc_host hp = { 0 };
+struct sdhc_cfg cfg = {0};
 
 static unsigned int s_Seed = 1;
 unsigned int rand(void) {
@@ -38,11 +37,15 @@ int test_rw(int size, unsigned int seed) {
     bzero((void*) scratch, size);
 
     // Reset Block
-    ASSERT_OK(sdmmc_mem_write_block(&sc.sc_card, 0, scratch, size));
+    if ((rc = sdhc_write(&cfg, 0, scratch, size)) != SDHC_SUCCESS) {
+        printf("First sdhc_write failed with RC %d\n", rc);
+    }
 
     memset((void*) scratch, 0xFF, size);
 
-    ASSERT_OK(sdmmc_mem_read_block(&sc.sc_card, 0, scratch, size));
+    if ((rc = sdhc_read(&cfg, 0, scratch, size)) != SDHC_SUCCESS) {
+        printf("First sdhc_read failed with RC %d\n", rc);
+    }
 
     int err = 0;
     for (size_t i = 0; i < size; ++i) {
@@ -57,11 +60,15 @@ int test_rw(int size, unsigned int seed) {
     s_Seed = seed;
     for (size_t i = 0; i < size; ++i) scratch[i] = rand();
 
-    ASSERT_OK(sdmmc_mem_write_block(&sc.sc_card, 0, scratch, size));
+    if ((rc = sdhc_write(&cfg, 0, scratch, size)) != SDHC_SUCCESS) {
+        printf("Second sdhc_write failed with RC %d\n", rc);
+    }
 
     memset((void*) scratch, 0xFF, size);
 
-    ASSERT_OK(sdmmc_mem_read_block(&sc.sc_card, 0, scratch, size));
+    if ((rc = sdhc_read(&cfg, 0, scratch, size)) != SDHC_SUCCESS) {
+        printf("Second sdhc_read failed with RC %d\n", rc);
+    }
 
     s_Seed = seed;
     for (size_t i = 0; i < size; ++i) {
@@ -85,54 +92,20 @@ int main() {
 
     printf("Hello world!\n");
     uart_write_flush(&__base_uart);
-    
 
-#ifdef SDHC_DEBUG
-    debug_funcs = 1;
-    sdhcdebug = 2;
-#endif
-
-
-    ASSERT_OK(sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0));
-
-// #define WITH_SD_MODEL
-// #define SDHC_INITIALIZED_MODEL
-
-#ifdef WITH_SD_MODEL
-    ASSERT_OK(sdhc_bus_width(&hp, 4));
-#endif
-
-#ifdef SDHC_INITIALIZED_MODEL
-    sc.sc_caps = SMC_CAPS_4BIT_MODE | SMC_CAPS_AUTO_STOP | SMC_CAPS_NONREMOVABLE;
-    sc.sc_flags = SMF_SD_MODE | SMF_MEM_MODE | SMF_CARD_PRESENT | SMF_CARD_ATTACHED;
-    sc.sch = &hp;
-
-    sc.sc_card.sc = &sc;
-    sc.sc_card.rca = 1;
-    sc.sc_card.csd.capacity = 20000000;
-    sc.sc_card.csd.sector_size = SIZE;
-
-#else
-    sdmmc_init(&sc, &hp, scratch);
-    if (!ISSET(sc.sc_flags, SMF_CARD_ATTACHED)) {
-        printf("Failed to initialize SD Card\n");
-        uart_write_flush(&__base_uart);
-        return 1;
+    sdhc_error_e rc = SDHC_SUCCESS;
+    if ((rc = sdhc_init_library(&cfg, SDHCI_BASE_ADDR, true)) != SDHC_SUCCESS) {
+        printf("Init library failed with RC %d\n", rc);
     }
-#endif
-
-    ASSERT_OK(sdhc_bus_clock(sc.sch, SDMMC_SDCLK_25MHZ, SDMMC_TIMING_LEGACY));
-
-#ifdef WITH_SD_MODEL
-    ASSERT_OK(sdmmc_mem_set_blocklen(&sc, &sc.sc_card));
-#endif
+    if ((rc = sdhc_init_card(&cfg, SDHCI_BASE_ADDR, SDHC_25MHZ)) != SDHC_SUCCESS) {
+        printf("Init card failed with RC %d\n", rc);
+    }
 
     // Single block RW
     ASSERT_OK(test_rw(SIZE, 0xDEADBEEF));
 
     // Multiple block RW
     ASSERT_OK(test_rw(BLOCKS*SIZE, 0x70EDADA1));
-    // TODO half block rw?
 
     printf("Success\n");
     uart_write_flush(&__base_uart);
