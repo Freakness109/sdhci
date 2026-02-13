@@ -11,13 +11,17 @@ struct sdhc_cfg {
     bool hcs;
     bool is_simulation;
     bool use_dma;
+    // To use debug printing, set the pre-processor definition SDHC_DEBUG_PRINTS=1
+    // and set the print function to printf (or related)
+    int (*print)(const char* fmt, ...);
 };
 
 typedef enum {
     SDHC_SUCCESS = 0,
     SDHC_NO_CARD,
-    SDHC_TIMEOUT,
+    SDHC_CMD_TIMEOUT,
     SDHC_CMD_ERROR,
+    SDHC_DATA_TIMEOUT,
     SDHC_DATA_ERROR,
     SDHC_NOT_SUPPORTED,
     SDHC_WRONG_INTERRUPT

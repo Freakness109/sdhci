@@ -9,6 +9,12 @@
 #define FLATTEN
 #endif
 
+#if SDHC_DEBUG_PRINTS
+#define SDHC_DBG(...) cfg->print(__VA_ARGS__)
+#else
+#define SDHC_DBG(...)
+#endif
+
 typedef enum {
     SDHC_NO_RESPONSE,
     SDHC_R1,
