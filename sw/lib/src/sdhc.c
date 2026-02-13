@@ -21,12 +21,19 @@ static INLINE void write8(struct sdhc_cfg *cfg, uint32_t offset, uint8_t value) 
     *((volatile uint8_t*)cfg->peripheral_base + offset) = value;
 }
 
+static int sdhc_print_dummy(const char* fmt, ...) {
+    return 0;
+}
+
 sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, bool is_simulation) {
     // start up the internal clock so that it is stable by the time we need it
     write16(cfg, CLOCK_CONTROL, 0x01);
     cfg->peripheral_base = peripheral_base;
     cfg->is_simulation = is_simulation;
     cfg->use_dma = false;
+    if (cfg->print == NULL) {
+	cfg->print = sdhc_print_dummy;
+    }
     return SDHC_SUCCESS;
 }
 
@@ -60,7 +67,7 @@ static sdhc_error_e sdhc_error_for_error_interrupt(struct sdhc_cfg *cfg, uint16_
 	// ACMD error
 	uint16_t autocmd_error = read16(cfg, AUTO_CMD_ERROR_STATUS);
 	if (autocmd_error & (1 << 1)) {
-	    return SDHC_TIMEOUT;
+	    return SDHC_CMD_TIMEOUT;
 	}
 	return SDHC_CMD_ERROR;
     }
@@ -70,7 +77,7 @@ static sdhc_error_e sdhc_error_for_error_interrupt(struct sdhc_cfg *cfg, uint16_
     }
 
     if (error_interrupt_status & (1 << 4)) {
-	return SDHC_TIMEOUT;
+	return SDHC_DATA_TIMEOUT;
     }
 
     if (error_interrupt_status & (7 << 1)) {
@@ -78,7 +85,7 @@ static sdhc_error_e sdhc_error_for_error_interrupt(struct sdhc_cfg *cfg, uint16_
     }
 
     if (error_interrupt_status & 1) {
-	return SDHC_TIMEOUT;
+	return SDHC_CMD_TIMEOUT;
     }
     // we didn't identify the error
     return SDHC_CMD_ERROR;
@@ -158,11 +165,12 @@ static sdhc_error_e sdhc_wait_for_buf_read(struct sdhc_cfg *cfg) {
 	return rc;
     }
 
-    if (normal_interrupt_status != (1 << 5)) {
+    if ((normal_interrupt_status & ((1 << 5) | 1)) == 0) {
+	SDHC_DBG("Wrong interrupt, expected 1 << 5, got %x\n", normal_interrupt_status);
 	return SDHC_WRONG_INTERRUPT;
     }
 
-    return SDHC_SUCCESS;
+    return sdhc_wait_for_buf_read(cfg);
 }
 
 static sdhc_error_e sdhc_wait_for_buf_write(struct sdhc_cfg *cfg) {
@@ -178,11 +186,12 @@ static sdhc_error_e sdhc_wait_for_buf_write(struct sdhc_cfg *cfg) {
 	return rc;
     }
 
-    if (normal_interrupt_status != (1 << 4)) {
+    if ((normal_interrupt_status & ((1 << 4) | 1)) == 0) {
+	SDHC_DBG("Wrong interrupt, expected 1 << 4, got %x\n", normal_interrupt_status);
 	return SDHC_WRONG_INTERRUPT;
     }
 
-    return SDHC_SUCCESS;
+    return sdhc_wait_for_buf_write(cfg);
 }
 
 // assumes that
@@ -192,7 +201,7 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
 	sdhc_response_type_e response_type, sdhc_response_t *response,
 	sdhc_transfer_direction_e transfer_direction, uint8_t *buf, size_t size) {
 
-    if (size & 0x1FF) {
+    if (size & 0x1ff && size != 8) {
 	return SDHC_NOT_SUPPORTED;
     }
     if (size > (0xFFFF * 512)) {
@@ -210,28 +219,19 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
     uint16_t is_read = transfer_direction == SDHC_READ ? (1 << 4) : 0;
 
     // enable autocmd12
-    uint16_t autocmd_enable = 0x1 << 2;
+    uint16_t autocmd_enable = size == 8 ? 0 : 0x1 << 2;
 
     write16(cfg, TRANSFER_MODE, is_multiblock | is_read | autocmd_enable);
-    write16(cfg, ARGUMENT, arg);
+    write32(cfg, ARGUMENT, arg);
 
     bool index_check = !(response_type == SDHC_R2 || response_type == SDHC_R3);
     bool crc_check = !(response_type == SDHC_R3);
     uint8_t response_type_bits = sdhc_response_type_bits(response_type);
-    // command index, normal command, no data present, 
-    write16(cfg, COMMAND, (cmd << 8) | (index_check << 4) | (crc_check << 3) | response_type_bits);
+    // command index, normal command, data present,
+    write16(cfg, COMMAND, (cmd << 8) | (1 << 5) | (index_check << 4) | (crc_check << 3) | response_type_bits);
 
     if (transfer_direction == SDHC_READ) {
-	uint16_t normal_interrupt_status = 0;
-	if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
-	    goto out;
-	}
-	if ((normal_interrupt_status & 0x1) == 0) {
-	    rc = SDHC_WRONG_INTERRUPT;
-	    goto out;
-	}
-
-	for (; size > 0; size -= 512) {
+	if (size < 512) {
 	    if ((rc = sdhc_wait_for_buf_read(cfg)) != SDHC_SUCCESS) {
 		goto out;
 	    }
@@ -239,18 +239,37 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
 	    // data arrived
 	    // TODO: point iDMA at register
 	    uint32_t data;
-	    for (size_t i = 0; i < 512 / 4; ++i) {
+	    for (size_t i = 0; i < size / 4; ++i) {
 		data = read32(cfg, BUFFER_DATA_PORT);
 		buf[4*i]   = (data >> 0 ) & 0xFF;
 		buf[4*i+1] = (data >> 8 ) & 0xFF;
 		buf[4*i+2] = (data >> 16) & 0xFF;
 		buf[4*i+3] = (data >> 24) & 0xFF;
 	    }
-	    buf += 512;
+	} else {
+	    for (; size > 0; size -= 512) {
+		if ((rc = sdhc_wait_for_buf_read(cfg)) != SDHC_SUCCESS) {
+		    goto out;
+		}
+
+		// data arrived
+		// TODO: point iDMA at register
+		uint32_t data;
+		for (size_t i = 0; i < 512 / 4; ++i) {
+		    data = read32(cfg, BUFFER_DATA_PORT);
+		    buf[4*i]   = (data >> 0 ) & 0xFF;
+		    buf[4*i+1] = (data >> 8 ) & 0xFF;
+		    buf[4*i+2] = (data >> 16) & 0xFF;
+		    buf[4*i+3] = (data >> 24) & 0xFF;
+		}
+		buf += 512;
+	    }
 	}
+
 	// clear any pending that we missed
-	normal_interrupt_status = read16(cfg, NORMAL_INTERRUPT_STATUS);
+	uint16_t normal_interrupt_status = read16(cfg, NORMAL_INTERRUPT_STATUS);
 	rc = sdhc_handle_interrupt(cfg, normal_interrupt_status);
+	SDHC_DBG("Exiting with rc %d and interrupts %d\n", rc, normal_interrupt_status);
     } else {
 	for (; size > 0; size -= 512) {
 	    if ((rc = sdhc_wait_for_buf_write(cfg)) != SDHC_SUCCESS) {
@@ -273,24 +292,44 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
 	if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
 	    goto out;
 	}
-	if ((normal_interrupt_status & 0x1) == 0) {
-	    rc = SDHC_WRONG_INTERRUPT;
-	    goto out;
-	}
+	// allow for a command complete that is not swallowed by the reads above
 	if ((normal_interrupt_status & 0x2) == 0) {
 	    // wait for transfer complete
 	    if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
 		goto out;
 	    }
 	    if ((normal_interrupt_status & 0x2) == 0) {
+		SDHC_DBG("Wrong interrupt, expected 2, got %x\n", normal_interrupt_status);
 		rc = SDHC_WRONG_INTERRUPT;
 		goto out;
 	    }
 	}
+	if (read32(cfg, PRESENT_STATE) & (1 << 2)) {
+	    // DAT line active, we should have another transfer complete
+	    if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
+		goto out;
+	    }
+	    if ((normal_interrupt_status & 0x2) == 0) {
+		SDHC_DBG("Wrong interrupt, expected 2, got %x\n", normal_interrupt_status);
+		rc = SDHC_WRONG_INTERRUPT;
+		goto out;
+	    }
+	} else {
+	    // clear any transfer complete that we might have missed
+	    normal_interrupt_status = read16(cfg, NORMAL_INTERRUPT_STATUS);
+	    rc = sdhc_handle_interrupt(cfg, normal_interrupt_status);
+	}
     }
 
 out:
-    sdhc_fill_response(cfg, response_type, response);
+    if (rc == SDHC_SUCCESS) {
+	sdhc_fill_response(cfg, response_type, response);
+    } else {
+	response->R2.cid1 = 0;
+	response->R2.cid2 = 0;
+	response->R2.cid3 = 0;
+	response->R2.cid4 = 0;
+    }
     return rc;
 }
 
@@ -299,7 +338,7 @@ static sdhc_error_e sdhc_issue_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint32_t a
 
     // single block, no autocmd, no block count
     write16(cfg, TRANSFER_MODE, 0x0);
-    write16(cfg, ARGUMENT, arg);
+    write32(cfg, ARGUMENT, arg);
 
     bool index_check = !(response_type == SDHC_R2 || response_type == SDHC_R3);
     bool crc_check = !(response_type == SDHC_R3);
@@ -318,6 +357,7 @@ static sdhc_error_e sdhc_issue_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint32_t a
 	    rc = SDHC_SUCCESS;
 	} else {
 	    // this should never happen
+	    SDHC_DBG("Wrong interrupt, expected 1, got %x\n", normal_interrupt_status);
 	    rc = SDHC_WRONG_INTERRUPT;
 	}
     } else {
@@ -364,6 +404,7 @@ static INLINE uint8_t sdhc_compute_clock_divider(struct sdhc_cfg *cfg, uint16_t 
 sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     sdhc_error_e rc;
     sdhc_response_t response;
+    bool f8 = true;
     // TODO: implement speed selection
     (void)max_speed;
 
@@ -374,8 +415,12 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     // enable interrupt status
     // card removed, buffer r/w ready, tx/cmd complete
     write16(cfg, NORMAL_INTERRUPT_STATUS_ENABLE, 0xb3);
+    // clear interrupts
+    write16(cfg, NORMAL_INTERRUPT_STATUS, read16(cfg, NORMAL_INTERRUPT_STATUS));
     // autocmd, all data/cmd errors
     write16(cfg, ERROR_INTERRUPT_STATUS_ENABLE, 0x17f);
+    // clear interrupts
+    write16(cfg, ERROR_INTERRUPT_STATUS, read16(cfg, ERROR_INTERRUPT_STATUS));
 
     // set to the longest timeout possible
     write8(cfg, TIMEOUT_CONTROL, 0xe);
@@ -398,9 +443,10 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     if ((rc = sdhc_issue_cmd(cfg, 8, 0x1AB, SDHC_R7, &response)) != SDHC_SUCCESS) {
 	// this will time out on SD cards that implement v1.x
 	// which is older than we want to support
-	if (rc == SDHC_TIMEOUT)
-	    return SDHC_NOT_SUPPORTED;
-	return rc;
+	if (rc == SDHC_CMD_TIMEOUT)
+	    f8 = false;
+	else
+	    return rc;
     }
     if (response.R7.check_pattern != 0xAB) {
 	return SDHC_CMD_ERROR;
@@ -409,7 +455,7 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     // Initialize card
     do {
 	// 0x5030000: HCS+Maximum Performance, 3.2-3.4V supported
-	if ((rc = sdhc_issue_acmd(cfg, 41, 0x50300000, SDHC_R3, &response)) != SDHC_SUCCESS) {
+	if ((rc = sdhc_issue_acmd(cfg, 41, 0x10300000 | (f8 << 30), SDHC_R3, &response)) != SDHC_SUCCESS) {
 	    return rc;
 	}
     } while ((response.R3.ocr & (1 << 31)) == 0);
@@ -440,35 +486,36 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     }
     write16(cfg, BLOCK_SIZE, 0x200);
 
-    if (!cfg->is_simulation) {
-	// simulation model is broken and always uses 4-bit transfers, so don't bother checking support and notifying card
+    if (cfg->is_simulation) {
+	// simulation model is broken and always uses 4-bit transfers, but still go through the motions
+	write8(cfg, HOST_CONTROL_1, 0x2);
+    }
 
-	// acmd preamble
-	if ((rc = sdhc_issue_cmd(cfg, 55, cfg->rca << 16, SDHC_R1, &response)) != SDHC_SUCCESS) {
+    // acmd preamble
+    if ((rc = sdhc_issue_cmd(cfg, 55, cfg->rca << 16, SDHC_R1, &response)) != SDHC_SUCCESS) {
+	return rc;
+    }
+    // acmd51: read scr
+    write16(cfg, BLOCK_SIZE, 0x8);
+    uint8_t scr[8];
+    if ((rc = sdhc_issue_data_cmd(cfg, 51, 0x0, SDHC_R1, &response, SDHC_READ, scr, sizeof(scr))) != SDHC_SUCCESS) {
+	return rc;
+    }
+
+    uint8_t scr_bits_for_width = scr[14] & 0xF;
+
+    // check scr for 4-bit-mode
+    bool supported = !!(scr_bits_for_width & 0x4);
+    if (supported) {
+	// switch to 4-bit mode on the card
+	if ((rc = sdhc_issue_acmd(cfg, 6, 0x2, SDHC_R1, &response)) != SDHC_SUCCESS) {
 	    return rc;
 	}
-	// acmd51: read scr
-	uint8_t scr[16];
-	if ((rc = sdhc_issue_data_cmd(cfg, 51, 0x0, SDHC_R1, &response, SDHC_READ, scr, sizeof(scr))) != SDHC_SUCCESS) {
-	    return rc;
-	}
-
-	uint8_t scr_bits_for_width = scr[14] & 0xF;
-	
-	// check scr for 4-bit-mode
-	bool supported = !!(scr_bits_for_width & 0x4);
-	if (supported) {
-	    // switch to 4-bit mode on the card
-	    if ((rc = sdhc_issue_acmd(cfg, 6, 0x2, SDHC_R1, &response)) != SDHC_SUCCESS) {
-		return rc;
-	    }
-	    // enable 4-bit mode on the controller
-	    write8(cfg, HOST_CONTROL_1, 0x2);
-	}
-    } else {
 	// enable 4-bit mode on the controller
 	write8(cfg, HOST_CONTROL_1, 0x2);
     }
+
+    write16(cfg, BLOCK_SIZE, 0x200);
 
     return SDHC_SUCCESS;
 }
@@ -479,13 +526,8 @@ sdhc_error_e sdhc_read(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, ui
     sdhc_error_e rc = SDHC_SUCCESS;
     size_t max_read_size = 512 * 0xFFFF;
 
-    if (!cfg->hcs) {
-	// TODO: implement support
-	return SDHC_NOT_SUPPORTED;
-    }
-
     if (address & 0x1FF) {
-	if ((rc = sdhc_issue_data_cmd(cfg, 17, address / 512, SDHC_R1, &response, SDHC_READ, buffer, sizeof(buffer))) != SDHC_SUCCESS) {
+	if ((rc = sdhc_issue_data_cmd(cfg, 17, cfg->hcs ? address / 512 : address, SDHC_R1, &response, SDHC_READ, buffer, sizeof(buffer))) != SDHC_SUCCESS) {
 	    return rc;
 	}
 
@@ -501,10 +543,13 @@ sdhc_error_e sdhc_read(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, ui
 
     while (size >= max_read_size) {
 	if ((rc = sdhc_issue_cmd(cfg, 23, max_read_size / 512, SDHC_R1, &response)) != SDHC_SUCCESS) {
-	    return rc;
+	    // timeout is fine, this is only a courtesy to the card
+	    if (rc != SDHC_CMD_TIMEOUT) {
+		return rc;
+	    }
 	}
 
-	if ((rc = sdhc_issue_data_cmd(cfg, 18, address / 512, SDHC_R1, &response, SDHC_READ, data, max_read_size)) != SDHC_SUCCESS) {
+	if ((rc = sdhc_issue_data_cmd(cfg, 18, cfg->hcs ? address / 512 : address, SDHC_R1, &response, SDHC_READ, data, max_read_size)) != SDHC_SUCCESS) {
 	    return rc;
 	}
 
@@ -515,12 +560,15 @@ sdhc_error_e sdhc_read(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, ui
 
     if (size > 512) {
 	if ((rc = sdhc_issue_cmd(cfg, 23, size / 512, SDHC_R1, &response)) != SDHC_SUCCESS) {
-	    return rc;
+	    // timeout is fine, this is only a courtesy to the card
+	    if (rc != SDHC_CMD_TIMEOUT) {
+		return rc;
+	    }
 	}
     }
 
     if (size > 0) {
-	if ((rc = sdhc_issue_data_cmd(cfg, size > 512 ? 18 : 17, address / 512, SDHC_R1, &response, SDHC_READ, data, size)) != SDHC_SUCCESS) {
+	if ((rc = sdhc_issue_data_cmd(cfg, size > 512 ? 18 : 17, cfg->hcs ? address / 512 : address, SDHC_R1, &response, SDHC_READ, data, size)) != SDHC_SUCCESS) {
 	    return rc;
 	}
     }
@@ -534,11 +582,6 @@ sdhc_error_e sdhc_write(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, u
     sdhc_error_e rc = SDHC_SUCCESS;
     size_t max_write_size = 512 * 0xFFFF;
 
-    if (!cfg->hcs) {
-	// TODO: implement support
-	return SDHC_NOT_SUPPORTED;
-    }
-
     if (address & 0x1FF) {
 	// partial block writes will not go well
 	return SDHC_NOT_SUPPORTED;
@@ -546,10 +589,13 @@ sdhc_error_e sdhc_write(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, u
 
     while (size >= max_write_size) {
 	if ((rc = sdhc_issue_cmd(cfg, 23, max_write_size / 512, SDHC_R1, &response)) != SDHC_SUCCESS) {
-	    return rc;
+	    // timeout is fine, this is only a courtesy to the card
+	    if (rc != SDHC_CMD_TIMEOUT) {
+		return rc;
+	    }
 	}
 
-	if ((rc = sdhc_issue_data_cmd(cfg, 25, address / 512, SDHC_R1, &response, SDHC_WRITE, data, max_write_size)) != SDHC_SUCCESS) {
+	if ((rc = sdhc_issue_data_cmd(cfg, 25, cfg->hcs ? address / 512 : address, SDHC_R1, &response, SDHC_WRITE, data, max_write_size)) != SDHC_SUCCESS) {
 	    return rc;
 	}
 
@@ -560,12 +606,15 @@ sdhc_error_e sdhc_write(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, u
 
     if (size > 512) {
 	if ((rc = sdhc_issue_cmd(cfg, 23, size / 512, SDHC_R1, &response)) != SDHC_SUCCESS) {
-	    return rc;
+	    // timeout is fine, this is only a courtesy to the card
+	    if (rc != SDHC_CMD_TIMEOUT) {
+		return rc;
+	    }
 	}
     }
 
     if (size > 0) {
-	if ((rc = sdhc_issue_data_cmd(cfg, size > 512 ? 25 : 24, address / 512, SDHC_R1, &response, SDHC_WRITE, data, size)) != SDHC_SUCCESS) {
+	if ((rc = sdhc_issue_data_cmd(cfg, size > 512 ? 25 : 24, cfg->hcs ? address / 512 : address, SDHC_R1, &response, SDHC_WRITE, data, size)) != SDHC_SUCCESS) {
 	    return rc;
 	}
     }
