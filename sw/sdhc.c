@@ -10,9 +10,6 @@
 #include "printf.h"
 #include "util.h"
 
-#include "sdmmcvar.h"
-#include "sdhcvar.h"
-
 #include "regs/cheshire.h"
 #include "params.h"
 
