@@ -385,17 +385,26 @@ module dat_wrap #(
     end
   end
 
+  logic [15:0] new_block_count;
+  always_comb begin
+    if (reg2hw_i.transfer_mode.multi_single_block_select.q == 1'b0) begin
+      new_block_count = 1'b1;
+    end else begin
+      new_block_count = reg2hw_i.block_count.q;
+    end
+  end
+
   always_comb begin : block_counter
     transmitted_block_counter_d = transmitted_block_counter_q;
     if (dat_state_q == READ) begin
       if (read_state_q == WAIT_FOR_CMD) begin
-        transmitted_block_counter_d = reg2hw_i.block_count.q;
+        transmitted_block_counter_d = new_block_count;
       end else if (read_state_q == DONE_READING_BLOCK) begin
         transmitted_block_counter_d = transmitted_block_counter_q - 1;
       end
     end else if (dat_state_q == WRITE) begin
       if (write_state_q == WAIT_FOR_RSP) begin
-        transmitted_block_counter_d = reg2hw_i.block_count.q;
+        transmitted_block_counter_d = new_block_count;
       end else if (write_state_q == DONE_WRITING_BLOCK) begin
         transmitted_block_counter_d = transmitted_block_counter_q - 1;
       end
