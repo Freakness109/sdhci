@@ -85,6 +85,8 @@ static sdhc_error_e sdhc_error_for_error_interrupt(struct sdhc_cfg *cfg, uint16_
     }
 
     if (error_interrupt_status & 1) {
+	// this has priority over a command complete,
+	// both might get set during a transfer
 	return SDHC_CMD_TIMEOUT;
     }
     // we didn't identify the error
