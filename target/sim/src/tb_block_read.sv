@@ -182,7 +182,7 @@ module tb_block_read #(
 
     fixture.vip.obi.set_block_size_count(
       .block_size(BlockSize),
-      .block_count(16'd2),
+      .block_count(BlockCount),
       .finish_transaction(1'b0)
     );
 
