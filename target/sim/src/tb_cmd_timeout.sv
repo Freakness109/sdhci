@@ -7,7 +7,8 @@
 
 module tb_cmd_timeout #(
   parameter time         ClkPeriod = 50ns,
-  parameter int unsigned RstCycles = 1
+  parameter int unsigned RstCycles = 1,
+  parameter int unsigned DelayCycles = 4
 )();
   sdhci_fixture #(
     .ClkPeriod(ClkPeriod),
@@ -72,8 +73,11 @@ module tb_cmd_timeout #(
       .auto_cmd12_enable(1'b0),
       .block_count_enable(1'b0),
       .dma_enable(1'b0),
-      .finish_transaction(1'b0)
+      .finish_transaction(1'b1)
     );
+
+    repeat (DelayCycles) fixture.vip.wait_for_clk();
+
     fixture.vip.obi.launch_command(
       .command_index(6'd1),
       .command_type (2'b00), // normal command
