@@ -192,14 +192,14 @@ module tb_cmd_timeout #(
     fixture.vip.sd.wait_for_cmd_held();
     fixture.vip.sd.wait_for_cmd_released();
     // the response must come after 5 idle cycles on the bus
-    repeat(4) fixture.vip.wait_for_sdclk();
+    repeat(5) fixture.vip.wait_for_sdclk();
     fixture.vip.sd.send_response_136(127'h7F78_7068_6058_5048_4038_3028_2018_1008);
 
     fixture.vip.sd.wait_for_cmd_held();
     fixture.vip.sd.wait_for_cmd_released();
     // the response must come after 5 idle cycles on the bus
     // so after 6 it must time out
-    repeat(5) fixture.vip.wait_for_sdclk();
+    repeat(6) fixture.vip.wait_for_sdclk();
     fixture.vip.sd.send_response_136(127'h7F78_7068_6058_5048_4038_3028_2018_1008);
 
     response_done = 1'b1;
@@ -209,7 +209,7 @@ module tb_cmd_timeout #(
     fixture.vip.sd.wait_for_cmd_held();
     fixture.vip.sd.wait_for_cmd_released();
     // the response must come within 64 cycles
-    repeat(63) fixture.vip.wait_for_sdclk();
+    repeat(64) fixture.vip.wait_for_sdclk();
     fixture.vip.sd.send_response_48(
       .index(6'd0),
       .crc  (7'h0)
@@ -219,7 +219,7 @@ module tb_cmd_timeout #(
     fixture.vip.sd.wait_for_cmd_released();
     // the response must come within 64 cycles
     // so after 65 it must time out
-    repeat(64) fixture.vip.wait_for_sdclk();
+    repeat(65) fixture.vip.wait_for_sdclk();
     fixture.vip.sd.send_response_48(
       .index(6'd0),
       .crc  (7'h0)

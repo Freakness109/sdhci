@@ -116,11 +116,13 @@ module cmd_logic (
         if (rsp_receiving) begin
           cmd_state_d = READ_RSP;
         end else begin
-          if ((cmd_q == 'd01 || cmd_q == 'd02) && cycles_waiting == N_ID + 1) begin
+          // +2: +1 for being over, +1 as we get tx_done on the end bit cycle,
+          // and thus are one cycle ahead
+          if ((cmd_q == 'd01 || cmd_q == 'd02) && cycles_waiting == N_ID + 2) begin
             // The identification command (CMD2) has a shorter timeout period,
             // see 7.2.5
             cmd_state_d = RSP_TIMEOUT;
-          end else if (cycles_waiting == N_CR_MAX + 1) begin
+          end else if (cycles_waiting == N_CR_MAX + 2) begin
             cmd_state_d = RSP_TIMEOUT;
           end
         end
