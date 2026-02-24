@@ -397,7 +397,7 @@ static INLINE uint8_t sdhc_compute_clock_divider(struct sdhc_cfg *cfg, uint16_t 
 	return 0;
 
     size_t shift = 0;
-    for (; freq_khz > base_freq_khz; ++shift) {
+    for (; freq_khz < base_freq_khz; ++shift) {
 	base_freq_khz >>= 1;
     }
 
