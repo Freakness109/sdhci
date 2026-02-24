@@ -94,6 +94,13 @@ module sdhci_vip #(
     end
   endtask
 
+  task automatic assert_no_interrupt();
+    @(posedge clk_o);
+    #(TT);
+    assert (interrupt_i == 1'b0);
+  endtask
+
+
   task automatic test_delay();
     #(TT);
   endtask

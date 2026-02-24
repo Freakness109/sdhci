@@ -190,7 +190,7 @@ module sdhci_obi_driver #(
     logic [3:0] be;
     be = 4'b0100;
 
-    obi_write('h02c, be, {24'b0, 4'b0, exponent_minus_13}, finish_transaction);
+    obi_write('h02c, be, {8'b0, 4'b0, exponent_minus_13, 16'b0}, finish_transaction);
   endtask
 
   task automatic launch_command(

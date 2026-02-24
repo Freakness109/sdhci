@@ -19,11 +19,15 @@ module tb_dat_timeout #(
   int ClkEnPeriod;
   logic [15:0] normal_interrupt_status;
   logic [15:0] error_interrupt_status;
+  logic [ 7:0] timeout;
   logic response_done;
 
   initial begin : configure_tb
     if (!$value$plusargs("ClkEnPeriod=%d", ClkEnPeriod)) begin
       ClkEnPeriod = 4;
+    end
+    if (!$value$plusargs("Timeout=%d", ClkEnPeriod)) begin
+      timeout = 8'h4;
     end
     $display("Testing timeouts with ClkEnPeriod=%d", ClkEnPeriod);
   end : configure_tb
@@ -65,7 +69,7 @@ module tb_dat_timeout #(
       .divider(ClkEnPeriod >> 1),
       .finish_transaction(1'b0)
     );
-    fixture.vip.obi.set_data_timeout(.exponent_minus_13(4'b0), .finish_transaction(1'b0));
+    fixture.vip.obi.set_data_timeout(.exponent_minus_13(timeout), .finish_transaction(1'b0));
     fixture.vip.obi.set_clock_enable(.enable(1'b1), .finish_transaction(1'b0));
     // prepare command
     fixture.vip.obi.set_transfer_mode(
@@ -157,9 +161,9 @@ module tb_dat_timeout #(
     end
 
     // make sure that the timeout does not come earlier
-    repeat((TimeoutDivider) * (2 << 12) - 1000 * ClkEnPeriod) fixture.vip.wait_for_clk();
+    repeat((TimeoutDivider) * (2 << (13 - 1 + timeout)) - 1000) fixture.vip.assert_no_interrupt();
     // if the timeout comes too early, we will have missed it by now
-    wfi(2000 * ClkEnPeriod);
+    wfi(3000 * ClkEnPeriod);
 
     fixture.vip.obi.get_interrupt_status(
       .normal_interrupt_status(normal_interrupt_status),
