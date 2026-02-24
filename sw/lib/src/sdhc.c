@@ -507,7 +507,7 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
 	return rc;
     }
 
-    uint8_t scr_bits_for_width = scr[14] & 0xF;
+    uint8_t scr_bits_for_width = scr[1] & 0xF;
 
     // check scr for 4-bit-mode
     bool supported = !!(scr_bits_for_width & 0x4);
