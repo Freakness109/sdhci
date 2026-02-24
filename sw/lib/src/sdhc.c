@@ -25,10 +25,11 @@ static int sdhc_print_dummy(const char* fmt, ...) {
     return 0;
 }
 
-sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, bool is_simulation) {
+sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, void (*usleep)(uint64_t), bool is_simulation) {
     if (cfg->print == NULL) {
 	cfg->print = sdhc_print_dummy;
     }
+    cfg->usleep = usleep;
 
     // make sure no bad state is left over between runs
     write8(cfg, SOFTWARE_RESET, 0x1);
@@ -487,6 +488,7 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
 
     // set frequency to 25MHz
     write16(cfg, CLOCK_CONTROL, 0x05 | (sdhc_compute_clock_divider(cfg, 25000) << 8));
+    cfg->usleep(1);
 
     // set block length to 512
     if ((rc = sdhc_issue_cmd(cfg, 16, 0x200, SDHC_R1, &response)) != SDHC_SUCCESS) {
