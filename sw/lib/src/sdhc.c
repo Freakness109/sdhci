@@ -30,6 +30,8 @@ sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, bool
 	cfg->print = sdhc_print_dummy;
     }
 
+    // make sure no bad state is left over between runs
+    write8(cfg, SOFTWARE_RESET, 0x1);
     // start up the internal clock so that it is stable by the time we need it
     write16(cfg, CLOCK_CONTROL, 0x01);
     cfg->peripheral_base = peripheral_base;
