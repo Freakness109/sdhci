@@ -14,6 +14,8 @@ struct sdhc_cfg {
     // To use debug printing, set the pre-processor definition SDHC_DEBUG_PRINTS=1
     // and set the print function to printf (or related)
     int (*print)(const char* fmt, ...);
+    // needed to wait for the card after raising frequency
+    void (*usleep)(uint64_t ticks);
 };
 
 typedef enum {
@@ -38,7 +40,7 @@ typedef enum {
     SDHC_WIDTH_4_BIT
 } sdhc_data_width_e;
 
-sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, bool is_simulation);
+sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, void (*usleep)(uint64_t), bool is_simulation);
 bool sdhc_get_card_present(struct sdhc_cfg *cfg);
 sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed);
 
