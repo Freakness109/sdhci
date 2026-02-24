@@ -26,14 +26,15 @@ static int sdhc_print_dummy(const char* fmt, ...) {
 }
 
 sdhc_error_e sdhc_init_library(struct sdhc_cfg *cfg, void *peripheral_base, bool is_simulation) {
+    if (cfg->print == NULL) {
+	cfg->print = sdhc_print_dummy;
+    }
+
     // start up the internal clock so that it is stable by the time we need it
     write16(cfg, CLOCK_CONTROL, 0x01);
     cfg->peripheral_base = peripheral_base;
     cfg->is_simulation = is_simulation;
     cfg->use_dma = false;
-    if (cfg->print == NULL) {
-	cfg->print = sdhc_print_dummy;
-    }
     return SDHC_SUCCESS;
 }
 
