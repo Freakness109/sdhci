@@ -297,17 +297,20 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
 	if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
 	    goto out;
 	}
-	// allow for a command complete that is not swallowed by the reads above
-	if ((normal_interrupt_status & 0x2) == 0) {
-	    // wait for transfer complete
-	    if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
-		goto out;
-	    }
-	    if ((normal_interrupt_status & 0x2) == 0) {
+	// allow for:
+	// - stale buffer write ready
+	// - command complete
+	uint16_t retries = 2;
+	while ((normal_interrupt_status & 0x2) == 0) {
+	    if (retries == 0) {
 		SDHC_DBG("Wrong interrupt, expected 2, got %x\n", normal_interrupt_status);
 		rc = SDHC_WRONG_INTERRUPT;
 		goto out;
 	    }
+	    if ((rc = sdhc_wait_for_interrupts(cfg, &normal_interrupt_status)) != SDHC_SUCCESS) {
+		goto out;
+	    }
+	    --retries;
 	}
 	if (read32(cfg, PRESENT_STATE) & (1 << 2)) {
 	    // DAT line active, we should have another transfer complete
