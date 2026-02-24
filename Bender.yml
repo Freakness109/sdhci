@@ -82,3 +82,4 @@ sources:
       - target/sim/src/tb_cmd_timeout.sv # sdhci_fixture
       - target/sim/src/tb_dat_timeout.sv # sdhci_fixture
       - target/sim/src/tb_block_read.sv # sdhci_fixture
+      - target/sim/src/tb_block_write.sv # sdhci_fixture
