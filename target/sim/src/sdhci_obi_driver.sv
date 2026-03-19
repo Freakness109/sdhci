@@ -132,7 +132,7 @@ module sdhci_obi_driver #(
   );
     logic [3:0] be;
     be = 4'b0001;
-    obi_write('h02C, be, {16'b0, 5'b0, enable, 2'b0}, finish_transaction);
+    obi_write('h02C, be, {24'b0, 5'b0, enable, 2'b0}, finish_transaction);
   endtask
 
   task automatic set_transfer_mode(
