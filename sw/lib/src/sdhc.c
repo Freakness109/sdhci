@@ -213,12 +213,17 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
     if (size > (0xFFFF * 512)) {
 	return SDHC_NOT_SUPPORTED;
     }
+    if (((uint64_t)buf) % 8) {
+	// make sure it is 64-bit aligned
+	return SDHC_NOT_SUPPORTED;
+    }
 
     sdhc_error_e rc = SDHC_SUCCESS;
 
     // is multiblock and block count enable
-    uint16_t is_multiblock = size > 512 ? (1 << 5) | (1 << 1) : 0;
-    if (is_multiblock) {
+    uint16_t is_multiblock = 0;
+    if (size > 512) {
+	is_multiblock = (1 << 5) | (1 << 1);
 	write16(cfg, BLOCK_COUNT_16, size / 512);
     }
 
@@ -226,8 +231,10 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
 
     // enable autocmd12
     uint16_t autocmd_enable = size == 8 ? 0 : 0x1 << 2;
+    uint16_t transfer_mode = is_multiblock | is_read | autocmd_enable;
+    SDHC_DBG("DATA CMD%02u, ARG=0x%08x, Transfer Mode=0x%08x\r\n", cmd, arg, transfer_mode);
 
-    write16(cfg, TRANSFER_MODE, is_multiblock | is_read | autocmd_enable);
+    write16(cfg, TRANSFER_MODE, transfer_mode);
     write32(cfg, ARGUMENT, arg);
 
     bool index_check = !(response_type == SDHC_R2 || response_type == SDHC_R3);
@@ -284,12 +291,13 @@ static sdhc_error_e sdhc_issue_data_cmd(struct sdhc_cfg *cfg, uint8_t cmd, uint3
 
 	    // data arrived
 	    // TODO: point iDMA at register
+	    uint32_t data;
 	    for (size_t i = 0; i < 512 / 4; ++i) {
-		write32(cfg, BUFFER_DATA_PORT,
-			buf[4*i] |
+		data = buf[4*i] |
 			buf[4*i+1] << 8  |
 			buf[4*i+2] << 16 |
-			buf[4*i+3] << 24);
+			buf[4*i+3] << 24;
+		write32(cfg, BUFFER_DATA_PORT, data);
 	    }
 	    buf += 512;
 	}
@@ -410,6 +418,27 @@ static INLINE uint8_t sdhc_compute_clock_divider(struct sdhc_cfg *cfg, uint16_t 
     return (1 << (shift - 1));
 }
 
+uint8_t sdhc_compute_timeout(struct sdhc_cfg *cfg, uint16_t ms) {
+    uint32_t khz_freq = cfg->timeout_clk_freq * (cfg->timeout_is_mhz ? 1000 : 1);
+    // scale is from 2^13 to 2^(13 + 14)
+    khz_freq >>= 13;
+
+    uint8_t total_shift = 0;
+    // get to 1 khz = 1ms
+    while (khz_freq > 1) {
+	total_shift += 1;
+	khz_freq >>= 1;
+    }
+
+    while (ms > 1) {
+	total_shift += 1;
+	ms >>= 1;
+    }
+    if (total_shift > 14)
+	return 14;
+    return total_shift;
+}
+
 sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     sdhc_error_e rc;
     sdhc_response_t response;
@@ -431,17 +460,26 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     // clear interrupts
     write16(cfg, ERROR_INTERRUPT_STATUS, read16(cfg, ERROR_INTERRUPT_STATUS));
 
-    // set to the longest timeout possible
-    write8(cfg, TIMEOUT_CONTROL, 0xe);
-
     uint16_t capabilities = read16(cfg, CAPABILITIES);
     cfg->base_clk_freq = (capabilities >> 8) & 0xFF;
     cfg->timeout_clk_freq = capabilities & 0x3F;
     cfg->timeout_is_mhz = !!(capabilities & 0x8);
+
+    // set to around 1 second
+    write8(cfg, TIMEOUT_CONTROL, sdhc_compute_timeout(cfg, 1000));
+
     // 3.3V
     write8(cfg, POWER_CONTROL, 0xf);
     // enable clock and set to 400kHz for setup
     write16(cfg, CLOCK_CONTROL, 0x05 | (sdhc_compute_clock_divider(cfg, 400) << 8));
+
+    // Reset card
+    if ((rc = sdhc_issue_cmd(cfg, 0, 0, SDHC_NO_RESPONSE, &response)) != SDHC_SUCCESS) {
+	return rc;
+    }
+    if ((rc = sdhc_issue_acmd(cfg, 41, 0, SDHC_R3, &response)) != SDHC_SUCCESS) {
+	return rc;
+    }
 
     // Reset card
     if ((rc = sdhc_issue_cmd(cfg, 0, 0, SDHC_NO_RESPONSE, &response)) != SDHC_SUCCESS) {
@@ -476,7 +514,7 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
     }
 
     // send RCA
-    if ((rc = sdhc_issue_cmd(cfg, 3, 1, SDHC_R6, &response)) != SDHC_SUCCESS) {
+    if ((rc = sdhc_issue_cmd(cfg, 3, 0, SDHC_R6, &response)) != SDHC_SUCCESS) {
 	return rc;
     }
     cfg->rca = response.R6.new_rca;
@@ -531,6 +569,10 @@ sdhc_error_e sdhc_init_card(struct sdhc_cfg *cfg, sdhc_speed_e max_speed) {
 }
 
 sdhc_error_e sdhc_read(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, uint32_t size) {
+    if (!sdhc_get_card_present(cfg)) {
+	return SDHC_NO_CARD;
+    }
+
     uint8_t buffer[512];
     sdhc_response_t response;
     sdhc_error_e rc = SDHC_SUCCESS;
@@ -587,6 +629,9 @@ sdhc_error_e sdhc_read(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, ui
 }
 
 sdhc_error_e sdhc_write(struct sdhc_cfg *cfg, uint32_t address, uint8_t *data, uint32_t size) {
+    if (!sdhc_get_card_present(cfg)) {
+	return SDHC_NO_CARD;
+    }
 
     sdhc_response_t response;
     sdhc_error_e rc = SDHC_SUCCESS;
