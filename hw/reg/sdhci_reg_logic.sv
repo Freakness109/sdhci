@@ -172,8 +172,7 @@ module sdhci_reg_logic (
         !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.auto_cmd12_enable             .qe, '0)
   `FFL (transfer_mode_reg_o.block_count_enable            .d, reg2hw_i.transfer_mode.block_count_enable            .q,
         !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.block_count_enable            .qe, '0)
-  `FFL (transfer_mode_reg_o.dma_enable                    .d, reg2hw_i.transfer_mode.dma_enable                    .q,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.dma_enable                    .qe, '0)
+  // dma_enable is read-only zero in the register file (DMA not implemented), no shadow needed
 
   // Writes to the block_count and block_size register should be ignored when command_inhibit_dat is active
   logic [11:0] block_size;
@@ -204,7 +203,7 @@ module sdhci_reg_logic (
     reg2hw_modified_o.transfer_mode.data_transfer_direction_select.q = transfer_mode_reg_o.data_transfer_direction_select.d;
     reg2hw_modified_o.transfer_mode.auto_cmd12_enable             .q = transfer_mode_reg_o.auto_cmd12_enable             .d;
     reg2hw_modified_o.transfer_mode.block_count_enable            .q = transfer_mode_reg_o.block_count_enable            .d;
-    reg2hw_modified_o.transfer_mode.dma_enable                    .q = transfer_mode_reg_o.dma_enable                    .d;
+    // dma_enable removed from struct (read-only zero in register file)
 
     reg2hw_modified_o.block_size.transfer_block_size.q = block_size_reg_o.transfer_block_size.d;
 

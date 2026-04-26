@@ -69,8 +69,6 @@ module sdhci_reg_top #(
   // Format: <reg>_<field>_{wd|we|qs}
   //        or <reg>_{wd|we|qs} if field == 1 or 0
   logic [31:0] system_address_qs;
-  logic [31:0] system_address_wd;
-  logic system_address_we;
   logic [11:0] block_size_transfer_block_size_qs;
   logic [11:0] block_size_transfer_block_size_wd;
   logic block_size_transfer_block_size_we;
@@ -89,8 +87,6 @@ module sdhci_reg_top #(
   logic [31:0] argument_wd;
   logic argument_we;
   logic transfer_mode_dma_enable_qs;
-  logic transfer_mode_dma_enable_wd;
-  logic transfer_mode_dma_enable_we;
   logic transfer_mode_dma_enable_re;
   logic transfer_mode_block_count_enable_qs;
   logic transfer_mode_block_count_enable_wd;
@@ -159,44 +155,22 @@ module sdhci_reg_top #(
   logic present_state_cmd_line_signal_level_qs;
   logic [6:0] present_state_rsvd_25_qs;
   logic host_control_led_control_qs;
-  logic host_control_led_control_wd;
-  logic host_control_led_control_we;
   logic host_control_data_transfer_width_qs;
   logic host_control_data_transfer_width_wd;
   logic host_control_data_transfer_width_we;
   logic host_control_high_speed_enable_qs;
-  logic host_control_high_speed_enable_wd;
-  logic host_control_high_speed_enable_we;
   logic [4:0] host_control_rsvd_3_qs;
   logic power_control_sd_bus_power_qs;
-  logic power_control_sd_bus_power_wd;
-  logic power_control_sd_bus_power_we;
   logic [2:0] power_control_sd_bus_voltage_select_qs;
-  logic [2:0] power_control_sd_bus_voltage_select_wd;
-  logic power_control_sd_bus_voltage_select_we;
   logic [3:0] power_control_rsvd_4_qs;
   logic block_gap_control_stop_at_block_gap_request_qs;
-  logic block_gap_control_stop_at_block_gap_request_wd;
-  logic block_gap_control_stop_at_block_gap_request_we;
   logic block_gap_control_continue_request_qs;
-  logic block_gap_control_continue_request_wd;
-  logic block_gap_control_continue_request_we;
   logic block_gap_control_read_wait_control_qs;
-  logic block_gap_control_read_wait_control_wd;
-  logic block_gap_control_read_wait_control_we;
   logic block_gap_control_interrupt_at_block_gap_qs;
-  logic block_gap_control_interrupt_at_block_gap_wd;
-  logic block_gap_control_interrupt_at_block_gap_we;
   logic [3:0] block_gap_control_rsvd_4_qs;
   logic wakeup_control_wakeup_event_enable_on_card_interrupt_qs;
-  logic wakeup_control_wakeup_event_enable_on_card_interrupt_wd;
-  logic wakeup_control_wakeup_event_enable_on_card_interrupt_we;
   logic wakeup_control_wakeup_event_enable_on_sd_card_insertion_qs;
-  logic wakeup_control_wakeup_event_enable_on_sd_card_insertion_wd;
-  logic wakeup_control_wakeup_event_enable_on_sd_card_insertion_we;
   logic wakeup_control_wakeup_event_enable_on_sd_card_removal_qs;
-  logic wakeup_control_wakeup_event_enable_on_sd_card_removal_wd;
-  logic wakeup_control_wakeup_event_enable_on_sd_card_removal_we;
   logic [4:0] wakeup_control_rsvd_3_qs;
   logic clock_control_internal_clock_enable_qs;
   logic clock_control_internal_clock_enable_wd;
@@ -288,11 +262,7 @@ module sdhci_reg_top #(
   logic normal_interrupt_status_enable_transfer_complete_status_enable_wd;
   logic normal_interrupt_status_enable_transfer_complete_status_enable_we;
   logic normal_interrupt_status_enable_block_gap_event_status_enable_qs;
-  logic normal_interrupt_status_enable_block_gap_event_status_enable_wd;
-  logic normal_interrupt_status_enable_block_gap_event_status_enable_we;
   logic normal_interrupt_status_enable_dma_interrupt_status_enable_qs;
-  logic normal_interrupt_status_enable_dma_interrupt_status_enable_wd;
-  logic normal_interrupt_status_enable_dma_interrupt_status_enable_we;
   logic normal_interrupt_status_enable_buffer_write_ready_status_enable_qs;
   logic normal_interrupt_status_enable_buffer_write_ready_status_enable_wd;
   logic normal_interrupt_status_enable_buffer_write_ready_status_enable_we;
@@ -332,15 +302,11 @@ module sdhci_reg_top #(
   logic error_interrupt_status_enable_data_end_bit_error_status_enable_wd;
   logic error_interrupt_status_enable_data_end_bit_error_status_enable_we;
   logic error_interrupt_status_enable_current_limit_error_status_enable_qs;
-  logic error_interrupt_status_enable_current_limit_error_status_enable_wd;
-  logic error_interrupt_status_enable_current_limit_error_status_enable_we;
   logic error_interrupt_status_enable_auto_cmd12_error_status_enable_qs;
   logic error_interrupt_status_enable_auto_cmd12_error_status_enable_wd;
   logic error_interrupt_status_enable_auto_cmd12_error_status_enable_we;
   logic [2:0] error_interrupt_status_enable_rsvd_9_qs;
   logic [3:0] error_interrupt_status_enable_vendor_specific_error_status_enable_qs;
-  logic [3:0] error_interrupt_status_enable_vendor_specific_error_status_enable_wd;
-  logic error_interrupt_status_enable_vendor_specific_error_status_enable_we;
   logic normal_interrupt_signal_enable_command_complete_signal_enable_qs;
   logic normal_interrupt_signal_enable_command_complete_signal_enable_wd;
   logic normal_interrupt_signal_enable_command_complete_signal_enable_we;
@@ -348,11 +314,7 @@ module sdhci_reg_top #(
   logic normal_interrupt_signal_enable_transfer_complete_signal_enable_wd;
   logic normal_interrupt_signal_enable_transfer_complete_signal_enable_we;
   logic normal_interrupt_signal_enable_block_gap_event_signal_enable_qs;
-  logic normal_interrupt_signal_enable_block_gap_event_signal_enable_wd;
-  logic normal_interrupt_signal_enable_block_gap_event_signal_enable_we;
   logic normal_interrupt_signal_enable_dma_interrupt_signal_enable_qs;
-  logic normal_interrupt_signal_enable_dma_interrupt_signal_enable_wd;
-  logic normal_interrupt_signal_enable_dma_interrupt_signal_enable_we;
   logic normal_interrupt_signal_enable_buffer_write_ready_signal_enable_qs;
   logic normal_interrupt_signal_enable_buffer_write_ready_signal_enable_wd;
   logic normal_interrupt_signal_enable_buffer_write_ready_signal_enable_we;
@@ -392,15 +354,11 @@ module sdhci_reg_top #(
   logic error_interrupt_signal_enable_data_end_bit_error_signal_enable_wd;
   logic error_interrupt_signal_enable_data_end_bit_error_signal_enable_we;
   logic error_interrupt_signal_enable_current_limit_error_signal_enable_qs;
-  logic error_interrupt_signal_enable_current_limit_error_signal_enable_wd;
-  logic error_interrupt_signal_enable_current_limit_error_signal_enable_we;
   logic error_interrupt_signal_enable_auto_cmd12_error_signal_enable_qs;
   logic error_interrupt_signal_enable_auto_cmd12_error_signal_enable_wd;
   logic error_interrupt_signal_enable_auto_cmd12_error_signal_enable_we;
   logic [2:0] error_interrupt_signal_enable_rsvd_9_qs;
   logic [3:0] error_interrupt_signal_enable_vendor_specific_error_signal_enable_qs;
-  logic [3:0] error_interrupt_signal_enable_vendor_specific_error_signal_enable_wd;
-  logic error_interrupt_signal_enable_vendor_specific_error_signal_enable_we;
   logic auto_cmd12_error_status_auto_cmd12_not_executed_qs;
   logic auto_cmd12_error_status_auto_cmd12_timeout_error_qs;
   logic auto_cmd12_error_status_auto_cmd12_crc_error_qs;
@@ -439,29 +397,8 @@ module sdhci_reg_top #(
   // Register instances
   // R[system_address]: V(False)
 
-  prim_subreg #(
-    .DW      (32),
-    .SWACCESS("RW"),
-    .RESVAL  (32'h0)
-  ) u_system_address (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (system_address_we),
-    .wd     (system_address_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (),
-
-    // to register interface (read)
-    .qs     (system_address_qs)
-  );
+  // constant-only read
+  assign system_address_qs = 32'h0;
 
 
   // R[block_size]: V(True)
@@ -561,12 +498,12 @@ module sdhci_reg_top #(
     .DW    (1)
   ) u_transfer_mode_dma_enable (
     .re     (transfer_mode_dma_enable_re),
-    .we     (transfer_mode_dma_enable_we),
-    .wd     (transfer_mode_dma_enable_wd),
-    .d      (hw2reg.transfer_mode.dma_enable.d),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      ('0),
     .qre    (),
-    .qe     (reg2hw.transfer_mode.dma_enable.qe),
-    .q      (reg2hw.transfer_mode.dma_enable.q ),
+    .qe     (),
+    .q      (),
     .qs     (transfer_mode_dma_enable_qs)
   );
 
@@ -1309,29 +1246,8 @@ module sdhci_reg_top #(
   // R[host_control]: V(False)
 
   //   F[led_control]: 0:0
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_host_control_led_control (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (host_control_led_control_we),
-    .wd     (host_control_led_control_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.host_control.led_control.q ),
-
-    // to register interface (read)
-    .qs     (host_control_led_control_qs)
-  );
+  // constant-only read
+  assign host_control_led_control_qs = 1'h0;
 
 
   //   F[data_transfer_width]: 1:1
@@ -1361,29 +1277,8 @@ module sdhci_reg_top #(
 
 
   //   F[high_speed_enable]: 2:2
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_host_control_high_speed_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (host_control_high_speed_enable_we),
-    .wd     (host_control_high_speed_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.host_control.high_speed_enable.q ),
-
-    // to register interface (read)
-    .qs     (host_control_high_speed_enable_qs)
-  );
+  // constant-only read
+  assign host_control_high_speed_enable_qs = 1'h0;
 
 
   //   F[rsvd_3]: 7:3
@@ -1394,55 +1289,13 @@ module sdhci_reg_top #(
   // R[power_control]: V(False)
 
   //   F[sd_bus_power]: 8:8
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_power_control_sd_bus_power (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (power_control_sd_bus_power_we),
-    .wd     (power_control_sd_bus_power_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.power_control.sd_bus_power.q ),
-
-    // to register interface (read)
-    .qs     (power_control_sd_bus_power_qs)
-  );
+  // constant-only read
+  assign power_control_sd_bus_power_qs = 1'h1;
 
 
   //   F[sd_bus_voltage_select]: 11:9
-  prim_subreg #(
-    .DW      (3),
-    .SWACCESS("RW"),
-    .RESVAL  (3'h0)
-  ) u_power_control_sd_bus_voltage_select (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (power_control_sd_bus_voltage_select_we),
-    .wd     (power_control_sd_bus_voltage_select_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.power_control.sd_bus_voltage_select.q ),
-
-    // to register interface (read)
-    .qs     (power_control_sd_bus_voltage_select_qs)
-  );
+  // constant-only read
+  assign power_control_sd_bus_voltage_select_qs = 3'h7;
 
 
   //   F[rsvd_4]: 15:12
@@ -1453,107 +1306,23 @@ module sdhci_reg_top #(
   // R[block_gap_control]: V(False)
 
   //   F[stop_at_block_gap_request]: 16:16
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_block_gap_control_stop_at_block_gap_request (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (block_gap_control_stop_at_block_gap_request_we),
-    .wd     (block_gap_control_stop_at_block_gap_request_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.block_gap_control.stop_at_block_gap_request.q ),
-
-    // to register interface (read)
-    .qs     (block_gap_control_stop_at_block_gap_request_qs)
-  );
+  // constant-only read
+  assign block_gap_control_stop_at_block_gap_request_qs = 1'h0;
 
 
   //   F[continue_request]: 17:17
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("W1S"),
-    .RESVAL  (1'h0)
-  ) u_block_gap_control_continue_request (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (block_gap_control_continue_request_we),
-    .wd     (block_gap_control_continue_request_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.block_gap_control.continue_request.q ),
-
-    // to register interface (read)
-    .qs     (block_gap_control_continue_request_qs)
-  );
+  // constant-only read
+  assign block_gap_control_continue_request_qs = 1'h0;
 
 
   //   F[read_wait_control]: 18:18
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_block_gap_control_read_wait_control (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (block_gap_control_read_wait_control_we),
-    .wd     (block_gap_control_read_wait_control_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.block_gap_control.read_wait_control.q ),
-
-    // to register interface (read)
-    .qs     (block_gap_control_read_wait_control_qs)
-  );
+  // constant-only read
+  assign block_gap_control_read_wait_control_qs = 1'h0;
 
 
   //   F[interrupt_at_block_gap]: 19:19
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_block_gap_control_interrupt_at_block_gap (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (block_gap_control_interrupt_at_block_gap_we),
-    .wd     (block_gap_control_interrupt_at_block_gap_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.block_gap_control.interrupt_at_block_gap.q ),
-
-    // to register interface (read)
-    .qs     (block_gap_control_interrupt_at_block_gap_qs)
-  );
+  // constant-only read
+  assign block_gap_control_interrupt_at_block_gap_qs = 1'h0;
 
 
   //   F[rsvd_4]: 23:20
@@ -1564,81 +1333,18 @@ module sdhci_reg_top #(
   // R[wakeup_control]: V(False)
 
   //   F[wakeup_event_enable_on_card_interrupt]: 24:24
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_wakeup_control_wakeup_event_enable_on_card_interrupt (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (wakeup_control_wakeup_event_enable_on_card_interrupt_we),
-    .wd     (wakeup_control_wakeup_event_enable_on_card_interrupt_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.wakeup_control.wakeup_event_enable_on_card_interrupt.q ),
-
-    // to register interface (read)
-    .qs     (wakeup_control_wakeup_event_enable_on_card_interrupt_qs)
-  );
+  // constant-only read
+  assign wakeup_control_wakeup_event_enable_on_card_interrupt_qs = 1'h0;
 
 
   //   F[wakeup_event_enable_on_sd_card_insertion]: 25:25
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_wakeup_control_wakeup_event_enable_on_sd_card_insertion (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (wakeup_control_wakeup_event_enable_on_sd_card_insertion_we),
-    .wd     (wakeup_control_wakeup_event_enable_on_sd_card_insertion_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.wakeup_control.wakeup_event_enable_on_sd_card_insertion.q ),
-
-    // to register interface (read)
-    .qs     (wakeup_control_wakeup_event_enable_on_sd_card_insertion_qs)
-  );
+  // constant-only read
+  assign wakeup_control_wakeup_event_enable_on_sd_card_insertion_qs = 1'h0;
 
 
   //   F[wakeup_event_enable_on_sd_card_removal]: 26:26
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_wakeup_control_wakeup_event_enable_on_sd_card_removal (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (wakeup_control_wakeup_event_enable_on_sd_card_removal_we),
-    .wd     (wakeup_control_wakeup_event_enable_on_sd_card_removal_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.wakeup_control.wakeup_event_enable_on_sd_card_removal.q ),
-
-    // to register interface (read)
-    .qs     (wakeup_control_wakeup_event_enable_on_sd_card_removal_qs)
-  );
+  // constant-only read
+  assign wakeup_control_wakeup_event_enable_on_sd_card_removal_qs = 1'h0;
 
 
   //   F[rsvd_3]: 31:27
@@ -2441,55 +2147,13 @@ module sdhci_reg_top #(
 
 
   //   F[block_gap_event_status_enable]: 2:2
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_normal_interrupt_status_enable_block_gap_event_status_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (normal_interrupt_status_enable_block_gap_event_status_enable_we),
-    .wd     (normal_interrupt_status_enable_block_gap_event_status_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_status_enable.block_gap_event_status_enable.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_status_enable_block_gap_event_status_enable_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_status_enable_block_gap_event_status_enable_qs = 1'h0;
 
 
   //   F[dma_interrupt_status_enable]: 3:3
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_normal_interrupt_status_enable_dma_interrupt_status_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (normal_interrupt_status_enable_dma_interrupt_status_enable_we),
-    .wd     (normal_interrupt_status_enable_dma_interrupt_status_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_status_enable.dma_interrupt_status_enable.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_status_enable_dma_interrupt_status_enable_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_status_enable_dma_interrupt_status_enable_qs = 1'h0;
 
 
   //   F[buffer_write_ready_status_enable]: 4:4
@@ -2837,29 +2501,8 @@ module sdhci_reg_top #(
 
 
   //   F[current_limit_error_status_enable]: 23:23
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_error_interrupt_status_enable_current_limit_error_status_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (error_interrupt_status_enable_current_limit_error_status_enable_we),
-    .wd     (error_interrupt_status_enable_current_limit_error_status_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_status_enable.current_limit_error_status_enable.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_status_enable_current_limit_error_status_enable_qs)
-  );
+  // constant-only read
+  assign error_interrupt_status_enable_current_limit_error_status_enable_qs = 1'h0;
 
 
   //   F[auto_cmd12_error_status_enable]: 24:24
@@ -2894,29 +2537,8 @@ module sdhci_reg_top #(
 
 
   //   F[vendor_specific_error_status_enable]: 31:28
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RW"),
-    .RESVAL  (4'h0)
-  ) u_error_interrupt_status_enable_vendor_specific_error_status_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (error_interrupt_status_enable_vendor_specific_error_status_enable_we),
-    .wd     (error_interrupt_status_enable_vendor_specific_error_status_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_status_enable.vendor_specific_error_status_enable.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_status_enable_vendor_specific_error_status_enable_qs)
-  );
+  // constant-only read
+  assign error_interrupt_status_enable_vendor_specific_error_status_enable_qs = 4'h0;
 
 
   // R[normal_interrupt_signal_enable]: V(False)
@@ -2974,55 +2596,13 @@ module sdhci_reg_top #(
 
 
   //   F[block_gap_event_signal_enable]: 2:2
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_normal_interrupt_signal_enable_block_gap_event_signal_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (normal_interrupt_signal_enable_block_gap_event_signal_enable_we),
-    .wd     (normal_interrupt_signal_enable_block_gap_event_signal_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_signal_enable.block_gap_event_signal_enable.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_signal_enable_block_gap_event_signal_enable_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_signal_enable_block_gap_event_signal_enable_qs = 1'h0;
 
 
   //   F[dma_interrupt_signal_enable]: 3:3
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_normal_interrupt_signal_enable_dma_interrupt_signal_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (normal_interrupt_signal_enable_dma_interrupt_signal_enable_we),
-    .wd     (normal_interrupt_signal_enable_dma_interrupt_signal_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.normal_interrupt_signal_enable.dma_interrupt_signal_enable.q ),
-
-    // to register interface (read)
-    .qs     (normal_interrupt_signal_enable_dma_interrupt_signal_enable_qs)
-  );
+  // constant-only read
+  assign normal_interrupt_signal_enable_dma_interrupt_signal_enable_qs = 1'h0;
 
 
   //   F[buffer_write_ready_signal_enable]: 4:4
@@ -3350,29 +2930,8 @@ module sdhci_reg_top #(
 
 
   //   F[current_limit_error_signal_enable]: 23:23
-  prim_subreg #(
-    .DW      (1),
-    .SWACCESS("RW"),
-    .RESVAL  (1'h0)
-  ) u_error_interrupt_signal_enable_current_limit_error_signal_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (error_interrupt_signal_enable_current_limit_error_signal_enable_we),
-    .wd     (error_interrupt_signal_enable_current_limit_error_signal_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_signal_enable.current_limit_error_signal_enable.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_signal_enable_current_limit_error_signal_enable_qs)
-  );
+  // constant-only read
+  assign error_interrupt_signal_enable_current_limit_error_signal_enable_qs = 1'h0;
 
 
   //   F[auto_cmd12_error_signal_enable]: 24:24
@@ -3407,29 +2966,8 @@ module sdhci_reg_top #(
 
 
   //   F[vendor_specific_error_signal_enable]: 31:28
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RW"),
-    .RESVAL  (4'h0)
-  ) u_error_interrupt_signal_enable_vendor_specific_error_signal_enable (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (error_interrupt_signal_enable_vendor_specific_error_signal_enable_we),
-    .wd     (error_interrupt_signal_enable_vendor_specific_error_signal_enable_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.error_interrupt_signal_enable.vendor_specific_error_signal_enable.q ),
-
-    // to register interface (read)
-    .qs     (error_interrupt_signal_enable_vendor_specific_error_signal_enable_qs)
-  );
+  // constant-only read
+  assign error_interrupt_signal_enable_vendor_specific_error_signal_enable_qs = 4'h0;
 
 
   // R[auto_cmd12_error_status]: V(False)
@@ -3822,9 +3360,6 @@ module sdhci_reg_top #(
                (addr_hit[31] & (|((reg_be ^ (reg_be >> 1)) & SDHCI_DISALLOWED_BOUNDARY_CROSSINGS[31])))));
   end
 
-  assign system_address_we = addr_hit[0] & reg_we & !reg_error & (|(4'b 1111 & reg_be));
-  assign system_address_wd = reg_wdata[31:0];
-
   assign block_size_transfer_block_size_we = addr_hit[1] & reg_we & !reg_error & (|(4'b 0011 & reg_be));
   assign block_size_transfer_block_size_wd = reg_wdata[11:0];
   assign block_size_transfer_block_size_re = addr_hit[1] & reg_re & !reg_error;
@@ -3842,8 +3377,6 @@ module sdhci_reg_top #(
   assign argument_we = addr_hit[3] & reg_we & !reg_error & (|(4'b 1111 & reg_be));
   assign argument_wd = reg_wdata[31:0];
 
-  assign transfer_mode_dma_enable_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign transfer_mode_dma_enable_wd = reg_wdata[0];
   assign transfer_mode_dma_enable_re = addr_hit[4] & reg_re & !reg_error;
 
   assign transfer_mode_block_count_enable_we = addr_hit[4] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
@@ -3890,41 +3423,8 @@ module sdhci_reg_top #(
   assign buffer_data_port_wd = reg_wdata[31:0];
   assign buffer_data_port_re = addr_hit[10] & reg_re & !reg_error;
 
-  assign host_control_led_control_we = addr_hit[12] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign host_control_led_control_wd = reg_wdata[0];
-
   assign host_control_data_transfer_width_we = addr_hit[12] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign host_control_data_transfer_width_wd = reg_wdata[1];
-
-  assign host_control_high_speed_enable_we = addr_hit[12] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign host_control_high_speed_enable_wd = reg_wdata[2];
-
-  assign power_control_sd_bus_power_we = addr_hit[13] & reg_we & !reg_error & (|(4'b 0010 & reg_be));
-  assign power_control_sd_bus_power_wd = reg_wdata[8];
-
-  assign power_control_sd_bus_voltage_select_we = addr_hit[13] & reg_we & !reg_error & (|(4'b 0010 & reg_be));
-  assign power_control_sd_bus_voltage_select_wd = reg_wdata[11:9];
-
-  assign block_gap_control_stop_at_block_gap_request_we = addr_hit[14] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
-  assign block_gap_control_stop_at_block_gap_request_wd = reg_wdata[16];
-
-  assign block_gap_control_continue_request_we = addr_hit[14] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
-  assign block_gap_control_continue_request_wd = reg_wdata[17];
-
-  assign block_gap_control_read_wait_control_we = addr_hit[14] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
-  assign block_gap_control_read_wait_control_wd = reg_wdata[18];
-
-  assign block_gap_control_interrupt_at_block_gap_we = addr_hit[14] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
-  assign block_gap_control_interrupt_at_block_gap_wd = reg_wdata[19];
-
-  assign wakeup_control_wakeup_event_enable_on_card_interrupt_we = addr_hit[15] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
-  assign wakeup_control_wakeup_event_enable_on_card_interrupt_wd = reg_wdata[24];
-
-  assign wakeup_control_wakeup_event_enable_on_sd_card_insertion_we = addr_hit[15] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
-  assign wakeup_control_wakeup_event_enable_on_sd_card_insertion_wd = reg_wdata[25];
-
-  assign wakeup_control_wakeup_event_enable_on_sd_card_removal_we = addr_hit[15] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
-  assign wakeup_control_wakeup_event_enable_on_sd_card_removal_wd = reg_wdata[26];
 
   assign clock_control_internal_clock_enable_we = addr_hit[16] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign clock_control_internal_clock_enable_wd = reg_wdata[0];
@@ -4007,12 +3507,6 @@ module sdhci_reg_top #(
   assign normal_interrupt_status_enable_transfer_complete_status_enable_we = addr_hit[21] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign normal_interrupt_status_enable_transfer_complete_status_enable_wd = reg_wdata[1];
 
-  assign normal_interrupt_status_enable_block_gap_event_status_enable_we = addr_hit[21] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign normal_interrupt_status_enable_block_gap_event_status_enable_wd = reg_wdata[2];
-
-  assign normal_interrupt_status_enable_dma_interrupt_status_enable_we = addr_hit[21] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign normal_interrupt_status_enable_dma_interrupt_status_enable_wd = reg_wdata[3];
-
   assign normal_interrupt_status_enable_buffer_write_ready_status_enable_we = addr_hit[21] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign normal_interrupt_status_enable_buffer_write_ready_status_enable_wd = reg_wdata[4];
 
@@ -4049,26 +3543,14 @@ module sdhci_reg_top #(
   assign error_interrupt_status_enable_data_end_bit_error_status_enable_we = addr_hit[22] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
   assign error_interrupt_status_enable_data_end_bit_error_status_enable_wd = reg_wdata[22];
 
-  assign error_interrupt_status_enable_current_limit_error_status_enable_we = addr_hit[22] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
-  assign error_interrupt_status_enable_current_limit_error_status_enable_wd = reg_wdata[23];
-
   assign error_interrupt_status_enable_auto_cmd12_error_status_enable_we = addr_hit[22] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
   assign error_interrupt_status_enable_auto_cmd12_error_status_enable_wd = reg_wdata[24];
-
-  assign error_interrupt_status_enable_vendor_specific_error_status_enable_we = addr_hit[22] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
-  assign error_interrupt_status_enable_vendor_specific_error_status_enable_wd = reg_wdata[31:28];
 
   assign normal_interrupt_signal_enable_command_complete_signal_enable_we = addr_hit[23] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign normal_interrupt_signal_enable_command_complete_signal_enable_wd = reg_wdata[0];
 
   assign normal_interrupt_signal_enable_transfer_complete_signal_enable_we = addr_hit[23] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign normal_interrupt_signal_enable_transfer_complete_signal_enable_wd = reg_wdata[1];
-
-  assign normal_interrupt_signal_enable_block_gap_event_signal_enable_we = addr_hit[23] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign normal_interrupt_signal_enable_block_gap_event_signal_enable_wd = reg_wdata[2];
-
-  assign normal_interrupt_signal_enable_dma_interrupt_signal_enable_we = addr_hit[23] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
-  assign normal_interrupt_signal_enable_dma_interrupt_signal_enable_wd = reg_wdata[3];
 
   assign normal_interrupt_signal_enable_buffer_write_ready_signal_enable_we = addr_hit[23] & reg_we & !reg_error & (|(4'b 0001 & reg_be));
   assign normal_interrupt_signal_enable_buffer_write_ready_signal_enable_wd = reg_wdata[4];
@@ -4106,14 +3588,8 @@ module sdhci_reg_top #(
   assign error_interrupt_signal_enable_data_end_bit_error_signal_enable_we = addr_hit[24] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
   assign error_interrupt_signal_enable_data_end_bit_error_signal_enable_wd = reg_wdata[22];
 
-  assign error_interrupt_signal_enable_current_limit_error_signal_enable_we = addr_hit[24] & reg_we & !reg_error & (|(4'b 0100 & reg_be));
-  assign error_interrupt_signal_enable_current_limit_error_signal_enable_wd = reg_wdata[23];
-
   assign error_interrupt_signal_enable_auto_cmd12_error_signal_enable_we = addr_hit[24] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
   assign error_interrupt_signal_enable_auto_cmd12_error_signal_enable_wd = reg_wdata[24];
-
-  assign error_interrupt_signal_enable_vendor_specific_error_signal_enable_we = addr_hit[24] & reg_we & !reg_error & (|(4'b 1000 & reg_be));
-  assign error_interrupt_signal_enable_vendor_specific_error_signal_enable_wd = reg_wdata[31:28];
 
   assign slot_interrupt_status_interrupt_signal_for_each_slot_re = addr_hit[30] & reg_re & !reg_error;
 
@@ -4449,3 +3925,5 @@ module sdhci_reg_top_intf
   );
   
 endmodule
+
+

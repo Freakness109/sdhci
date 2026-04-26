@@ -22,14 +22,15 @@
   registers: [
     {
       name: "system_address"
-      desc: ""
+      desc: "Not used, DMA not implemented"
       hwaccess: "none"
       fields: [
         {
           bits: "31:0"
           name: "dma_system_address"
           desc: ""
-          swaccess: "rw"
+          swaccess: "ro"
+          resval: "0"
         }
       ]
     }
@@ -154,8 +155,10 @@
             {
               bits: "0"
               name: "dma_enable"
-              desc: ""
-              swaccess: "rw"
+              desc: "DMA not implemented, fixed to 0"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
           ]
         }
@@ -423,7 +426,10 @@
             {
               bits: "2"
               name: "high_speed_enable"
-              desc: ""
+              desc: "High speed not differentiated, fixed to 0"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "1"
@@ -434,106 +440,106 @@
             {
               bits: "0"
               name: "led_control"
-              desc: ""
+              desc: "LED not implemented, fixed to 0"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
           ]
         }
         {
           name: "power_control"
-          desc: ""
-          swaccess: "rw"
-          hwaccess: "hro"
+          desc: "Power switching not implemented, always on at 3.3V"
+          swaccess: "ro"
+          hwaccess: "none"
           fields: [
             {
               bits: "7:4"
               name: "rsvd_4"
               desc: ""
-              swaccess: "ro"
-              hwaccess: "none"
               resval: "0"
             }
             {
               bits: "3:1"
               name: "sd_bus_voltage_select"
               desc: ""
+              resval: "0b111"
             }
             {
               bits: "0"
               name: "sd_bus_power"
               desc: ""
+              resval: "1"
             }
           ]
         }
         {
           name: "block_gap_control"
-          desc: ""
-          hwaccess: "hro"
+          desc: "Block gap not implemented, fixed to 0"
+          swaccess: "ro"
+          hwaccess: "none"
           fields: [
             {
               bits: "7:4"
               name: "rsvd_4"
               desc: ""
-              swaccess: "ro"
-              hwaccess: "none"
               resval: "0"
             }
             {
               bits: "3"
               name: "interrupt_at_block_gap"
               desc: ""
-              swaccess: "rw"
+              resval: "0"
             }
             {
               bits: "2"
               name: "read_wait_control"
               desc: ""
-              swaccess: "rw"
+              resval: "0"
             }
             {
               bits: "1"
               name: "continue_request"
               desc: ""
-              swaccess: "rw1s"
+              resval: "0"
             }
             {
               bits: "0"
               name: "stop_at_block_gap_request"
               desc: ""
-              swaccess: "rw"
+              resval: "0"
             }
           ]
         }
         {
           name: "wakeup_control"
-          desc: ""
-          swaccess: "rw"
-          hwaccess: "hro"
+          desc: "Wakeup not implemented, fixed to 0"
+          swaccess: "ro"
+          hwaccess: "none"
           fields: [
             {
               bits: "7:3"
               name: "rsvd_3"
               desc: ""
-              swaccess: "ro"
-              hwaccess: "none"
               resval: "0"
             }
             {
               bits: "2"
               name: "wakeup_event_enable_on_sd_card_removal"
               desc: ""
-              swaccess: "rw"
+              resval: "0"
             }
             {
               bits: "1"
               name: "wakeup_event_enable_on_sd_card_insertion"
               desc: ""
-              swaccess: "rw"
+              resval: "0"
             }
             {
               bits: "0"
               name: "wakeup_event_enable_on_card_interrupt"
               desc: ""
-              swaccess: "rw"
+              resval: "0"
             }
           ]
         }
@@ -635,7 +641,6 @@
               name: "software_reset_for_all"
               desc: ""
               swaccess: "rw1s"
-              hwaccess: "hro"
             }
           ]
         }
@@ -855,14 +860,18 @@
             {
               bits: "3"
               name: "dma_interrupt_status_enable"
-              desc: ""
-              swaccess: "rw"
+              desc: "DMA not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "2"
               name: "block_gap_event_status_enable"
-              desc: ""
-              swaccess: "rw"
+              desc: "Block gap not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "1"
@@ -887,7 +896,10 @@
             {
               bits: "15:12"
               name: "vendor_specific_error_status_enable"
-              desc: ""
+              desc: "Vendor errors not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "11:9"
@@ -905,7 +917,10 @@
             {
               bits: "7"
               name: "current_limit_error_status_enable"
-              desc: ""
+              desc: "Current limit not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "6"
@@ -1002,14 +1017,18 @@
             {
               bits: "3"
               name: "dma_interrupt_signal_enable"
-              desc: ""
-              swaccess: "rw"
+              desc: "DMA not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "2"
               name: "block_gap_event_signal_enable"
-              desc: ""
-              swaccess: "rw"
+              desc: "Block gap not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "1"
@@ -1034,7 +1053,10 @@
             {
               bits: "15:12"
               name: "vendor_specific_error_signal_enable"
-              desc: ""
+              desc: "Vendor errors not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "11:9"
@@ -1052,7 +1074,10 @@
             {
               bits: "7"
               name: "current_limit_error_signal_enable"
-              desc: ""
+              desc: "Current limit not implemented"
+              swaccess: "ro"
+              hwaccess: "none"
+              resval: "0"
             }
             {
               bits: "6"
