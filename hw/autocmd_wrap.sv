@@ -89,12 +89,23 @@ module autocmd_wrap (
   logic cmd_errors_occured;
   assign cmd_errors_occured = end_bit_error || crc_error || index_error || timeout_error;
 
+  logic active_transfer_direction_q, active_transfer_direction_d;
+  `FFLARNC(active_transfer_direction_q, active_transfer_direction_d,
+           command_started && !autocmd12_queued_q && cmd_data_present_o,
+           clear_i, '0, clk_i, rst_ni);
+
+  // Use running_autocmd12_q (not autocmd12_queued_q) so the mux output
+  // stays stable throughout command execution, allowing cmd_logic to read
+  // these directly without re-latching them.
+  logic is_autocmd12;
+  assign is_autocmd12 = autocmd12_queued_q | running_autocmd12_q;
+
   sdhci_pkg::cmd_t current_cmd;
-  assign current_cmd = autocmd12_queued_q ? 6'd12 :
+  assign current_cmd = is_autocmd12 ? 6'd12 :
                        reg2hw.command.command_index.q;
 
   sdhci_pkg::cmd_arg_t current_arg;
-  assign current_arg = autocmd12_queued_q ? '0 : reg2hw.argument.q;
+  assign current_arg = is_autocmd12 ? '0 : reg2hw.argument.q;
 
   sdhci_pkg::response_type_e current_rsp_type;
 
@@ -102,8 +113,8 @@ module autocmd_wrap (
     current_rsp_type = sdhci_pkg::response_type_e'(reg2hw.command.response_type_select.q);
 
     // according to electrical spec 7.8.4, CMD12 is R1 on reads and R1b on writes
-    if (autocmd12_queued_q) begin
-      if (reg2hw.transfer_mode.data_transfer_direction_select.q == 1'b0) begin
+    if (is_autocmd12) begin
+      if (active_transfer_direction_q == 1'b0) begin
         // write -> R1b
         current_rsp_type = sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
       end else begin
@@ -116,12 +127,25 @@ module autocmd_wrap (
   assign cmd_needs_busy_o = current_rsp_type == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
   assign cmd_transfer_direction_o = reg2hw.transfer_mode.data_transfer_direction_select.q;
 
+  sdhci_pkg::cmd_t accepted_cmd_q, accepted_cmd_d;
+  `FFLARNC(accepted_cmd_q, accepted_cmd_d, command_started, clear_i, '0, clk_i, rst_ni);
+
+  sdhci_pkg::cmd_arg_t accepted_arg_q, accepted_arg_d;
+  `FFLARNC(accepted_arg_q, accepted_arg_d, command_started, clear_i, '0, clk_i, rst_ni);
+
+  sdhci_pkg::response_type_e accepted_rsp_type_q, accepted_rsp_type_d;
+  `FFLARNC(accepted_rsp_type_q, accepted_rsp_type_d, command_started, clear_i, sdhci_pkg::NO_RESPONSE, clk_i, rst_ni);
+
   always_comb begin : request_commands
     driver_cmd_queued_d = driver_cmd_queued_q;
     autocmd12_queued_d = autocmd12_queued_q;
     auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error.de = 1'b0;
     auto_cmd12_errors_o.auto_cmd12_not_executed.de = 1'b0;
     running_autocmd12_d = running_autocmd12_q;
+    active_transfer_direction_d = reg2hw.transfer_mode.data_transfer_direction_select.q;
+    accepted_cmd_d = current_cmd;
+    accepted_arg_d = current_arg;
+    accepted_rsp_type_d = current_rsp_type;
 
     if (reg2hw.command.command_index.qe) begin
       driver_cmd_queued_d = 1'b1;
@@ -186,7 +210,7 @@ module autocmd_wrap (
       // auto cmd 12 response goes to upper word of rsp register
       rsp3 = rsp [31:0];
     end else begin
-      unique case (current_rsp_type)
+      unique case (accepted_rsp_type_q)
         sdhci_pkg::NO_RESPONSE:;
 
         sdhci_pkg::RESPONSE_LENGTH_136: begin
@@ -285,9 +309,9 @@ module autocmd_wrap (
     .rsp_done_o        (sd_rsp_done_o),
     .cmd_inhibit_cmd_o (cmd_inhibit_logic),
 
-    .cmd_i             (current_cmd),
-    .cmd_arg_i         (current_arg),
-    .response_type_i   (current_rsp_type),
+    .cmd_i             (accepted_cmd_q),
+    .cmd_arg_i         (accepted_arg_q),
+    .response_type_i   (accepted_rsp_type_q),
     .cmd_valid_i       (command_queued),
     .cmd_ready_o       (command_ready),
 
