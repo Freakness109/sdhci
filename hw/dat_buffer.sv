@@ -80,21 +80,21 @@ module dat_buffer #(
     read_data_o   = 'X;
 
     if (read_operation_i) begin
-      reg_push      = write_valid_i;
+      reg_push      = write_valid_i && !reg_full;
       reg_push_data = write_data_i;
       write_ready_o = has_space;
 
-      buffer_read_enable_o.d = has_block;
+      buffer_read_enable_o.d = has_block && !write_valid_i;
       buffer_data_port_d_o   = reg_pop_data;
-      reg_pop                = reg2hw_i.buffer_data_port.re;
+      reg_pop                = reg2hw_i.buffer_data_port.re && has_block && !write_valid_i;
     end else if (write_operation_i) begin
-      reg_pop      = read_ready_i;
+      reg_pop      = read_ready_i && !reg_empty;
       read_data_o  = reg_pop_data;
       read_valid_o = has_block;
 
-      buffer_write_enable_o.d = has_space; 
+      buffer_write_enable_o.d = has_space && !read_ready_i; 
       reg_push_data           = reg2hw_i.buffer_data_port.q;
-      reg_push                = reg2hw_i.buffer_data_port.qe;
+      reg_push                = reg2hw_i.buffer_data_port.qe && has_space && !read_ready_i;
     end
 
 
