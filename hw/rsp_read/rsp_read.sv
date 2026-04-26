@@ -14,6 +14,7 @@ module rsp_read (
   input logic clk_i,
   input logic clk_en_i,
   input logic rst_ni,
+  input logic clear_i,
   input logic cmd_i,
 
   input logic long_rsp_i,         // high if response is of type R2 (136 bit)
@@ -81,7 +82,7 @@ module rsp_read (
     endcase
   end : rsp_state_transition
 
-  `FF(rx_state_q, rx_state_d, INACTIVE, clk_i, rst_ni);
+  `FFARNC(rx_state_q, rx_state_d, clear_i, INACTIVE, clk_i, rst_ni);
 
   ///////////////
   // Data Path //
@@ -184,6 +185,7 @@ module rsp_read (
     .clk_i            (clk_i),
     .clk_en_i         (clk_en_i),
     .rst_ni           (rst_ni),
+    .clear_i          (clear_i),
     .shift_in_en_i    (shift_reg_shift_in_en),
     .par_output_en_i  (shift_reg_par_output_en),
     .dat_ser_i        (rsp_ser),
@@ -194,6 +196,7 @@ module rsp_read (
     .clk_i        (clk_i),
     .clk_en_i     (clk_en_i),
     .rst_ni       (rst_ni),
+    .clear_i      (clear_i),
     .start_i      (crc_start),
     .end_output_i (crc_end_output),
     .rsp_ser_i    (rsp_ser),
@@ -206,7 +209,7 @@ module rsp_read (
   ) i_rsp_counter (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (cnt_clear),
+    .clear_i    (cnt_clear || clear_i),
     .en_i       (cnt_en && clk_en_i),
     .load_i     (1'b0),
     .down_i     (1'b0),

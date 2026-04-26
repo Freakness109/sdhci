@@ -14,6 +14,7 @@ module sd_clk_generator #(
 )(
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
 
   input  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
 
@@ -36,18 +37,18 @@ module sd_clk_generator #(
 
   logic[7:0] div_d, div_q;
   assign div_d = (!reg2hw_i.clock_control.sd_clock_enable.q) ? reg2hw_i.clock_control.sdclk_frequency_select.q : div_q;
-  `FF(div_q, div_d, 8'b0, clk_i, rst_ni);
+  `FFARNC(div_q, div_d, clear_i, 8'b0, clk_i, rst_ni);
 
   //counter
   logic[ClkPreDivLog+7 :0]  cnt_d, cnt_q;
   assign cnt_d = cnt_q + 1;
-  `FF(cnt_q, cnt_d, '0, clk_i, rst_ni);
+  `FFARNC(cnt_q, cnt_d, clear_i, '0, clk_i, rst_ni);
 
   logic clk_en_p_d, clk_en_p_q;
-  `FF(clk_en_p_q, clk_en_p_d, '0, clk_i, rst_ni);
+  `FFARNC(clk_en_p_q, clk_en_p_d, clear_i, '0, clk_i, rst_ni);
 
   logic clk_en_n_d, clk_en_n_q;
-  `FF(clk_en_n_q, clk_en_n_d, '0, clk_i, rst_ni);
+  `FFARNC(clk_en_n_q, clk_en_n_d, clear_i, '0, clk_i, rst_ni);
 
   logic [ClkPreDivLog+7:0] bitmask;
   assign bitmask = (1 << ClkPreDivLog) >> 1;
@@ -111,7 +112,7 @@ module sd_clk_generator #(
       default: ;
     endcase
   end
-  `FF(clk_div_q, clk_div_d, 1'b1, clk_i, rst_ni);
+  `FFARNC(clk_div_q, clk_div_d, clear_i, 1'b1, clk_i, rst_ni);
   
   assign clk_o_ungated = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  clk_i : clk_div_q;
   assign clk_en_p_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  '1 : clk_en_p_q;

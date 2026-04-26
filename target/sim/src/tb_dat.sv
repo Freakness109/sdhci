@@ -30,6 +30,7 @@ module tb_dat #(
   sd_clk_generator sd_clk_div (
     .clk_i  (clk),
     .rst_ni (rst_n),
+    .clear_i(1'b0),
     
     .reg2hw_i,
 
@@ -64,6 +65,7 @@ module tb_dat #(
     .sd_clk_en_n_i (sd_clk_en_n),
     .div_1_i       (div_1),
     .rst_ni (rst_n),
+    .clear_i(1'b0),
 
     .start_i (start_write),
     .block_size_i (MaxBlockBitSize'(BlockSize)),
@@ -75,6 +77,8 @@ module tb_dat #(
     .done_o        (done_write),
     .crc_err_o     (),
     .end_bit_err_o (),
+    .data_timeout_o(),
+    .waiting_o     (),
 
     .dat0_i (dat[0]),
     .dat_o,
@@ -89,9 +93,11 @@ module tb_dat #(
     .clk_i (clk),
     .sd_clk_en_i (sd_clk_en_p),
     .rst_ni (rst_n),
+    .clear_i(1'b0),
     .dat_i (dat),
 
     .start_i (start_read),
+    .timeout_i (1'b0),
     .block_size_i (MaxBlockBitSize'(BlockSize)),
     .bus_width_is_4_i (UseWideBus),
 
@@ -100,7 +106,8 @@ module tb_dat #(
 
     .done_o (done_read),
     .crc_err_o,
-    .end_bit_err_o
+    .end_bit_err_o,
+    .waiting_o ()
   );
 
   /////////////////

@@ -16,6 +16,7 @@ module dat_buffer #(
 ) (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
 
   input  logic read_operation_i,
   input  logic write_operation_i,
@@ -44,7 +45,7 @@ module dat_buffer #(
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
   logic [MaxBlockBitSize-1:0] current_word_counter_q, current_word_counter_d;
-  `FF (current_word_counter_q, current_word_counter_d, '0);
+  `FFARNC (current_word_counter_q, current_word_counter_d, clear_i, '0, clk_i, rst_ni);
 
   logic reg_empty;
   assign empty_o = reg_empty;
@@ -125,6 +126,7 @@ module dat_buffer #(
   ) i_sram_shift_reg (
     .clk_i,
     .rst_ni,
+    .clear_i,
   
     .en_i (enable_reg),
 

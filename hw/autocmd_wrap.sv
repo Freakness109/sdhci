@@ -14,6 +14,7 @@ import sdhci_reg_pkg::*;
 module autocmd_wrap (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
   input  logic clk_en_p_i, // high before next sd_clk posedge
   input  logic clk_en_n_i, // high before next sd_clk negedge
   input  logic div_1_i,
@@ -55,13 +56,13 @@ module autocmd_wrap (
   ////////////////
 
   logic driver_cmd_queued_q, driver_cmd_queued_d;
-  `FF(driver_cmd_queued_q, driver_cmd_queued_d, '0, clk_i, rst_ni);
+  `FFARNC(driver_cmd_queued_q, driver_cmd_queued_d, clear_i, '0, clk_i, rst_ni);
 
   logic autocmd12_queued_q, autocmd12_queued_d;
-  `FF(autocmd12_queued_q, autocmd12_queued_d, '0, clk_i, rst_ni);
+  `FFARNC(autocmd12_queued_q, autocmd12_queued_d, clear_i, '0, clk_i, rst_ni);
 
   logic running_autocmd12_q, running_autocmd12_d;
-  `FF(running_autocmd12_q, running_autocmd12_d, '0, clk_i, rst_ni);
+  `FFARNC(running_autocmd12_q, running_autocmd12_d, clear_i, '0, clk_i, rst_ni);
 
   logic command_queued;
   assign command_queued = driver_cmd_queued_q || autocmd12_queued_q;
@@ -272,6 +273,7 @@ module autocmd_wrap (
   cmd_logic i_cmd_logic (
     .clk_i             (clk_i),
     .rst_ni            (rst_ni),
+    .clear_i           (clear_i),
     .clk_en_p_i        (clk_en_p_i),
     .clk_en_n_i        (clk_en_n_i),
     .div_1_i           (div_1_i),

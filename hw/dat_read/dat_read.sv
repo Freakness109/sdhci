@@ -16,6 +16,7 @@ module dat_read #(
   input  logic       clk_i,
   input  logic       sd_clk_en_i,
   input  logic       rst_ni,
+  input  logic       clear_i,
   input  logic [3:0] dat_i,
 
   input  logic                       start_i,
@@ -43,10 +44,10 @@ module dat_read #(
   } dat_rx_state_e;
 
   dat_rx_state_e state_q, state_d;
-  `FF (state_q, state_d, IDLE);
+  `FFARNC (state_q, state_d, clear_i, IDLE, clk_i, rst_ni);
 
   logic [CounterWidth-1:0] counter_q, counter_d;
-  `FFL (counter_q, counter_d, sd_clk_en_i, 0);
+  `FFLARNC (counter_q, counter_d, sd_clk_en_i, clear_i, 0, clk_i, rst_ni);
 
   logic [CounterWidth-1:0] required_clock_count;
   assign required_clock_count = bus_width_is_4_i ? 2*block_size_i : 8*block_size_i;
@@ -92,7 +93,7 @@ module dat_read #(
   logic calculate_crc;
   logic [3:0] crc_errors;
   logic [31:0] data_buildup_q, data_buildup_d;
-  `FFL (data_buildup_q, data_buildup_d, sd_clk_en_i, 0);
+  `FFLARNC (data_buildup_q, data_buildup_d, sd_clk_en_i, clear_i, 0, clk_i, rst_ni);
 
   always_comb begin
     counter_d      = '0;
@@ -188,6 +189,7 @@ module dat_read #(
       .clk_i,
       .sd_clk_en_i,
       .rst_ni,
+      .clear_i,
 
       .shift_in_i (calculate_crc),
 

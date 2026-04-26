@@ -12,6 +12,7 @@
 module cmd_write (
   input   logic         clk_i,
   input   logic         rst_ni,
+  input   logic         clear_i,
 
   input   logic         clk_en_p_i,
   input   logic         clk_en_n_i,
@@ -79,7 +80,7 @@ module cmd_write (
     endcase
   end : cmd_write_state_transition
 
-  `FFL(tx_state_q, tx_state_d, clk_en_p_i, READY, clk_i, rst_ni);
+  `FFLARNC(tx_state_q, tx_state_d, clk_en_p_i, clear_i, READY, clk_i, rst_ni);
 
   ///////////////
   // Data Path //
@@ -139,17 +140,18 @@ module cmd_write (
     endcase
   end : cmd_tx_datapath
 
-  `FFL(tx_ongoing_q, tx_ongoing_d, clk_en_p_i, '0, clk_i, rst_ni);
+  `FFLARNC(tx_ongoing_q, tx_ongoing_d, clk_en_p_i, clear_i, '0, clk_i, rst_ni);
 
 
   // delay to negative edge of clk
   always_ff @( negedge clk_i or negedge rst_ni) begin
     if(!rst_ni) sd_cmd_div1 <= 1'b1;
+    else if(clear_i) sd_cmd_div1 <= 1'b1;
     else sd_cmd_div1 <= sd_cmd;
   end
 
   // delay to negative edge of sd_clk
-  `FFL(sd_cmd_divn, sd_cmd, clk_en_n_i, '1, clk_i, rst_ni);
+  `FFLARNC(sd_cmd_divn, sd_cmd, clk_en_n_i, clear_i, '1, clk_i, rst_ni);
 
   // if freq of sd_clk and clk is same, delay to negative edge of clk
   // otherwise delay to negative edge of sd_clk
@@ -166,6 +168,7 @@ module cmd_write (
     .clk_i          (clk_i),
     .clk_en_i       (clk_en_p_i),
     .rst_ni         (rst_ni),
+    .clear_i        (clear_i),
     .par_write_en_i (par_write_en),
     .shift_en_i     (shift_en),
     .dat_par_i      (cmd_bits_47_to_8),
@@ -177,6 +180,7 @@ module cmd_write (
     .clk_i            (clk_i),
     .clk_en_i         (clk_en_p_i),
     .rst_ni           (rst_ni),
+    .clear_i          (clear_i),
     .shift_out_crc7_i (crc7_shift_en),
     .input_en_i       (shift_en), // only listen to input when shift reg outputs
     .dat_ser_i        (shift_reg_out),
@@ -189,7 +193,7 @@ module cmd_write (
   ) i_tx_bits_counter (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (tx_done_o), // clears to 0
+    .clear_i    (tx_done_o || clear_i), // clears to 0
     .en_i       (tx_ongoing_q && clk_en_p_i),
     .load_i     (1'b0), // always start at 0, no loading needed
     .down_i     (1'b0), // count up

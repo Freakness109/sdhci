@@ -19,6 +19,7 @@ module dat_wrap #(
   input  logic sd_clk_en_n_i,
   input  logic div_1_i,
   input  logic rst_ni,
+  input  logic clear_i,
 
   input  logic [3:0] dat_i,
   output logic       dat_en_o,
@@ -59,7 +60,7 @@ module dat_wrap #(
   logic timeout_elapsed;
 
   logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
-  `FF (transmitted_block_counter_q, transmitted_block_counter_d, '0);
+  `FFARNC (transmitted_block_counter_q, transmitted_block_counter_d, clear_i, '0, clk_i, rst_ni);
 
   typedef enum logic [1:0] {
     READY,
@@ -98,16 +99,16 @@ module dat_wrap #(
   } write_state_e;
 
   dat_state_e dat_state_q, dat_state_d;
-  `FF (dat_state_q, dat_state_d, READY, clk_i, rst_ni);
+  `FFARNC (dat_state_q, dat_state_d, clear_i, READY, clk_i, rst_ni);
 
   busy_state_e busy_state_q, busy_state_d;
-  `FF (busy_state_q, busy_state_d, BUSY_WAIT_FOR_CMD, clk_i, rst_ni);
+  `FFARNC (busy_state_q, busy_state_d, clear_i, BUSY_WAIT_FOR_CMD, clk_i, rst_ni);
 
   read_state_e read_state_q, read_state_d;
-  `FF (read_state_q, read_state_d, WAIT_FOR_CMD, clk_i, rst_ni);
+  `FFARNC (read_state_q, read_state_d, clear_i, WAIT_FOR_CMD, clk_i, rst_ni);
 
   write_state_e write_state_q, write_state_d;
-  `FF (write_state_q, write_state_d, WAIT_FOR_RSP, clk_i, rst_ni);
+  `FFARNC (write_state_q, write_state_d, clear_i, WAIT_FOR_RSP, clk_i, rst_ni);
 
   always_comb begin : main_fsm
     dat_state_d = dat_state_q;
@@ -154,10 +155,10 @@ module dat_wrap #(
   assign sd_busy_o = dat_state_q == BUSY;
 
   logic [1:0] busy_counter_q, busy_counter_d;
-  `FF(busy_counter_q, busy_counter_d, 2'b0, clk_i, rst_ni);
+  `FFARNC(busy_counter_q, busy_counter_d, clear_i, 2'b0, clk_i, rst_ni);
 
   logic busy_saw_response_q, busy_saw_response_d;
-  `FF(busy_saw_response_q, busy_saw_response_d, 1'b0, clk_i, rst_ni);
+  `FFARNC(busy_saw_response_q, busy_saw_response_d, clear_i, 1'b0, clk_i, rst_ni);
 
   always_comb begin : busy_fsm
     busy_state_d        = busy_state_q;
@@ -500,6 +501,7 @@ module dat_wrap #(
   ) i_dat_buffer (
     .clk_i,
     .rst_ni,
+    .clear_i,
 
     .read_operation_i  (reg2hw_i.present_state.read_transfer_active.q),
     .write_operation_i (reg2hw_i.present_state.write_transfer_active.q),
@@ -527,6 +529,7 @@ module dat_wrap #(
     .clk_i,
     .sd_clk_en_i   (sd_clk_en_p_i),
     .rst_ni,
+    .clear_i,
     .dat_i,
 
     .start_i          (start_read),
@@ -551,6 +554,7 @@ module dat_wrap #(
     .sd_clk_en_n_i  (sd_clk_en_n_i),
     .div_1_i        (div_1_i),
     .rst_ni,
+    .clear_i,
     .dat0_i         (dat_i[0]),
     .dat_o,
     .dat_en_o,

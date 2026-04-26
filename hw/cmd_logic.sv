@@ -10,6 +10,7 @@
 module cmd_logic (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
   input  logic clk_en_p_i,
   input  logic clk_en_n_i,
   input  logic div_1_i,
@@ -48,7 +49,7 @@ module cmd_logic (
   } cmd_fsm_t;
 
   cmd_fsm_t cmd_state_q, cmd_state_d;
-  `FF(cmd_state_q, cmd_state_d, IDLE, clk_i, rst_ni);
+  `FFARNC(cmd_state_q, cmd_state_d, clear_i, IDLE, clk_i, rst_ni);
 
   // TODO: this forces a sleep cycle in between transactions. This might not
   // be ideal -> reduce sleep cycles in BUS_COOLDOWN by one
@@ -59,15 +60,15 @@ module cmd_logic (
   assign start_cmd = cmd_ready && cmd_valid_i;
 
   sdhci_pkg::cmd_t cmd_d, cmd_q;
-  `FFL(cmd_q, cmd_d, cmd_ready && cmd_valid_i, '0, clk_i, rst_ni);
+  `FFLARNC(cmd_q, cmd_d, cmd_ready && cmd_valid_i, clear_i, '0, clk_i, rst_ni);
   assign cmd_d = cmd_i;
 
   sdhci_pkg::cmd_arg_t cmd_arg_q, cmd_arg_d;
-  `FFL(cmd_arg_q, cmd_arg_d, cmd_ready && cmd_valid_i, '0, clk_i, rst_ni);
+  `FFLARNC(cmd_arg_q, cmd_arg_d, cmd_ready && cmd_valid_i, clear_i, '0, clk_i, rst_ni);
   assign cmd_arg_d = cmd_arg_i;
 
   sdhci_pkg::response_type_e response_type_q, response_type_d;
-  `FFL(response_type_q, response_type_d, cmd_ready && cmd_valid_i, sdhci_pkg::NO_RESPONSE, clk_i, rst_ni);
+  `FFLARNC(response_type_q, response_type_d, cmd_ready && cmd_valid_i, clear_i, sdhci_pkg::NO_RESPONSE, clk_i, rst_ni);
   assign response_type_d = response_type_i;
 
   // Electrical spec, 7.13.5; units are number of cycles
@@ -195,6 +196,7 @@ module cmd_logic (
   cmd_write i_cmd_write (
     .clk_i          (clk_i),
     .rst_ni         (rst_ni),
+    .clear_i        (clear_i),
 
     .clk_en_p_i     (clk_en_p_i),
     .clk_en_n_i     (clk_en_n_i),
@@ -213,6 +215,7 @@ module cmd_logic (
     .clk_i             (clk_i),
     .clk_en_i          (clk_en_p_i),
     .rst_ni            (rst_ni),
+    .clear_i           (clear_i),
     .cmd_i             (sd_bus_cmd_i),
     .long_rsp_i        (response_type_q == sdhci_pkg::RESPONSE_LENGTH_136),
     .start_listening_i (cmd_state_q == WAIT_RSP && (cycles_waiting == N_CR_MIN - 1)),
@@ -231,11 +234,11 @@ module cmd_logic (
   ) i_counter (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (1'b0),
+    .clear_i    (clear_i),
     .en_i       (clk_en_p_i),
     .load_i     (clear_cycle_counter),
     .down_i     (1'b0),
-    .d_i        ({'0, div_1_i}),
+    .d_i        ({6'b0, div_1_i}),
     .q_o        (cycles_waiting),
     .overflow_o ()
   );

@@ -11,8 +11,9 @@
 module sdhci_reg_logic (
   input  logic clk_i,
   input  logic rst_ni,
-  input  logic rst_cmd_ni,
-  input  logic rst_dat_ni,
+  input  logic clear_i,
+  input  logic clear_cmd_i,
+  input  logic clear_dat_i,
 
   input sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
   input sdhci_reg_pkg::sdhci_hw2reg_t hw2reg_i,
@@ -94,7 +95,7 @@ module sdhci_reg_logic (
   assign interrupt_o = interrupt_signal_for_each_slot_o[0];
 
   // Automatically write to Error Interrupt Status
-  assign error_interrupt_o.d = rst_ni &
+  assign error_interrupt_o.d = !clear_i &
     (//(|`instant_reg_value(error_interrupt_status, vendor_specific_error)) |
        `instant_reg_value(error_interrupt_status, auto_cmd12_error     )  |
       //  `instant_reg_value(error_interrupt_status, current_limit_error  )  |
@@ -109,7 +110,7 @@ module sdhci_reg_logic (
 
   // Automatically write to AutoCMD12 Error Interrupt Status
   assign auto_cmd12_error_o.d = '1;
-  assign auto_cmd12_error_o.de = rst_ni &
+  assign auto_cmd12_error_o.de = !clear_i &
     reg2hw_i.error_interrupt_status_enable.auto_cmd12_error_status_enable.q &
     (`did_get_set(auto_cmd12_error_status, command_not_issued_by_auto_cmd12_error) |
      `did_get_set(auto_cmd12_error_status, auto_cmd12_index_error                ) |
@@ -119,17 +120,17 @@ module sdhci_reg_logic (
      `did_get_set(auto_cmd12_error_status, auto_cmd12_not_executed               ));
 
   assign buffer_read_ready_o.d = '1;
-  assign buffer_read_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_read_enable);
+  assign buffer_read_ready_o.de = !clear_dat_i & `did_get_set(present_state, buffer_read_enable);
 
   assign buffer_write_ready_o.d = '1;
-  assign buffer_write_ready_o.de = rst_dat_ni & `did_get_set(present_state, buffer_write_enable);
+  assign buffer_write_ready_o.de = !clear_dat_i & `did_get_set(present_state, buffer_write_enable);
 
 
   // technically, dat_line_active should be 0 once the last block of a read
   // transfer has been transferred into the buffer, at which point
   // read_transfer_active is still 1
   assign dat_line_active_o.de = '1;
-  assign dat_line_active_o.d = rst_dat_ni & (sd_cmd_dat_busy_i |
+  assign dat_line_active_o.d = !clear_dat_i & (sd_cmd_dat_busy_i |
     `instant_reg_value(present_state, write_transfer_active) |
     `instant_reg_value(present_state, read_transfer_active));
 
@@ -137,7 +138,7 @@ module sdhci_reg_logic (
   // dat_line_active | read_transfer_active, but as we or read_transfer_active
   // already into dat_line_active, this should be fine
   assign command_inhibit_dat_o.de = '1;
-  assign command_inhibit_dat_o.d = rst_dat_ni &
+  assign command_inhibit_dat_o.d = !clear_dat_i &
     `instant_reg_value(present_state, dat_line_active);
 
   // transfer complete fires on:
@@ -149,18 +150,18 @@ module sdhci_reg_logic (
   // write active implies dat line active,
   // so looking at command inhibit is enough
   assign transfer_complete_o.d = '1;
-  assign transfer_complete_o.de = rst_dat_ni &
+  assign transfer_complete_o.de = !clear_dat_i &
     (`did_get_unset(present_state, command_inhibit_dat));
 
   assign command_complete_o.d = '1;
-  assign command_complete_o.de = rst_cmd_ni & `did_get_unset(present_state, command_inhibit_cmd);
+  assign command_complete_o.de = !clear_cmd_i & `did_get_unset(present_state, command_inhibit_cmd);
 
 
   assign card_insertion_o.d = '1;
-  assign card_insertion_o.de = rst_dat_ni & `did_get_set(present_state, card_inserted);
+  assign card_insertion_o.de = !clear_dat_i & `did_get_set(present_state, card_inserted);
 
   assign card_removal_o.d = '1;
-  assign card_removal_o.de = rst_dat_ni & `did_get_unset(present_state, card_inserted);
+  assign card_removal_o.de = !clear_dat_i & `did_get_unset(present_state, card_inserted);
   
   // Writes to the transfer_mode register should be ignored when command_inhibit_cmd is active
   `FFL (transfer_mode_reg_o.multi_single_block_select     .d, reg2hw_i.transfer_mode.multi_single_block_select     .q,
@@ -186,7 +187,9 @@ module sdhci_reg_logic (
   `FF (block_count_q, block_count_d, '0);
   always_comb begin
     block_count_d = block_count_q;   
-    if (!reg2hw_i.present_state.command_inhibit_dat.q && reg2hw_i.block_count.qe) begin
+    if (clear_dat_i) begin
+      block_count_d = '0;
+    end else if (!reg2hw_i.present_state.command_inhibit_dat.q && reg2hw_i.block_count.qe) begin
       block_count_d = reg2hw_i.block_count.q;
     end else if (block_count_hw_i.de) begin
       block_count_d = block_count_hw_i.d;   

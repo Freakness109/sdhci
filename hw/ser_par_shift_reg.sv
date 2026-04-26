@@ -17,6 +17,7 @@ module ser_par_shift_reg #(
   input   logic               clk_i,
   input   logic               clk_en_i,
   input   logic               rst_ni,
+  input   logic               clear_i,
 
   input   logic               shift_in_en_i,
   input   logic               par_output_en_i,
@@ -35,7 +36,7 @@ module ser_par_shift_reg #(
     end
   end
 
-  `FFL(dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
+  `FFLARNC(dat_q, dat_d, clk_en_i, clear_i, 0, clk_i, rst_ni);
 
   generate
     if (MaskOutput) begin

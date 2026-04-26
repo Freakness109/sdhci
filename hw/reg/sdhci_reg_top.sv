@@ -1805,8 +1805,8 @@ module sdhci_reg_top #(
     .wd     (software_reset_software_reset_for_all_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.software_reset.software_reset_for_all.de),
+    .d      (hw2reg.software_reset.software_reset_for_all.d ),
 
     // to internal hardware
     .qe     (),
@@ -4449,5 +4449,3 @@ module sdhci_reg_top_intf
   );
   
 endmodule
-
-

@@ -554,6 +554,10 @@ package sdhci_reg_pkg;
     struct packed {
       logic        d;
       logic        de;
+    } software_reset_for_all;
+    struct packed {
+      logic        d;
+      logic        de;
     } software_reset_for_cmd_line;
     struct packed {
       logic        d;
@@ -864,4 +868,3 @@ package sdhci_reg_pkg;
   };
 
 endpackage
-
