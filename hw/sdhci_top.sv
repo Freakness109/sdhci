@@ -25,6 +25,8 @@ module sdhci_top #(
   parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
                                     // see dat_timeout for details
 
+  parameter int unsigned BufferNumWords = 256,
+
   // clock runs at 50MHz, so 1ms is 50_000 cycles
   parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
 ) (
@@ -218,7 +220,8 @@ module sdhci_top #(
 
 
   dat_wrap #(
-    .TimeoutDivider(TimeoutDivider)
+    .TimeoutDivider (TimeoutDivider),
+    .BufferNumWords (BufferNumWords)
   ) i_dat_wrap (
     .clk_i,
     .sd_clk_en_p_i  (sd_clk_en_p),

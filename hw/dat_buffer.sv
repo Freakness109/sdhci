@@ -40,9 +40,20 @@ module dat_buffer #(
   output `writable_reg_t([15:0]) block_count_o
 );
   localparam int NumBytes = NumWords * 4;
+  localparam int ChunkBytesWidth = cf_math_pkg::idx_width(NumBytes + 1);
+
+  `ASSERT_INIT(BufferSizeAtLeast32B, NumBytes >= 32, "data buffer must be at least 32 bytes")
+  `ASSERT_INIT(BufferSizeAtMost1KiB, NumBytes <= 1024, "data buffer must be at most 1024 bytes")
+  `ASSERT_INIT(BufferSizePowerOfTwo, (NumWords & (NumWords - 1)) == 0, "data buffer word count must be a power of two")
 
   logic [MaxBlockBitSize-1:0] block_size;
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
+
+  logic [MaxBlockBitSize-1:0] effective_block_size;
+  assign effective_block_size = (block_size == '0) ? MaxBlockBitSize'(1) : block_size;
+
+  logic [MaxBlockBitSize-1:0] words_per_block;
+  assign words_per_block = (effective_block_size + MaxBlockBitSize'(3)) >> 2;
 
   logic [MaxBlockBitSize-1:0] current_word_counter_q, current_word_counter_d;
   `FFARNC (current_word_counter_q, current_word_counter_d, clear_i, '0, clk_i, rst_ni);
@@ -54,9 +65,18 @@ module dat_buffer #(
   logic [cf_math_pkg::idx_width(NumBytes + 1)-1:0] reg_remaining_bytes;
   assign reg_remaining_bytes = (cf_math_pkg::idx_width(NumBytes + 1))'(NumBytes - reg_length * 4);
 
-  logic has_block, has_space;
-  assign has_space = reg_remaining_bytes >= block_size;
-  assign has_block = reg_length * 4 >= block_size;
+  logic [ChunkBytesWidth-1:0] chunk_size;
+  assign chunk_size = (effective_block_size < NumBytes) ? ChunkBytesWidth'(effective_block_size) :
+                                                     ChunkBytesWidth'(NumBytes);
+
+  logic has_chunk, has_chunk_space;
+  assign has_chunk       = reg_length * 4 >= chunk_size;
+  assign has_chunk_space = reg_remaining_bytes >= chunk_size;
+
+  logic accepts_write_chunk;
+  assign accepts_write_chunk = !reg2hw_i.transfer_mode.multi_single_block_select.q ||
+                               !reg2hw_i.transfer_mode.block_count_enable.q ||
+                               reg2hw_i.block_count.q != '0;
 
   logic enable_reg;
   assign enable_reg = read_operation_i || write_operation_i;
@@ -82,30 +102,30 @@ module dat_buffer #(
     if (read_operation_i) begin
       reg_push      = write_valid_i && !reg_full;
       reg_push_data = write_data_i;
-      write_ready_o = has_space;
+      write_ready_o = !reg_full;
 
-      buffer_read_enable_o.d = has_block && !write_valid_i;
+      buffer_read_enable_o.d = has_chunk && !write_valid_i;
       buffer_data_port_d_o   = reg_pop_data;
-      reg_pop                = reg2hw_i.buffer_data_port.re && has_block && !write_valid_i;
+      reg_pop                = reg2hw_i.buffer_data_port.re && !reg_empty && !write_valid_i;
     end else if (write_operation_i) begin
       reg_pop      = read_ready_i && !reg_empty;
       read_data_o  = reg_pop_data;
-      read_valid_o = has_block;
+      read_valid_o = !reg_empty;
 
-      buffer_write_enable_o.d = has_space && !read_ready_i; 
+      buffer_write_enable_o.d = accepts_write_chunk && has_chunk_space;
       reg_push_data           = reg2hw_i.buffer_data_port.q;
-      reg_push                = reg2hw_i.buffer_data_port.qe && has_space && !read_ready_i;
+      reg_push                = accepts_write_chunk && reg2hw_i.buffer_data_port.qe && !reg_full;
     end
 
 
     current_word_counter_d = current_word_counter_q;
 
-    if ((read_operation_i && reg2hw_i.buffer_data_port.re) || (write_operation_i && reg2hw_i.buffer_data_port.qe)) begin
-      if (current_word_counter_q == (block_size + 3) / 4 - 1) begin
+    if ((read_operation_i && reg_pop) || (write_operation_i && reg_push)) begin
+      if (current_word_counter_q == words_per_block - 1) begin
         current_word_counter_d = '0;
 
-        // TODO block count enable / infity block transfer
-        if (reg2hw_i.transfer_mode.multi_single_block_select.q) begin
+        if (reg2hw_i.transfer_mode.multi_single_block_select.q &&
+            reg2hw_i.transfer_mode.block_count_enable.q) begin
           // TODO this will have to be changed when adding support for suspend / resume
           block_count_o = '{ de: '1, d: reg2hw_i.block_count.q - 1 };
           if (reg2hw_i.block_count.q != 'b1) begin
@@ -119,6 +139,15 @@ module dat_buffer #(
       end
     end
   end
+
+`ifndef SYNTHESIS
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (rst_ni && !clear_i && enable_reg) begin
+      assert (block_size != '0)
+        else $error("DAT block size must be non-zero during data transfers");
+    end
+  end
+`endif
 
 
   sram_shift_reg #(

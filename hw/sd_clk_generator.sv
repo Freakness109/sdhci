@@ -115,8 +115,8 @@ module sd_clk_generator #(
   `FFARNC(clk_div_q, clk_div_d, clear_i, 1'b1, clk_i, rst_ni);
   
   assign clk_o_ungated = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  clk_i : clk_div_q;
-  assign clk_en_p_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  '1 : clk_en_p_q;
-  assign clk_en_n_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  '1 : clk_en_n_q;
+  assign clk_en_p_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  !pause_sd_clk_i : clk_en_p_q && !pause_sd_clk_i;
+  assign clk_en_n_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  !pause_sd_clk_i : clk_en_n_q && !pause_sd_clk_i;
 
   assign sd_clk_o =  (reg2hw_i.clock_control.sd_clock_enable.q && !pause_sd_clk_i) ? clk_o_ungated : 1'b1;
 
