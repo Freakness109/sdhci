@@ -31,7 +31,7 @@ module sdhci_fixture #(
       .ObiCfg           (sdhci_obi_cfg),
       .obi_req_t        (sdhci_obi_req_t),
       .obi_rsp_t        (sdhci_obi_rsp_t),
-      .ClkPreDivLog     (0),
+      .ClkPreDiv        (2),
       .NumDebounceCycles(2),
       .BufferNumWords   (BufferNumWords),
       .TimeoutDivider   (TimeoutDivider)

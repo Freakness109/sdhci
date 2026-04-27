@@ -10,16 +10,21 @@
 `include "common_cells/registers.svh"
 `include "defines.svh"
 
+// SDC note: sd_clk_o is a clk_i-registered clock-as-data pad output. The
+// controller internals remain in the clk_i domain and use sd_clk_en_p/n strobes
+// derived from the same divider. Do not propagate CTS through sd_clk_o; constrain
+// SD CMD/DAT pad delays against clk_i, and document the board/protocol SDCLK
+// period as ClkPreDiv times the SDHCI frequency-select divider. Hardware
+// enforces a minimum effective divide by 2 for sdclk_frequency_select=0.
 module sdhci_top #(
   parameter int unsigned AddrWidth = 32'd32,
   parameter type               reg_req_t   = logic,
   parameter type               reg_rsp_t   = logic,
 
-  //sw handles clock division. However, largest base freq. accepted is 63MHz!
-  //-> internal clock predivider to get below 63MHz
-  //only power of 2 dividers allowed :(
-  //input log2 of divider i.e div by 4 ->  ClkPreDivLog = 2
-  parameter int unsigned       ClkPreDivLog   = 1,
+  // Software handles SDHCI clock division. ClkPreDiv is a hidden integration
+  // predivider folded into the same physical divider as sdclk_frequency_select;
+  // advertise clk_i/ClkPreDiv as base_clock_frequency_for_sd_clock.
+  parameter int unsigned       ClkPreDiv   = 2,
   //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
 
   parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
@@ -137,7 +142,7 @@ module sdhci_top #(
 
   logic pause_sd_clk, sd_clk_en_p, sd_clk_en_n, div_1;
   sd_clk_generator #(
-    .ClkPreDivLog (ClkPreDivLog)
+    .ClkPreDiv (ClkPreDiv)
   ) i_sd_clk_generator (
     .clk_i,
     .rst_ni,

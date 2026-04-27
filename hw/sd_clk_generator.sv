@@ -10,7 +10,7 @@
 `include "defines.svh"
 
 module sd_clk_generator #(
-  parameter int unsigned ClkPreDivLog = 0
+  parameter int unsigned ClkPreDiv = 2
 )(
   input  logic clk_i,
   input  logic rst_ni,
@@ -21,107 +21,124 @@ module sd_clk_generator #(
   input  logic pause_sd_clk_i,
   output logic sd_clk_o,
 
-  output logic clk_en_p_o, //high when next rising clk edge coincides with rising sd_clk edge
-  output logic clk_en_n_o, //high when next rising clk edge coincides with falling sd_clk edge, always high for div by 1
+  output logic clk_en_p_o, // high for one clk_i cycle when sd_clk_o rises
+  output logic clk_en_n_o, // high for one clk_i cycle when sd_clk_o falls
 
-  output logic div_1_o,   //high if source clock isn't divided, needed for negative edge triggering
+  output logic div_1_o,   // always low; hardware enforces a minimum divide-by-2 SD clock
 
   output `writable_reg_t() sd_clk_stable_o
 );
-  localparam int unsigned MsbConsidered = (ClkPreDivLog != 0) ? (ClkPreDivLog - 1) : 0;
-  //check if all bits from [ClkPreDivLog-1:0] are one
-  function logic lsbones(input logic[ClkPreDivLog+7:0] div);
-    if(ClkPreDivLog == 0) return '1;
-    else return (div[MsbConsidered:0] == '1);
+  localparam int unsigned DivWidth = 16;
+  localparam logic [DivWidth-1:0] MinDiv = {{(DivWidth-2){1'b0}}, 2'b10};
+
+  if (ClkPreDiv == 0) begin : gen_invalid_prediv
+    $error("ClkPreDiv must be at least 1");
+  end
+
+  function automatic logic freq_sel_valid(input logic [7:0] freq_sel);
+    unique case (freq_sel)
+      8'h00, 8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80: begin
+        freq_sel_valid = 1'b1;
+      end
+      default: begin
+        freq_sel_valid = 1'b0;
+      end
+    endcase
   endfunction
 
-  logic[7:0] div_d, div_q;
-  assign div_d = (!reg2hw_i.clock_control.sd_clock_enable.q) ? reg2hw_i.clock_control.sdclk_frequency_select.q : div_q;
-  `FFARNC(div_q, div_d, clear_i, 8'b0, clk_i, rst_ni);
-
-  //counter
-  logic[ClkPreDivLog+7 :0]  cnt_d, cnt_q;
-  assign cnt_d = cnt_q + 1;
-  `FFARNC(cnt_q, cnt_d, clear_i, '0, clk_i, rst_ni);
-
-  logic clk_en_p_d, clk_en_p_q;
-  `FFARNC(clk_en_p_q, clk_en_p_d, clear_i, '0, clk_i, rst_ni);
-
-  logic clk_en_n_d, clk_en_n_q;
-  `FFARNC(clk_en_n_q, clk_en_n_d, clear_i, '0, clk_i, rst_ni);
-
-  logic [ClkPreDivLog+7:0] bitmask;
-  assign bitmask = (1 << ClkPreDivLog) >> 1;
-
-  //clk source multiplexer
-  logic clk_div_d, clk_div_q, clk_o_ungated;
-  always_comb begin : clk_div_mux
-    clk_div_d   = 1'b1;
-    clk_en_p_d  = clk_en_p_q;
-    clk_en_n_d  = clk_en_n_q;
-
-    unique case (div_q)
-      8'h00:  begin
-        if (ClkPreDivLog != 0) begin 
-          clk_div_d  = cnt_q[MsbConsidered];
-          clk_en_p_d = lsbones(cnt_q ^ bitmask);
-          clk_en_n_d = lsbones(cnt_q);
-        end
-      end
-      8'h01:  begin 
-        clk_div_d = cnt_q[ClkPreDivLog];
-        clk_en_p_d  = (!cnt_q[ClkPreDivLog]) && lsbones(cnt_q);
-        clk_en_n_d  = cnt_q[ClkPreDivLog]    && lsbones(cnt_q);
-      end
-      8'h02:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+1];
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+1:ClkPreDivLog] == 2'b01) && lsbones(cnt_q);
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+1:ClkPreDivLog] == 2'b11) && lsbones(cnt_q);
-      end
-      8'h04:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+2];
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+2:ClkPreDivLog] == 3'b011) && lsbones(cnt_q);   
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+2:ClkPreDivLog] == 3'b111)  && lsbones(cnt_q);   
-      end
-      8'h08:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+3];    
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+3:ClkPreDivLog] == 4'b0111) && lsbones(cnt_q);
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+3:ClkPreDivLog] == 4'b1111)  && lsbones(cnt_q);
-      end
-      8'h10:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+4];
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+4:ClkPreDivLog] == 5'b01111) && lsbones(cnt_q);
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+4:ClkPreDivLog] == 5'b11111)  && lsbones(cnt_q);
-      end
-      8'h20:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+5];
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+5:ClkPreDivLog] == 6'b011111) && lsbones(cnt_q);
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+5:ClkPreDivLog] == 6'b111111)  && lsbones(cnt_q);
-      end
-      8'h40:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+6];
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+6:ClkPreDivLog] == 7'b0111111) && lsbones(cnt_q);
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+6:ClkPreDivLog] == 7'b1111111)  && lsbones(cnt_q);
-      end
-      8'h80:  begin
-        clk_div_d = cnt_q[ClkPreDivLog+7];
-        clk_en_p_d  = (cnt_q[ClkPreDivLog+7:ClkPreDivLog] == 8'b01111111) && lsbones(cnt_q);
-        clk_en_n_d  = (cnt_q[ClkPreDivLog+7:ClkPreDivLog] == 8'b11111111)  && lsbones(cnt_q);
-      end
-      
-      default: ;
+  function automatic logic [8:0] decode_sdhci_div(input logic [7:0] freq_sel);
+    unique case (freq_sel)
+      8'h00: decode_sdhci_div = 9'd1;
+      8'h01: decode_sdhci_div = 9'd2;
+      8'h02: decode_sdhci_div = 9'd4;
+      8'h04: decode_sdhci_div = 9'd8;
+      8'h08: decode_sdhci_div = 9'd16;
+      8'h10: decode_sdhci_div = 9'd32;
+      8'h20: decode_sdhci_div = 9'd64;
+      8'h40: decode_sdhci_div = 9'd128;
+      8'h80: decode_sdhci_div = 9'd256;
+      default: decode_sdhci_div = 9'd1;
     endcase
+  endfunction
+
+  logic [31:0] requested_div_full;
+  assign requested_div_full = ClkPreDiv * decode_sdhci_div(
+      reg2hw_i.clock_control.sdclk_frequency_select.q);
+
+  logic [31:0] effective_div_full;
+  assign effective_div_full = (requested_div_full < 32'd2) ? 32'd2 :
+                              (requested_div_full[0] ? requested_div_full + 32'd1 :
+                                                       requested_div_full);
+
+  logic [DivWidth-1:0] requested_div;
+  assign requested_div = effective_div_full[DivWidth-1:0];
+
+  logic [DivWidth-1:0] div_d, div_q;
+  always_comb begin
+    div_d = div_q;
+    if (!reg2hw_i.clock_control.sd_clock_enable.q &&
+        freq_sel_valid(reg2hw_i.clock_control.sdclk_frequency_select.q) &&
+        effective_div_full < (32'd1 << DivWidth)) begin
+      div_d = requested_div;
+    end
   end
-  `FFARNC(clk_div_q, clk_div_d, clear_i, 1'b1, clk_i, rst_ni);
-  
-  assign clk_o_ungated = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  clk_i : clk_div_q;
-  assign clk_en_p_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  !pause_sd_clk_i : clk_en_p_q && !pause_sd_clk_i;
-  assign clk_en_n_o    = ((div_q == 8'h00) && (ClkPreDivLog == 0)) ?  !pause_sd_clk_i : clk_en_n_q && !pause_sd_clk_i;
+  `FFARNC(div_q, div_d, clear_i, MinDiv, clk_i, rst_ni);
 
-  assign sd_clk_o =  (reg2hw_i.clock_control.sd_clock_enable.q && !pause_sd_clk_i) ? clk_o_ungated : 1'b1;
+  logic [DivWidth-1:0] cycle_count;
+  logic div_ready, div_loaded_q, div_loaded_d;
+  always_comb begin
+    div_loaded_d = div_loaded_q;
+    if (div_d != div_q) begin
+      div_loaded_d = 1'b0;
+    end else if (div_ready) begin
+      div_loaded_d = 1'b1;
+    end
+  end
+  `FFARNC(div_loaded_q, div_loaded_d, clear_i, 1'b0, clk_i, rst_ni);
 
-  assign div_1_o = ((div_q == 8'h00) && (ClkPreDivLog == 0));
-  assign sd_clk_stable_o = '{ de: '1, d: reg2hw_i.clock_control.internal_clock_enable.q};
+  logic sd_clk_running;
+  assign sd_clk_running = reg2hw_i.clock_control.sd_clock_enable.q && div_loaded_q && !pause_sd_clk_i;
 
+  clk_int_div #(
+    .DIV_VALUE_WIDTH       (DivWidth),
+    .DEFAULT_DIV_VALUE     (2),
+    .ENABLE_CLOCK_IN_RESET (1'b0)
+  ) i_clk_int_div (
+    .clk_i,
+    .rst_ni,
+    .en_i          (sd_clk_running),
+    .test_mode_en_i(1'b0),
+    .div_i         (div_q),
+    .div_valid_i   (!div_loaded_q),
+    .div_ready_o   (div_ready),
+    .clk_o         (),
+    .cycl_count_o  (cycle_count)
+  );
+
+  logic sd_clk_data_d, sd_clk_data_q, sd_clk_data_prev_q;
+  assign sd_clk_data_d = sd_clk_running ? (cycle_count < (div_q >> 1)) : 1'b1;
+  `FFARNC(sd_clk_data_q, sd_clk_data_d, clear_i, 1'b1, clk_i, rst_ni);
+  `FFARNC(sd_clk_data_prev_q, sd_clk_data_q, clear_i, 1'b1, clk_i, rst_ni);
+
+  assign sd_clk_o    = sd_clk_data_q;
+  assign clk_en_p_o  = sd_clk_running && !sd_clk_data_prev_q &&  sd_clk_data_q;
+  assign clk_en_n_o  = sd_clk_running &&  sd_clk_data_prev_q && !sd_clk_data_q;
+  assign div_1_o     = 1'b0;
+
+  assign sd_clk_stable_o = '{ de: '1, d: reg2hw_i.clock_control.internal_clock_enable.q && div_loaded_q};
+
+`ifndef SYNTHESIS
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (rst_ni && !clear_i && !reg2hw_i.clock_control.sd_clock_enable.q) begin
+      assert (freq_sel_valid(reg2hw_i.clock_control.sdclk_frequency_select.q))
+        else $error("Unsupported SDHCI SDCLK frequency select value %02h",
+                    reg2hw_i.clock_control.sdclk_frequency_select.q);
+      assert (effective_div_full >= 32'd2 && !effective_div_full[0])
+        else $error("SD clock effective divider must be even and at least 2");
+      assert (effective_div_full < (32'd1 << DivWidth))
+        else $error("SD clock effective divider %0d exceeds divider width", requested_div_full);
+    end
+  end
+`endif
 
 endmodule
