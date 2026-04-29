@@ -197,48 +197,29 @@ module autocmd_wrap (
   // autocmd12 execution should not inhibit the driver
   assign command_inhibit_cmd_o.d  = driver_cmd_queued_q | (cmd_inhibit_logic && ~running_autocmd12_q);
 
-  logic [31:0] rsp0, rsp1, rsp2, rsp3;
-  logic [119:0] rsp;
+  logic [31:0] cmd_response0_d, cmd_response1_d, cmd_response2_d, cmd_response3_d;
+  logic cmd_response0_de, cmd_response1_de, cmd_response2_de, cmd_response3_de;
 
   always_comb begin : rsp_assignment
-    rsp0 = reg2hw.response0.q;
-    rsp1 = reg2hw.response1.q;
-    rsp2 = reg2hw.response2.q;
-    rsp3 = reg2hw.response3.q;
+    response0_d_o  = cmd_response0_d;
+    response1_d_o  = cmd_response1_d;
+    response2_d_o  = cmd_response2_d;
+    response3_d_o  = cmd_response3_d;
+    response0_de_o = cmd_response0_de && !running_autocmd12_q;
+    response1_de_o = cmd_response1_de && !running_autocmd12_q;
+    response2_de_o = cmd_response2_de && !running_autocmd12_q;
+    response3_de_o = cmd_response3_de && !running_autocmd12_q;
 
-    if (running_autocmd12_q) begin
-      // auto cmd 12 response goes to upper word of rsp register
-      rsp3 = rsp [31:0];
-    end else begin
-      unique case (accepted_rsp_type_q)
-        sdhci_pkg::NO_RESPONSE:;
+    if (cmd_response3_de && accepted_rsp_type_q == sdhci_pkg::RESPONSE_LENGTH_136) begin
+      response3_d_o = {reg2hw.response3.q[31:24], cmd_response3_d[23:0]};
+    end
 
-        sdhci_pkg::RESPONSE_LENGTH_136: begin
-          // long response
-          rsp0 = rsp[31:0];
-          rsp1 = rsp[63:32];
-          rsp2 = rsp[95:64];
-          rsp3[23:0] = rsp[119:96]; // save bits 31:24 of rsp3
-        end
-
-        sdhci_pkg::RESPONSE_LENGTH_48, sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY: begin
-          rsp0 = rsp[31:0];
-        end
-
-        default:;
-      endcase
+    if (running_autocmd12_q && cmd_response0_de) begin
+      // Auto CMD12 response is stored in RESPONSE3.
+      response3_d_o  = cmd_response0_d;
+      response3_de_o = 1'b1;
     end
   end : rsp_assignment
-
-  assign response0_d_o  = rsp0;
-  assign response1_d_o  = rsp1;
-  assign response2_d_o  = rsp2;
-  assign response3_d_o  = rsp3;
-
-  assign response0_de_o = cmd_result_valid;
-  assign response1_de_o = cmd_result_valid;
-  assign response2_de_o = cmd_result_valid;
-  assign response3_de_o = cmd_result_valid;
 
   ////////////////////
   // Error Checking //
@@ -316,7 +297,14 @@ module autocmd_wrap (
     .cmd_ready_o       (command_ready),
 
     .cmd_result_valid_o(cmd_result_valid),
-    .rsp_o             (rsp),
+    .response0_d_o     (cmd_response0_d),
+    .response1_d_o     (cmd_response1_d),
+    .response2_d_o     (cmd_response2_d),
+    .response3_d_o     (cmd_response3_d),
+    .response0_de_o    (cmd_response0_de),
+    .response1_de_o    (cmd_response1_de),
+    .response2_de_o    (cmd_response2_de),
+    .response3_de_o    (cmd_response3_de),
     .end_bit_error_o   (end_bit_error),
     .crc_error_o       (crc_error),
     .index_error_o     (index_error),

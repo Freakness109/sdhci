@@ -30,7 +30,14 @@ module cmd_logic (
   output logic cmd_ready_o,
 
   output logic cmd_result_valid_o,
-  output logic [119:0] rsp_o,
+  output logic [31:0] response0_d_o,
+  output logic [31:0] response1_d_o,
+  output logic [31:0] response2_d_o,
+  output logic [31:0] response3_d_o,
+  output logic        response0_de_o,
+  output logic        response1_de_o,
+  output logic        response2_de_o,
+  output logic        response3_de_o,
   output logic index_error_o,
   output logic end_bit_error_o,
   output logic crc_error_o,
@@ -151,7 +158,8 @@ module cmd_logic (
   assign crc_error_o = ~crc_correct;
 
   sdhci_pkg::cmd_t cmd_in_response;
-  assign cmd_in_response = sdhci_pkg::cmd_t'(rsp_o[37:32]);
+  logic [5:0] response_index;
+  assign cmd_in_response = sdhci_pkg::cmd_t'(response_index);
   // this line could optionally be masked by the valid line, leave it for now
   assign index_error_o = (cmd_in_response != cmd_i) & (response_type_i == sdhci_pkg::RESPONSE_LENGTH_48 |
                                                        response_type_i == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY);
@@ -213,9 +221,16 @@ module cmd_logic (
     .timeout_i         (cmd_state_q == RSP_TIMEOUT),
     .receiving_o       (rsp_receiving),
     .rsp_valid_o       (rsp_received),
-    // TODO: do we buffer them?
     .end_bit_err_o     (end_bit_error_o),
-    .rsp_o             (rsp_o),
+    .response0_d_o     (response0_d_o),
+    .response1_d_o     (response1_d_o),
+    .response2_d_o     (response2_d_o),
+    .response3_d_o     (response3_d_o),
+    .response0_de_o    (response0_de_o),
+    .response1_de_o    (response1_de_o),
+    .response2_de_o    (response2_de_o),
+    .response3_de_o    (response3_de_o),
+    .response_index_o  (response_index),
     .crc_corr_o        (crc_correct)
   );
 
