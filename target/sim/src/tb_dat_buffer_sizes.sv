@@ -19,7 +19,10 @@ module tb_dat_buffer_sizes #(
     .rst_no ( rst_n )
   );
 
-  tb_dat_buffer_size_case #(.NumWords(8)) i_32b (
+  tb_dat_buffer_size_case #(
+    .NumWords(8),
+    .CompactBufferMode(1'b1)
+  ) i_32b_compact (
     .clk_i  (clk),
     .rst_ni (rst_n),
     .done_o (done[0])
@@ -46,15 +49,13 @@ endmodule
 
 module tb_dat_buffer_size_case #(
   parameter int unsigned NumWords = 8,
-  parameter int unsigned BlockSize = 512
+  parameter int unsigned BlockSize = 512,
+  parameter bit          CompactBufferMode = 1'b0
 ) (
   input  logic clk_i,
   input  logic rst_ni,
   output logic done_o
 );
-  localparam int unsigned NumBytes = NumWords * 4;
-  localparam int unsigned ChunkBytes = (BlockSize < NumBytes) ? BlockSize : NumBytes;
-  localparam int unsigned ChunkWords = ChunkBytes / 4;
   localparam int unsigned BlockWords = BlockSize / 4;
 
   logic clear;
@@ -68,6 +69,8 @@ module tb_dat_buffer_size_case #(
   logic write_ready;
   logic empty;
   logic [31:0] buffer_data_port_d;
+  logic buffer_data_port_read_ready;
+  logic buffer_data_port_write_ready;
   logic buffer_read_enable;
   logic buffer_write_enable;
   logic [15:0] block_count;
@@ -83,7 +86,8 @@ module tb_dat_buffer_size_case #(
 
   dat_buffer #(
     .NumWords        (NumWords),
-    .MaxBlockBitSize (10)
+    .MaxBlockBitSize (10),
+    .CompactBufferMode(CompactBufferMode)
   ) i_dat_buffer (
     .clk_i,
     .rst_ni,
@@ -97,6 +101,8 @@ module tb_dat_buffer_size_case #(
     .write_data_i      (write_data),
     .write_ready_o     (write_ready),
     .empty_o           (empty),
+    .buffer_data_port_read_ready_o(buffer_data_port_read_ready),
+    .buffer_data_port_write_ready_o(buffer_data_port_write_ready),
     .reg2hw_i          (reg2hw),
     .buffer_data_port_d_o(buffer_data_port_d),
     .buffer_read_enable_o(buffer_read_enable_hw),
@@ -117,92 +123,228 @@ module tb_dat_buffer_size_case #(
     reg2hw.block_count.q = 16'd2;
   endtask
 
-  task automatic pulse_clear();
-    clear = 1'b1;
+  task automatic tick();
     @(posedge clk_i);
-    clear = 1'b0;
-    @(posedge clk_i);
+    #1ns;
   endtask
 
-  task automatic test_read_side();
-    read_operation = 1'b1;
-    @(posedge clk_i);
+  task automatic pulse_clear();
+    clear = 1'b1;
+    tick();
+    clear = 1'b0;
+    tick();
+  endtask
 
-    for (int unsigned i = 0; i < ChunkWords - 1; i++) begin
+  task automatic test_default_read_side();
+    read_operation = 1'b1;
+    tick();
+
+    for (int unsigned i = 0; i < BlockWords - 1; i++) begin
       repeat (10) begin
         if (write_ready) begin
           break;
         end
-        @(posedge clk_i);
+        tick();
       end
       if (!write_ready) begin
         $fatal(1, "read-side buffer did not become writable for NumWords=%0d", NumWords);
       end
       write_data = 32'h1000_0000 + i;
       write_valid = 1'b1;
-      @(posedge clk_i);
+      tick();
     end
 
     write_valid = 1'b0;
-    @(posedge clk_i);
+    tick();
     if (buffer_read_enable) begin
       $fatal(1, "buffer_read_enable asserted before one chunk for NumWords=%0d", NumWords);
     end
 
-    write_data = 32'h1000_0000 + ChunkWords - 1;
+    write_data = 32'h1000_0000 + BlockWords - 1;
     write_valid = 1'b1;
-    @(posedge clk_i);
+    tick();
     write_valid = 1'b0;
-    @(posedge clk_i);
+    tick();
 
     if (!buffer_read_enable) begin
-      $fatal(1, "buffer_read_enable did not assert after one chunk for NumWords=%0d", NumWords);
+      $fatal(1, "buffer_read_enable did not assert after one block for NumWords=%0d", NumWords);
     end
 
     for (int unsigned i = 0; i < BlockWords; i++) begin
-      if (i >= ChunkWords) begin
-        write_data = 32'h1000_0000 + i;
-        write_valid = write_ready;
-      end
       reg2hw.buffer_data_port.re = 1'b1;
-      @(posedge clk_i);
+      tick();
       reg2hw.buffer_data_port.re = 1'b0;
       write_valid = 1'b0;
-      @(posedge clk_i);
+      tick();
     end
 
     read_operation = 1'b0;
   endtask
 
-  task automatic test_write_side();
+  task automatic test_default_write_side();
     write_operation = 1'b1;
-    @(posedge clk_i);
+    tick();
     if (!buffer_write_enable) begin
       $fatal(1, "buffer_write_enable not asserted on empty buffer for NumWords=%0d", NumWords);
     end
 
-    for (int unsigned i = 0; i < ChunkWords; i++) begin
+    for (int unsigned i = 0; i < BlockWords; i++) begin
       reg2hw.buffer_data_port.q = 32'h2000_0000 + i;
       reg2hw.buffer_data_port.qe = 1'b1;
-      @(posedge clk_i);
+      tick();
       reg2hw.buffer_data_port.qe = 1'b0;
-      @(posedge clk_i);
+      tick();
     end
 
-    if (ChunkWords == NumWords && buffer_write_enable) begin
+    if (BlockWords == NumWords && buffer_write_enable) begin
       $fatal(1, "buffer_write_enable remained asserted on full buffer for NumWords=%0d", NumWords);
     end
 
-    for (int unsigned i = 0; i < ChunkWords; i++) begin
+    for (int unsigned i = 0; i < BlockWords; i++) begin
       if (!read_valid) begin
         $fatal(1, "read_valid deasserted before buffered chunk drained for NumWords=%0d", NumWords);
       end
       read_ready = 1'b1;
-      @(posedge clk_i);
+      tick();
       read_ready = 1'b0;
-      @(posedge clk_i);
+      tick();
     end
 
+    write_operation = 1'b0;
+  endtask
+
+  task automatic test_compact_read_side();
+    int unsigned produced;
+    int unsigned consumed;
+    int unsigned cycles;
+
+    read_operation = 1'b1;
+    produced = 0;
+    consumed = 0;
+    cycles = 0;
+    tick();
+
+    while (consumed < BlockWords) begin
+      logic accepted_write;
+      logic accepted_read;
+
+      write_valid = 1'b0;
+      reg2hw.buffer_data_port.re = 1'b0;
+
+      if (produced < BlockWords && write_ready) begin
+        write_data = 32'h3000_0000 + produced;
+        write_valid = 1'b1;
+      end else if (buffer_data_port_read_ready) begin
+        reg2hw.buffer_data_port.re = 1'b1;
+      end
+
+      accepted_write = write_valid && write_ready;
+      accepted_read = reg2hw.buffer_data_port.re && buffer_data_port_read_ready;
+      tick();
+      if (accepted_write) begin
+        produced++;
+      end
+      if (accepted_read) begin
+        consumed++;
+      end
+
+      cycles++;
+      if (cycles > BlockWords * 16) begin
+        $fatal(1, "compact read-side buffer stalled for NumWords=%0d produced=%0d consumed=%0d",
+               NumWords, produced, consumed);
+      end
+    end
+
+    write_valid = 1'b0;
+    reg2hw.buffer_data_port.re = 1'b0;
+    read_operation = 1'b0;
+  endtask
+
+  task automatic test_compact_write_stall_resume();
+    write_operation = 1'b1;
+    tick();
+
+    for (int unsigned i = 0; i < NumWords; i++) begin
+      if (!buffer_data_port_write_ready) begin
+        $fatal(1, "compact write-side buffer became full too early for NumWords=%0d", NumWords);
+      end
+      reg2hw.buffer_data_port.q = 32'h4000_0000 + i;
+      reg2hw.buffer_data_port.qe = 1'b1;
+      tick();
+    end
+    reg2hw.buffer_data_port.qe = 1'b0;
+    tick();
+
+    if (buffer_data_port_write_ready) begin
+      $fatal(1, "compact write-side Buffer Data Port did not stall when full for NumWords=%0d", NumWords);
+    end
+
+    reg2hw.buffer_data_port.q = 32'h4BAD_F00D;
+    reg2hw.buffer_data_port.qe = 1'b1;
+    tick();
+    reg2hw.buffer_data_port.qe = 1'b0;
+
+    read_ready = 1'b1;
+    tick();
+    read_ready = 1'b0;
+
+    repeat (4) begin
+      if (buffer_data_port_write_ready) begin
+        break;
+      end
+      tick();
+    end
+    if (!buffer_data_port_write_ready) begin
+      $fatal(1, "compact write-side Buffer Data Port did not resume for NumWords=%0d", NumWords);
+    end
+
+    write_operation = 1'b0;
+  endtask
+
+  task automatic test_compact_write_side();
+    int unsigned produced;
+    int unsigned consumed;
+    int unsigned cycles;
+
+    write_operation = 1'b1;
+    produced = 0;
+    consumed = 0;
+    cycles = 0;
+    tick();
+
+    while (consumed < BlockWords) begin
+      logic accepted_write;
+      logic accepted_read;
+
+      reg2hw.buffer_data_port.qe = 1'b0;
+      read_ready = 1'b0;
+
+      if (produced < BlockWords && buffer_data_port_write_ready) begin
+        reg2hw.buffer_data_port.q = 32'h5000_0000 + produced;
+        reg2hw.buffer_data_port.qe = 1'b1;
+      end else if (read_valid) begin
+        read_ready = 1'b1;
+      end
+
+      accepted_write = reg2hw.buffer_data_port.qe && buffer_data_port_write_ready;
+      accepted_read = read_ready && read_valid;
+      tick();
+      if (accepted_write) begin
+        produced++;
+      end
+      if (accepted_read) begin
+        consumed++;
+      end
+
+      cycles++;
+      if (cycles > BlockWords * 16) begin
+        $fatal(1, "compact write-side buffer stalled for NumWords=%0d produced=%0d consumed=%0d",
+               NumWords, produced, consumed);
+      end
+    end
+
+    reg2hw.buffer_data_port.qe = 1'b0;
+    read_ready = 1'b0;
     write_operation = 1'b0;
   endtask
 
@@ -210,12 +352,21 @@ module tb_dat_buffer_size_case #(
     done_o = 1'b0;
     init_inputs();
     wait(rst_ni);
-    @(posedge clk_i);
+    tick();
 
-    pulse_clear();
-    test_read_side();
-    pulse_clear();
-    test_write_side();
+    if (CompactBufferMode) begin
+      pulse_clear();
+      test_compact_read_side();
+      pulse_clear();
+      test_compact_write_stall_resume();
+      pulse_clear();
+      test_compact_write_side();
+    end else begin
+      pulse_clear();
+      test_default_read_side();
+      pulse_clear();
+      test_default_write_side();
+    end
 
     done_o = 1'b1;
   end

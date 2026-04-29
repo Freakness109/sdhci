@@ -262,6 +262,6 @@ module sdhci_obi_driver #(
     be = 4'b0011;
     obi_read('h024, be, response);
     buffer_read_enable = response[11];
-    buffer_read_enable = response[10];
+    buffer_write_enable = response[10];
   endtask
 endmodule

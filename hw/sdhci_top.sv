@@ -30,7 +30,11 @@ module sdhci_top #(
   parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
                                     // see dat_timeout for details
 
+  // Default mode is SDHCI-compliant and requires enough FIFO space for a full
+  // 512-byte block. Compact mode is an integration tradeoff for smaller FIFOs
+  // and uses Buffer Data Port wait states instead of mid-block polling.
   parameter int unsigned BufferNumWords = 256,
+  parameter bit          CompactBufferMode = 1'b0,
 
   // clock runs at 50MHz, so 1ms is 50_000 cycles
   parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
@@ -57,6 +61,8 @@ module sdhci_top #(
   logic sd_clear, sd_clear_cmd, sd_clear_dat;
   sdhci_reg_pkg::sdhci_reg2hw_t reg2hw, reg2hw_orig;
   sdhci_reg_pkg::sdhci_hw2reg_t hw2reg;
+  logic buffer_data_port_read_ready;
+  logic buffer_data_port_write_ready;
 
   // Soft Reset Logic /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   logic software_reset_all_q, software_reset_all_d, software_reset_cmd_q, software_reset_cmd_d, software_reset_dat_q, software_reset_dat_d;
@@ -94,6 +100,9 @@ module sdhci_top #(
     .reg_rsp_o,
     .reg2hw    (reg2hw_orig),
     .hw2reg,
+    .clear_i   (sd_clear),
+    .buffer_data_port_read_ready_i  (CompactBufferMode ? buffer_data_port_read_ready  : 1'b1),
+    .buffer_data_port_write_ready_i (CompactBufferMode ? buffer_data_port_write_ready : 1'b1),
     .devmode_i (1'b1)
   );
 
@@ -226,7 +235,8 @@ module sdhci_top #(
 
   dat_wrap #(
     .TimeoutDivider (TimeoutDivider),
-    .BufferNumWords (BufferNumWords)
+    .BufferNumWords (BufferNumWords),
+    .CompactBufferMode (CompactBufferMode)
   ) i_dat_wrap (
     .clk_i,
     .sd_clk_en_p_i  (sd_clk_en_p),
@@ -260,6 +270,8 @@ module sdhci_top #(
     .buffer_data_port_d_o    (hw2reg.buffer_data_port.d),
     .buffer_read_enable_o    (hw2reg.present_state.buffer_read_enable),
     .buffer_write_enable_o   (hw2reg.present_state.buffer_write_enable),
+    .buffer_data_port_read_ready_o  (buffer_data_port_read_ready),
+    .buffer_data_port_write_ready_o (buffer_data_port_write_ready),
 
     .read_transfer_active_o  (hw2reg.present_state.read_transfer_active),
     .write_transfer_active_o (hw2reg.present_state.write_transfer_active),

@@ -12,7 +12,8 @@
 
 module dat_buffer #(
   parameter int unsigned NumWords        = 256,
-  parameter int unsigned MaxBlockBitSize = 10
+  parameter int unsigned MaxBlockBitSize = 10,
+  parameter bit          CompactBufferMode = 1'b0
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -30,6 +31,8 @@ module dat_buffer #(
   output logic        write_ready_o,
 
   output logic        empty_o,
+  output logic        buffer_data_port_read_ready_o,
+  output logic        buffer_data_port_write_ready_o,
 
   input  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
 
@@ -40,9 +43,11 @@ module dat_buffer #(
   output `writable_reg_t([15:0]) block_count_o
 );
   localparam int NumBytes = NumWords * 4;
-  localparam int ChunkBytesWidth = cf_math_pkg::idx_width(NumBytes + 1);
 
   `ASSERT_INIT(BufferSizeAtLeast32B, NumBytes >= 32, "data buffer must be at least 32 bytes")
+  `ASSERT_INIT(BufferSizeStandardBlock,
+      CompactBufferMode || NumBytes >= 512,
+      "default SDHCI buffer mode requires at least one 512-byte block")
   `ASSERT_INIT(BufferSizeAtMost1KiB, NumBytes <= 1024, "data buffer must be at most 1024 bytes")
   `ASSERT_INIT(BufferSizePowerOfTwo, (NumWords & (NumWords - 1)) == 0, "data buffer word count must be a power of two")
 
@@ -58,6 +63,9 @@ module dat_buffer #(
   logic [MaxBlockBitSize-1:0] current_word_counter_q, current_word_counter_d;
   `FFARNC (current_word_counter_q, current_word_counter_d, clear_i, '0, clk_i, rst_ni);
 
+  logic single_block_done_q, single_block_done_d;
+  `FFARNC(single_block_done_q, single_block_done_d, clear_i, 1'b0, clk_i, rst_ni);
+
   logic reg_empty;
   assign empty_o = reg_empty;
 
@@ -65,18 +73,15 @@ module dat_buffer #(
   logic [cf_math_pkg::idx_width(NumBytes + 1)-1:0] reg_remaining_bytes;
   assign reg_remaining_bytes = (cf_math_pkg::idx_width(NumBytes + 1))'(NumBytes - reg_length * 4);
 
-  logic [ChunkBytesWidth-1:0] chunk_size;
-  assign chunk_size = (effective_block_size < NumBytes) ? ChunkBytesWidth'(effective_block_size) :
-                                                     ChunkBytesWidth'(NumBytes);
+  logic has_block, has_block_space;
+  assign has_block       = reg_length * 4 >= effective_block_size;
+  assign has_block_space = reg_remaining_bytes >= effective_block_size;
 
-  logic has_chunk, has_chunk_space;
-  assign has_chunk       = reg_length * 4 >= chunk_size;
-  assign has_chunk_space = reg_remaining_bytes >= chunk_size;
-
-  logic accepts_write_chunk;
-  assign accepts_write_chunk = !reg2hw_i.transfer_mode.multi_single_block_select.q ||
-                               !reg2hw_i.transfer_mode.block_count_enable.q ||
-                               reg2hw_i.block_count.q != '0;
+  logic accepts_data_port_chunk;
+  assign accepts_data_port_chunk =
+      (!reg2hw_i.transfer_mode.multi_single_block_select.q && !single_block_done_q) ||
+      (reg2hw_i.transfer_mode.multi_single_block_select.q &&
+       (!reg2hw_i.transfer_mode.block_count_enable.q || reg2hw_i.block_count.q != '0));
 
   logic enable_reg;
   assign enable_reg = read_operation_i || write_operation_i;
@@ -92,6 +97,8 @@ module dat_buffer #(
     buffer_read_enable_o  = '{ de: '1, d: '0 };
     buffer_write_enable_o = '{ de: '1, d: '0 };
     buffer_data_port_d_o  = '0;
+    buffer_data_port_read_ready_o  = '0;
+    buffer_data_port_write_ready_o = '0;
 
     block_count_o = '{ de: '0, d: 'X };
 
@@ -104,25 +111,40 @@ module dat_buffer #(
       reg_push_data = write_data_i;
       write_ready_o = !reg_full;
 
-      buffer_read_enable_o.d = has_chunk && !write_valid_i;
+      buffer_data_port_read_ready_o = accepts_data_port_chunk && !reg_empty && !write_valid_i;
+      buffer_read_enable_o.d = accepts_data_port_chunk &&
+                               (CompactBufferMode ? !reg_empty : has_block) && !write_valid_i;
       buffer_data_port_d_o   = reg_pop_data;
-      reg_pop                = reg2hw_i.buffer_data_port.re && !reg_empty && !write_valid_i;
+      reg_pop                = reg2hw_i.buffer_data_port.re &&
+                               buffer_data_port_read_ready_o;
     end else if (write_operation_i) begin
       reg_pop      = read_ready_i && !reg_empty;
       read_data_o  = reg_pop_data;
       read_valid_o = !reg_empty;
 
-      buffer_write_enable_o.d = accepts_write_chunk && has_chunk_space;
+      buffer_data_port_write_ready_o = accepts_data_port_chunk && !reg_full;
+      buffer_write_enable_o.d = accepts_data_port_chunk &&
+                                 (CompactBufferMode ? !reg_full : has_block_space);
       reg_push_data           = reg2hw_i.buffer_data_port.q;
-      reg_push                = accepts_write_chunk && reg2hw_i.buffer_data_port.qe && !reg_full;
+      reg_push                = reg2hw_i.buffer_data_port.qe &&
+                                buffer_data_port_write_ready_o;
     end
 
 
     current_word_counter_d = current_word_counter_q;
+    single_block_done_d = single_block_done_q;
+
+    if (!read_operation_i && !write_operation_i) begin
+      single_block_done_d = 1'b0;
+    end
 
     if ((read_operation_i && reg_pop) || (write_operation_i && reg_push)) begin
       if (current_word_counter_q == words_per_block - 1) begin
         current_word_counter_d = '0;
+
+        if (!reg2hw_i.transfer_mode.multi_single_block_select.q) begin
+          single_block_done_d = 1'b1;
+        end
 
         if (reg2hw_i.transfer_mode.multi_single_block_select.q &&
             reg2hw_i.transfer_mode.block_count_enable.q) begin
@@ -145,6 +167,8 @@ module dat_buffer #(
     if (rst_ni && !clear_i && enable_reg) begin
       assert (block_size != '0)
         else $error("DAT block size must be non-zero during data transfers");
+      assert (CompactBufferMode || effective_block_size <= NumBytes)
+        else $error("default DAT buffer mode requires a full transfer block to fit");
     end
   end
 `endif

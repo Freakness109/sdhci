@@ -11,12 +11,16 @@ module tb_block_read #(
     parameter int unsigned ClkEnPeriod   = 1,
     parameter int unsigned BlockSize     = 512,
     parameter int unsigned BlockCount    = 2,
-    parameter logic        Do4Bit        = 1'b1
+    parameter logic        Do4Bit        = 1'b1,
+    parameter int unsigned BufferNumWords = 256,
+    parameter bit          CompactBufferMode = 1'b0
 )();
 
   sdhci_fixture #(
     .ClkPeriod(ClkPeriod),
-    .RstCycles(RstCycles)
+    .RstCycles(RstCycles),
+    .BufferNumWords(BufferNumWords),
+    .CompactBufferMode(CompactBufferMode)
   ) fixture ();
 
   task automatic wfi(input int unsigned timeout_cycles, string error_context);
@@ -81,6 +85,38 @@ module tb_block_read #(
 
     if (normal_interrupt_status_all != expected_normal) begin
       $fatal(1, "Unexpected normal interrupt status, got %x, expected %x (%s)", normal_interrupt_status_all, expected_normal, error_context);
+    end
+  endtask
+
+  task automatic wait_irq_bits(logic [15:0] required_normal, logic [15:0] allowed_normal,
+                               logic [15:0] expected_error, int unsigned timeout_cycles,
+                               string error_context);
+    logic [15:0] error_interrupt_status;
+    logic [15:0] normal_interrupt_status;
+    logic [15:0] normal_interrupt_status_seen;
+
+    normal_interrupt_status_seen = '0;
+    while ((normal_interrupt_status_seen & required_normal) != required_normal) begin
+      wfi(timeout_cycles, error_context);
+      fixture.vip.obi.get_interrupt_status(
+        .normal_interrupt_status(normal_interrupt_status),
+        .error_interrupt_status(error_interrupt_status)
+      );
+      fixture.vip.obi.clear_interrupt_status(
+        .normal_interrupt_status(normal_interrupt_status),
+        .error_interrupt_status(error_interrupt_status)
+      );
+
+      if (error_interrupt_status != expected_error) begin
+        $fatal(1, "Unexpected error interrupt status, got %x, expected %x (%s)",
+               error_interrupt_status, expected_error, error_context);
+      end
+      if (normal_interrupt_status & ~allowed_normal) begin
+        $fatal(1, "Unexpected normal interrupt status, got %x, allowed %x (%s)",
+               normal_interrupt_status, allowed_normal, error_context);
+      end
+
+      normal_interrupt_status_seen |= normal_interrupt_status;
     end
   endtask
 
@@ -196,46 +232,69 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    wfi(200, "cmd18 complete");
-    check_irq(
-      .expected_normal('h01), // cmd complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd18 complete")
-    );
+    if (CompactBufferMode) begin
+      wait_irq_bits(
+        .required_normal('h01), // cmd complete
+        .allowed_normal ('h21), // cmd complete and compact per-word data ready
+        .expected_error ('h0),  // no error
+        .timeout_cycles (BlockSize * 8 + 500),
+        .error_context  ("compact cmd18 complete")
+      );
 
-    wfi(BlockSize * 8 + 500, "first data present");
-    check_irq(
-      .expected_normal('h20), // data present
-      .expected_error ('h0),  // no error
-      .error_context("first data present")
-    );
-
-    repeat (BlockCount - 1) begin
       repeat (BlockSize / 4) begin
         fixture.vip.obi.read_buffer_data(.data(read_data));
       end
-      fixture.vip.obi.get_present_status_buffer_enable(
-        .buffer_read_enable(buffer_read_enable),
-        .buffer_write_enable(buffer_write_enable)
+
+      wait_irq_bits(
+        .required_normal('h02), // transfer complete
+        .allowed_normal ('h22), // transfer complete and compact data ready
+        .expected_error ('h0),  // no error
+        .timeout_cycles (BlockSize * 8 + 500),
+        .error_context  ("compact cmd18 transfer complete")
       );
-      if (!buffer_read_enable) begin
-        wfi(BlockSize * 8 + 500, "data present during loop");
-      end
+    end else begin
+      wfi(200, "cmd18 complete");
+      check_irq(
+        .expected_normal('h01), // cmd complete
+        .expected_error ('h0),  // no error
+        .error_context("cmd18 complete")
+      );
+
+      wfi(BlockSize * 8 + 500, "first data present");
       check_irq(
         .expected_normal('h20), // data present
         .expected_error ('h0),  // no error
-        .error_context("data present during loop")
+        .error_context("first data present")
+      );
+
+      repeat (BlockCount - 1) begin
+        repeat (BlockSize / 4) begin
+          fixture.vip.obi.read_buffer_data(.data(read_data));
+        end
+        fixture.vip.obi.get_present_status_buffer_enable(
+          .buffer_read_enable(buffer_read_enable),
+          .buffer_write_enable(buffer_write_enable)
+        );
+        if (!buffer_read_enable) begin
+          wfi(BlockSize * 8 + 500, "data present during loop");
+        end
+        check_irq(
+          .expected_normal('h20), // data present
+          .expected_error ('h0),  // no error
+          .error_context("data present during loop")
+        );
+      end
+      repeat (BlockSize / 4) begin
+        fixture.vip.obi.read_buffer_data(.data(read_data));
+      end
+      wfi(200, "cmd18 transfer complete");
+      check_irq(
+        .expected_normal('h02), // transfer complete
+        .expected_error ('h0),  // no error
+        .error_context("cmd18 transfer complete")
       );
     end
-    repeat (BlockSize / 4) begin
-      fixture.vip.obi.read_buffer_data(.data(read_data));
-    end
-    wfi(200, "cmd18 transfer complete");
-    check_irq(
-      .expected_normal('h02), // transfer complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd18 transfer complete")
-    );
+
     fixture.vip.obi.get_present_status_buffer_enable(
       .buffer_read_enable(buffer_read_enable),
       .buffer_write_enable(buffer_write_enable)
@@ -257,16 +316,34 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    wfi(200, "cmd12 complete and transfer complete");
-    check_irq(
-      .expected_normal('h03), // cmd complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd12 complete and transfer complete")
-    );
+    if (CompactBufferMode) begin
+      wait_irq_bits(
+        .required_normal('h03), // cmd complete and transfer complete
+        .allowed_normal ('h03),
+        .expected_error ('h0),  // no error
+        .timeout_cycles (200),
+        .error_context  ("cmd12 complete and transfer complete")
+      );
+    end else begin
+      wfi(200, "cmd12 complete and transfer complete");
+      check_irq(
+        .expected_normal('h03), // cmd complete
+        .expected_error ('h0),  // no error
+        .error_context("cmd12 complete and transfer complete")
+      );
+    end
 
     $display("All good");
 
     $finish();
   end
 
+endmodule
+
+module tb_compact_block_read();
+  tb_block_read #(
+    .BlockCount(1),
+    .BufferNumWords(8),
+    .CompactBufferMode(1'b1)
+  ) i_compact_block_read ();
 endmodule

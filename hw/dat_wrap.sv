@@ -12,6 +12,7 @@
 module dat_wrap #(
   parameter int MaxBlockBitSize = 10, // max_block_length = 512 in caps
   parameter int unsigned BufferNumWords = 256,
+  parameter bit          CompactBufferMode = 1'b0,
   parameter int unsigned TimeoutDivider = 1 // by how much to divide clk_i to get the timeout count frequency,
                                             // see dat_timeout for details
 ) (
@@ -47,6 +48,8 @@ module dat_wrap #(
   output logic [31:0]            buffer_data_port_d_o,
   output `writable_reg_t()       buffer_read_enable_o,
   output `writable_reg_t()       buffer_write_enable_o,
+  output logic                   buffer_data_port_read_ready_o,
+  output logic                   buffer_data_port_write_ready_o,
 
   output `writable_reg_t()       read_transfer_active_o,
   output `writable_reg_t()       write_transfer_active_o,
@@ -334,6 +337,9 @@ module dat_wrap #(
   logic [MaxBlockBitSize-1:0] effective_block_size;
   assign effective_block_size = (block_size == '0) ? MaxBlockBitSize'(1) : block_size;
 
+  logic [MaxBlockBitSize-1:0] words_per_block;
+  assign words_per_block = (effective_block_size + MaxBlockBitSize'(3)) >> 2;
+
 
   logic busy_waiting;
   logic read_waiting;
@@ -347,6 +353,20 @@ module dat_wrap #(
   logic pause_sd_clk_read, pause_sd_clk_write;
 
   assign pause_sd_clk_o = pause_sd_clk_read || pause_sd_clk_write;
+
+  logic [MaxBlockBitSize-1:0] write_word_counter_q, write_word_counter_d;
+  `FFARNC(write_word_counter_q, write_word_counter_d, clear_i, '0, clk_i, rst_ni);
+
+  always_comb begin
+    write_word_counter_d = write_word_counter_q;
+    if (dat_state_q != WRITE || write_state_q == WAIT_FOR_WRITE_BUFFER ||
+        write_state_q == START_WRITING || write_state_q == DONE_WRITING_BLOCK) begin
+      write_word_counter_d = '0;
+    end else if (write_state_q == WRITING && buffer_read_ready &&
+                 write_word_counter_q < words_per_block) begin
+      write_word_counter_d = write_word_counter_q + 1'b1;
+    end
+  end
 
   always_comb begin : autocmd12
     request_cmd12_o   = '0;
@@ -485,9 +505,9 @@ module dat_wrap #(
         start_write = '1;
       end
       WRITING: begin
-        if (!buffer_read_valid) begin
+        if (!buffer_read_valid && write_word_counter_q < words_per_block) begin
           pause_sd_clk_write = '1;
-        end else if (write_requests_next_word) begin
+        end else if (write_requests_next_word && write_word_counter_q < words_per_block) begin
           buffer_read_ready = '1;
         end
 
@@ -515,7 +535,8 @@ module dat_wrap #(
 
   dat_buffer #(
     .NumWords        (BufferNumWords),
-    .MaxBlockBitSize (MaxBlockBitSize)
+    .MaxBlockBitSize (MaxBlockBitSize),
+    .CompactBufferMode (CompactBufferMode)
   ) i_dat_buffer (
     .clk_i,
     .rst_ni,
@@ -533,6 +554,8 @@ module dat_wrap #(
     .write_ready_o (buffer_write_ready),
 
     .empty_o       (buffer_empty),
+    .buffer_data_port_read_ready_o,
+    .buffer_data_port_write_ready_o,
 
     .reg2hw_i,
     .buffer_data_port_d_o,

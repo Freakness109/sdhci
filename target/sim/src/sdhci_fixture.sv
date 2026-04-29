@@ -10,7 +10,8 @@ module sdhci_fixture #(
     parameter time         ClkPeriod      = 50ns,
     parameter int unsigned RstCycles      = 1,
     parameter int unsigned TimeoutDivider = 1,
-    parameter int unsigned BufferNumWords = 256
+    parameter int unsigned BufferNumWords = 256,
+    parameter bit          CompactBufferMode = 1'b0
 )();
   `include "obi/typedef.svh"
 
@@ -34,6 +35,7 @@ module sdhci_fixture #(
       .ClkPreDiv        (2),
       .NumDebounceCycles(2),
       .BufferNumWords   (BufferNumWords),
+      .CompactBufferMode(CompactBufferMode),
       .TimeoutDivider   (TimeoutDivider)
   ) i_sdhci_top (
       .clk_i  (clk),
