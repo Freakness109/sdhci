@@ -12,10 +12,12 @@
 
 module dat_buffer #(
   parameter int unsigned NumWords        = 256,
-  parameter int unsigned MaxBlockBitSize = 10
+  parameter int unsigned MaxBlockBitSize = 10,
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0
 ) (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
 
   input  logic read_operation_i,
   input  logic write_operation_i,
@@ -29,8 +31,16 @@ module dat_buffer #(
   output logic        write_ready_o,
 
   output logic        empty_o,
+  output logic        buffer_data_port_read_ready_o,
+  output logic        buffer_data_port_write_ready_o,
 
-  input  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
+  input  logic [MaxBlockBitSize-1:0] block_size_i,
+  input  logic [15:0]                block_count_i,
+  input  logic                       multi_block_i,
+  input  logic                       block_count_enable_i,
+  input  logic                       buffer_data_port_re_i,
+  input  logic                       buffer_data_port_qe_i,
+  input  logic [31:0]                buffer_data_port_q_i,
 
   output logic [31:0]      buffer_data_port_d_o,
   output `writable_reg_t() buffer_read_enable_o,
@@ -40,11 +50,24 @@ module dat_buffer #(
 );
   localparam int NumBytes = NumWords * 4;
 
-  logic [MaxBlockBitSize-1:0] block_size;
-  assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
+  `ASSERT_INIT(BufferSizeAtLeast32B, NumBytes >= 32, "data buffer must be at least 32 bytes")
+  `ASSERT_INIT(BufferSizeStandardBlock,
+      AllowNoncompliantBufferSizes || NumBytes >= 512,
+      "set AllowNoncompliantBufferSizes to use a non-SDHCI-compliant buffer below 512 bytes")
+  `ASSERT_INIT(BufferSizeAtMost1KiB, NumBytes <= 1024, "data buffer must be at most 1024 bytes")
+  `ASSERT_INIT(BufferSizePowerOfTwo, (NumWords & (NumWords - 1)) == 0, "data buffer word count must be a power of two")
+
+  logic [MaxBlockBitSize-1:0] effective_block_size;
+  assign effective_block_size = (block_size_i == '0) ? MaxBlockBitSize'(1) : block_size_i;
+
+  logic [MaxBlockBitSize-1:0] words_per_block;
+  assign words_per_block = (effective_block_size + MaxBlockBitSize'(3)) >> 2;
 
   logic [MaxBlockBitSize-1:0] current_word_counter_q, current_word_counter_d;
-  `FF (current_word_counter_q, current_word_counter_d, '0);
+  `FFARNC (current_word_counter_q, current_word_counter_d, clear_i, '0, clk_i, rst_ni);
+
+  logic single_block_done_q, single_block_done_d;
+  `FFARNC(single_block_done_q, single_block_done_d, clear_i, 1'b0, clk_i, rst_ni);
 
   logic reg_empty;
   assign empty_o = reg_empty;
@@ -53,9 +76,14 @@ module dat_buffer #(
   logic [cf_math_pkg::idx_width(NumBytes + 1)-1:0] reg_remaining_bytes;
   assign reg_remaining_bytes = (cf_math_pkg::idx_width(NumBytes + 1))'(NumBytes - reg_length * 4);
 
-  logic has_block, has_space;
-  assign has_space = reg_remaining_bytes >= block_size;
-  assign has_block = reg_length * 4 >= block_size;
+  logic has_block, has_block_space;
+  assign has_block       = reg_length * 4 >= effective_block_size;
+  assign has_block_space = reg_remaining_bytes >= effective_block_size;
+
+  logic accepts_data_port_chunk;
+  assign accepts_data_port_chunk =
+      (!multi_block_i && !single_block_done_q) ||
+      (multi_block_i && (!block_count_enable_i || block_count_i != '0));
 
   logic enable_reg;
   assign enable_reg = read_operation_i || write_operation_i;
@@ -71,6 +99,8 @@ module dat_buffer #(
     buffer_read_enable_o  = '{ de: '1, d: '0 };
     buffer_write_enable_o = '{ de: '1, d: '0 };
     buffer_data_port_d_o  = '0;
+    buffer_data_port_read_ready_o  = '0;
+    buffer_data_port_write_ready_o = '0;
 
     block_count_o = '{ de: '0, d: 'X };
 
@@ -79,35 +109,47 @@ module dat_buffer #(
     read_data_o   = 'X;
 
     if (read_operation_i) begin
-      reg_push      = write_valid_i;
+      reg_push      = write_valid_i && !reg_full;
       reg_push_data = write_data_i;
-      write_ready_o = has_space;
+      write_ready_o = !reg_full;
 
-      buffer_read_enable_o.d = has_block;
+      buffer_data_port_read_ready_o = accepts_data_port_chunk && !reg_empty && !write_valid_i;
+      buffer_read_enable_o.d = accepts_data_port_chunk &&
+                               (AllowNoncompliantBufferSizes ? !reg_empty : has_block) && !write_valid_i;
       buffer_data_port_d_o   = reg_pop_data;
-      reg_pop                = reg2hw_i.buffer_data_port.re;
+      reg_pop                = buffer_data_port_re_i && buffer_data_port_read_ready_o;
     end else if (write_operation_i) begin
-      reg_pop      = read_ready_i;
+      reg_pop      = read_ready_i && !reg_empty;
       read_data_o  = reg_pop_data;
-      read_valid_o = has_block;
+      read_valid_o = !reg_empty;
 
-      buffer_write_enable_o.d = has_space; 
-      reg_push_data           = reg2hw_i.buffer_data_port.q;
-      reg_push                = reg2hw_i.buffer_data_port.qe;
+      buffer_data_port_write_ready_o = accepts_data_port_chunk && !reg_full;
+      buffer_write_enable_o.d = accepts_data_port_chunk &&
+                                 (AllowNoncompliantBufferSizes ? !reg_full : has_block_space);
+      reg_push_data           = buffer_data_port_q_i;
+      reg_push                = buffer_data_port_qe_i && buffer_data_port_write_ready_o;
     end
 
 
     current_word_counter_d = current_word_counter_q;
+    single_block_done_d = single_block_done_q;
 
-    if ((read_operation_i && reg2hw_i.buffer_data_port.re) || (write_operation_i && reg2hw_i.buffer_data_port.qe)) begin
-      if (current_word_counter_q == (block_size + 3) / 4 - 1) begin
+    if (!read_operation_i && !write_operation_i) begin
+      single_block_done_d = 1'b0;
+    end
+
+    if ((read_operation_i && reg_pop) || (write_operation_i && reg_push)) begin
+      if (current_word_counter_q == words_per_block - 1) begin
         current_word_counter_d = '0;
 
-        // TODO block count enable / infity block transfer
-        if (reg2hw_i.transfer_mode.multi_single_block_select.q) begin
+        if (!multi_block_i) begin
+          single_block_done_d = 1'b1;
+        end
+
+        if (multi_block_i && block_count_enable_i) begin
           // TODO this will have to be changed when adding support for suspend / resume
-          block_count_o = '{ de: '1, d: reg2hw_i.block_count.q - 1 };
-          if (reg2hw_i.block_count.q != 'b1) begin
+          block_count_o = '{ de: '1, d: block_count_i - 1 };
+          if (block_count_i != 'b1) begin
             // To trigger an interrupt
             buffer_write_enable_o.d = '0;
             buffer_read_enable_o.d  = '0;
@@ -119,12 +161,24 @@ module dat_buffer #(
     end
   end
 
+`ifndef SYNTHESIS
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (rst_ni && !clear_i && enable_reg) begin
+      assert (block_size_i != '0)
+        else $error("DAT block size must be non-zero during data transfers");
+      assert (AllowNoncompliantBufferSizes || effective_block_size <= NumBytes)
+        else $error("set AllowNoncompliantBufferSizes to use a DAT buffer smaller than the transfer block");
+    end
+  end
+`endif
+
 
   sram_shift_reg #(
     .NumWords (NumWords)
   ) i_sram_shift_reg (
     .clk_i,
     .rst_ni,
+    .clear_i,
   
     .en_i (enable_reg),
 

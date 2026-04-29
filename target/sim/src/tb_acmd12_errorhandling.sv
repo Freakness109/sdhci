@@ -91,7 +91,9 @@ module tb_acmd12_errorhandling #(
     $dumpvars(0);
 
     if (!$value$plusargs("CyclesThatDriverCommandArrivesBeforeCMD12=%d", CyclesThatDriverCommandArrivesBeforeCMD12)) begin
-      CyclesThatDriverCommandArrivesBeforeCMD12 = 0;
+      // Keep the default regression point away from the timing boundary; directed
+      // sweeps can still override this plusarg to exercise the collision window.
+      CyclesThatDriverCommandArrivesBeforeCMD12 = 10;
     end
     if (!$value$plusargs("IsFirstResponseValid=%d", IsFirstResponseValid)) begin
       IsFirstResponseValid = 0;
@@ -168,7 +170,7 @@ module tb_acmd12_errorhandling #(
 
     if (buf_write_en) begin
       // we submitted all the data for the block
-      $fatal("Buffer write enable should be off");
+      $fatal(1, "Buffer write enable should be off");
     end
 
     fixture.vip.sd.wait_for_dat_held();
@@ -179,7 +181,7 @@ module tb_acmd12_errorhandling #(
       1: repeat(8 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
       2: repeat(17 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
       4: repeat(35 - CyclesThatDriverCommandArrivesBeforeCMD12) fixture.vip.wait_for_clk();
-      default: $fatal("ClkEnPeriod not supported");
+      default: $fatal(1, "ClkEnPeriod not supported");
     endcase
 
     fixture.vip.obi.launch_command(

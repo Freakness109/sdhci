@@ -14,6 +14,7 @@ import sdhci_reg_pkg::*;
 module autocmd_wrap (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
   input  logic clk_en_p_i, // high before next sd_clk posedge
   input  logic clk_en_n_i, // high before next sd_clk negedge
   input  logic div_1_i,
@@ -55,13 +56,13 @@ module autocmd_wrap (
   ////////////////
 
   logic driver_cmd_queued_q, driver_cmd_queued_d;
-  `FF(driver_cmd_queued_q, driver_cmd_queued_d, '0, clk_i, rst_ni);
+  `FFARNC(driver_cmd_queued_q, driver_cmd_queued_d, clear_i, '0, clk_i, rst_ni);
 
   logic autocmd12_queued_q, autocmd12_queued_d;
-  `FF(autocmd12_queued_q, autocmd12_queued_d, '0, clk_i, rst_ni);
+  `FFARNC(autocmd12_queued_q, autocmd12_queued_d, clear_i, '0, clk_i, rst_ni);
 
   logic running_autocmd12_q, running_autocmd12_d;
-  `FF(running_autocmd12_q, running_autocmd12_d, '0, clk_i, rst_ni);
+  `FFARNC(running_autocmd12_q, running_autocmd12_d, clear_i, '0, clk_i, rst_ni);
 
   logic command_queued;
   assign command_queued = driver_cmd_queued_q || autocmd12_queued_q;
@@ -88,12 +89,23 @@ module autocmd_wrap (
   logic cmd_errors_occured;
   assign cmd_errors_occured = end_bit_error || crc_error || index_error || timeout_error;
 
+  logic active_transfer_direction_q, active_transfer_direction_d;
+  `FFLARNC(active_transfer_direction_q, active_transfer_direction_d,
+           command_started && !autocmd12_queued_q && cmd_data_present_o,
+           clear_i, '0, clk_i, rst_ni);
+
+  // Use running_autocmd12_q (not autocmd12_queued_q) so the mux output
+  // stays stable throughout command execution, allowing cmd_logic to read
+  // these directly without re-latching them.
+  logic is_autocmd12;
+  assign is_autocmd12 = autocmd12_queued_q | running_autocmd12_q;
+
   sdhci_pkg::cmd_t current_cmd;
-  assign current_cmd = autocmd12_queued_q ? 6'd12 :
+  assign current_cmd = is_autocmd12 ? 6'd12 :
                        reg2hw.command.command_index.q;
 
   sdhci_pkg::cmd_arg_t current_arg;
-  assign current_arg = autocmd12_queued_q ? '0 : reg2hw.argument.q;
+  assign current_arg = is_autocmd12 ? '0 : reg2hw.argument.q;
 
   sdhci_pkg::response_type_e current_rsp_type;
 
@@ -101,8 +113,8 @@ module autocmd_wrap (
     current_rsp_type = sdhci_pkg::response_type_e'(reg2hw.command.response_type_select.q);
 
     // according to electrical spec 7.8.4, CMD12 is R1 on reads and R1b on writes
-    if (autocmd12_queued_q) begin
-      if (reg2hw.transfer_mode.data_transfer_direction_select.q == 1'b0) begin
+    if (is_autocmd12) begin
+      if (active_transfer_direction_q == 1'b0) begin
         // write -> R1b
         current_rsp_type = sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
       end else begin
@@ -115,12 +127,25 @@ module autocmd_wrap (
   assign cmd_needs_busy_o = current_rsp_type == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY;
   assign cmd_transfer_direction_o = reg2hw.transfer_mode.data_transfer_direction_select.q;
 
+  sdhci_pkg::cmd_t accepted_cmd_q, accepted_cmd_d;
+  `FFLARNC(accepted_cmd_q, accepted_cmd_d, command_started, clear_i, '0, clk_i, rst_ni);
+
+  sdhci_pkg::cmd_arg_t accepted_arg_q, accepted_arg_d;
+  `FFLARNC(accepted_arg_q, accepted_arg_d, command_started, clear_i, '0, clk_i, rst_ni);
+
+  sdhci_pkg::response_type_e accepted_rsp_type_q, accepted_rsp_type_d;
+  `FFLARNC(accepted_rsp_type_q, accepted_rsp_type_d, command_started, clear_i, sdhci_pkg::NO_RESPONSE, clk_i, rst_ni);
+
   always_comb begin : request_commands
     driver_cmd_queued_d = driver_cmd_queued_q;
     autocmd12_queued_d = autocmd12_queued_q;
     auto_cmd12_errors_o.command_not_issued_by_auto_cmd12_error.de = 1'b0;
     auto_cmd12_errors_o.auto_cmd12_not_executed.de = 1'b0;
     running_autocmd12_d = running_autocmd12_q;
+    active_transfer_direction_d = reg2hw.transfer_mode.data_transfer_direction_select.q;
+    accepted_cmd_d = current_cmd;
+    accepted_arg_d = current_arg;
+    accepted_rsp_type_d = current_rsp_type;
 
     if (reg2hw.command.command_index.qe) begin
       driver_cmd_queued_d = 1'b1;
@@ -172,48 +197,29 @@ module autocmd_wrap (
   // autocmd12 execution should not inhibit the driver
   assign command_inhibit_cmd_o.d  = driver_cmd_queued_q | (cmd_inhibit_logic && ~running_autocmd12_q);
 
-  logic [31:0] rsp0, rsp1, rsp2, rsp3;
-  logic [119:0] rsp;
+  logic [31:0] cmd_response0_d, cmd_response1_d, cmd_response2_d, cmd_response3_d;
+  logic cmd_response0_de, cmd_response1_de, cmd_response2_de, cmd_response3_de;
 
   always_comb begin : rsp_assignment
-    rsp0 = reg2hw.response0.q;
-    rsp1 = reg2hw.response1.q;
-    rsp2 = reg2hw.response2.q;
-    rsp3 = reg2hw.response3.q;
+    response0_d_o  = cmd_response0_d;
+    response1_d_o  = cmd_response1_d;
+    response2_d_o  = cmd_response2_d;
+    response3_d_o  = cmd_response3_d;
+    response0_de_o = cmd_response0_de && !running_autocmd12_q;
+    response1_de_o = cmd_response1_de && !running_autocmd12_q;
+    response2_de_o = cmd_response2_de && !running_autocmd12_q;
+    response3_de_o = cmd_response3_de && !running_autocmd12_q;
 
-    if (running_autocmd12_q) begin
-      // auto cmd 12 response goes to upper word of rsp register
-      rsp3 = rsp [31:0];
-    end else begin
-      unique case (current_rsp_type)
-        sdhci_pkg::NO_RESPONSE:;
+    if (cmd_response3_de && accepted_rsp_type_q == sdhci_pkg::RESPONSE_LENGTH_136) begin
+      response3_d_o = {reg2hw.response3.q[31:24], cmd_response3_d[23:0]};
+    end
 
-        sdhci_pkg::RESPONSE_LENGTH_136: begin
-          // long response
-          rsp0 = rsp[31:0];
-          rsp1 = rsp[63:32];
-          rsp2 = rsp[95:64];
-          rsp3[23:0] = rsp[119:96]; // save bits 31:24 of rsp3
-        end
-
-        sdhci_pkg::RESPONSE_LENGTH_48, sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY: begin
-          rsp0 = rsp[31:0];
-        end
-
-        default:;
-      endcase
+    if (running_autocmd12_q && cmd_response0_de) begin
+      // Auto CMD12 response is stored in RESPONSE3.
+      response3_d_o  = cmd_response0_d;
+      response3_de_o = 1'b1;
     end
   end : rsp_assignment
-
-  assign response0_d_o  = rsp0;
-  assign response1_d_o  = rsp1;
-  assign response2_d_o  = rsp2;
-  assign response3_d_o  = rsp3;
-
-  assign response0_de_o = cmd_result_valid;
-  assign response1_de_o = cmd_result_valid;
-  assign response2_de_o = cmd_result_valid;
-  assign response3_de_o = cmd_result_valid;
 
   ////////////////////
   // Error Checking //
@@ -272,6 +278,7 @@ module autocmd_wrap (
   cmd_logic i_cmd_logic (
     .clk_i             (clk_i),
     .rst_ni            (rst_ni),
+    .clear_i           (clear_i),
     .clk_en_p_i        (clk_en_p_i),
     .clk_en_n_i        (clk_en_n_i),
     .div_1_i           (div_1_i),
@@ -283,14 +290,21 @@ module autocmd_wrap (
     .rsp_done_o        (sd_rsp_done_o),
     .cmd_inhibit_cmd_o (cmd_inhibit_logic),
 
-    .cmd_i             (current_cmd),
-    .cmd_arg_i         (current_arg),
-    .response_type_i   (current_rsp_type),
+    .cmd_i             (accepted_cmd_q),
+    .cmd_arg_i         (accepted_arg_q),
+    .response_type_i   (accepted_rsp_type_q),
     .cmd_valid_i       (command_queued),
     .cmd_ready_o       (command_ready),
 
     .cmd_result_valid_o(cmd_result_valid),
-    .rsp_o             (rsp),
+    .response0_d_o     (cmd_response0_d),
+    .response1_d_o     (cmd_response1_d),
+    .response2_d_o     (cmd_response2_d),
+    .response3_d_o     (cmd_response3_d),
+    .response0_de_o    (cmd_response0_de),
+    .response1_de_o    (cmd_response1_de),
+    .response2_de_o    (cmd_response2_de),
+    .response3_de_o    (cmd_response3_de),
     .end_bit_error_o   (end_bit_error),
     .crc_error_o       (crc_error),
     .index_error_o     (index_error),

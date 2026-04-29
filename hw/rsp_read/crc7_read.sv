@@ -15,6 +15,7 @@ module crc7_read (
   input   logic       clk_i,
   input   logic       clk_en_i,
   input   logic       rst_ni,
+  input   logic       clear_i,
       
   input   logic       start_i,  //start considering input next clock cycle
   input   logic       end_output_i, //stop consider input and output result next cycle
@@ -48,7 +49,7 @@ module crc7_read (
     endcase
   end : crc7_state_transition
 
-  `FFL(crc_state_q, crc_state_d, clk_en_i, OUTPUT, clk_i, rst_ni);
+  `FFLARNC(crc_state_q, crc_state_d, clk_en_i, clear_i, OUTPUT, clk_i, rst_ni);
 
   ///////////////
   // Data Path //
@@ -56,7 +57,7 @@ module crc7_read (
 
   logic [2:0] lower_3_d, lower_3_q; //lower 3 lsb of crc
   logic [3:0] upper_4_d, upper_4_q; //upper 4 msb of crc
-  logic int_rst_n, rst_n, dat_i_xor_out;
+  logic clear_crc, dat_i_xor_out;
 
   assign dat_i_xor_out = (rsp_ser_i ^ upper_4_q[3]);
 
@@ -64,11 +65,11 @@ module crc7_read (
     lower_3_d = lower_3_q;
     upper_4_d = upper_4_q;
     
-    int_rst_n       = 1'b1;
+    clear_crc = clear_i;
 
     unique case (crc_state_q)
 
-      START:    int_rst_n = 1'b0; //reset contents to zero
+      START:    clear_crc = 1'b1; // reset contents to zero
 
       CALCULATE:  begin
         lower_3_d [2:1] = lower_3_q [1:0];
@@ -81,10 +82,8 @@ module crc7_read (
     endcase
   end : crc7_data_path
 
-  assign  rst_n = (rst_ni & int_rst_n); //only for data, not for state
-
-  `FFL(lower_3_q, lower_3_d, clk_en_i, 3'b0, clk_i, rst_n);
-  `FFL(upper_4_q, upper_4_d, clk_en_i, 4'b0, clk_i, rst_n);
+  `FFLARNC(lower_3_q, lower_3_d, clk_en_i, clear_crc, 3'b0, clk_i, rst_ni);
+  `FFLARNC(upper_4_q, upper_4_d, clk_en_i, clear_crc, 4'b0, clk_i, rst_ni);
 
   //output assignment
   assign crc7_o[6:3] = upper_4_q;

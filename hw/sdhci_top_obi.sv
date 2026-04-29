@@ -12,8 +12,10 @@ module sdhci_top_obi #(
   parameter obi_pkg::obi_cfg_t ObiCfg            = obi_pkg::ObiDefaultConfig,
   parameter type               obi_req_t         = logic,
   parameter type               obi_rsp_t         = logic,
-  parameter int unsigned       ClkPreDivLog      = 1,
+  parameter int unsigned       ClkPreDiv         = 2,
   parameter int unsigned       NumDebounceCycles = 500_000,
+  parameter int unsigned       BufferNumWords    = 256,
+  parameter bit                AllowNoncompliantBufferSizes = 1'b0,
   parameter int                TimeoutDivider    = 1
 ) (
   input  logic clk_i,
@@ -43,7 +45,7 @@ module sdhci_top_obi #(
   reg_req_t reg_req;
   reg_rsp_t reg_rsp;
 
-  obi_to_reg #(
+  sdhci_obi_to_reg #(
     .DATA_WIDTH (ObiCfg.DataWidth),
     .ID_WIDTH   (ObiCfg.IdWidth),
 
@@ -65,8 +67,10 @@ module sdhci_top_obi #(
     .AddrWidth        (ObiCfg.AddrWidth),
     .reg_req_t        (reg_req_t),
     .reg_rsp_t        (reg_rsp_t),
-    .ClkPreDivLog     (ClkPreDivLog),
+    .ClkPreDiv        (ClkPreDiv),
     .NumDebounceCycles(NumDebounceCycles),
+    .BufferNumWords   (BufferNumWords),
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes),
     .TimeoutDivider   (TimeoutDivider)
   ) i_sdhci_impl (
     .clk_i,

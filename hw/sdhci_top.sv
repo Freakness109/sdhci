@@ -10,20 +10,31 @@
 `include "common_cells/registers.svh"
 `include "defines.svh"
 
+// SDC note: sd_clk_o is a clk_i-registered clock-as-data pad output. The
+// controller internals remain in the clk_i domain and use sd_clk_en_p/n strobes
+// derived from the same divider. Do not propagate CTS through sd_clk_o; constrain
+// SD CMD/DAT pad delays against clk_i, and document the board/protocol SDCLK
+// period as ClkPreDiv times the SDHCI frequency-select divider. Hardware
+// enforces a minimum effective divide by 2 for sdclk_frequency_select=0.
 module sdhci_top #(
   parameter int unsigned AddrWidth = 32'd32,
   parameter type               reg_req_t   = logic,
   parameter type               reg_rsp_t   = logic,
 
-  //sw handles clock division. However, largest base freq. accepted is 63MHz!
-  //-> internal clock predivider to get below 63MHz
-  //only power of 2 dividers allowed :(
-  //input log2 of divider i.e div by 4 ->  ClkPreDivLog = 2
-  parameter int unsigned       ClkPreDivLog   = 1,
-  //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
+  // Software handles SDHCI clock division. ClkPreDiv is a hidden integration
+  // predivider folded into the same physical divider as sdclk_frequency_select;
+  // advertise clk_i/ClkPreDiv as base_clock_frequency_for_sd_clock.
+  parameter int unsigned       ClkPreDiv   = 2,
 
   parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
                                     // see dat_timeout for details
+
+  // Warranty-void integration escape hatch: default mode is SDHCI-compliant
+  // and requires enough FIFO space for a full 512-byte block. Setting
+  // AllowNoncompliantBufferSizes permits smaller FIFOs and reports the usable
+  // Buffer Data Port chunk size in the vendor extension at offset 0x44.
+  parameter int unsigned BufferNumWords = 256,
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0,
 
   // clock runs at 50MHz, so 1ms is 50_000 cycles
   parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
@@ -47,9 +58,11 @@ module sdhci_top #(
   output logic interrupt_o
 
 );
-  logic sd_rst_n, sd_rst_cmd_n, sd_rst_dat_n;
+  logic sd_clear, sd_clear_cmd, sd_clear_dat;
   sdhci_reg_pkg::sdhci_reg2hw_t reg2hw, reg2hw_orig;
   sdhci_reg_pkg::sdhci_hw2reg_t hw2reg;
+  logic buffer_data_port_read_ready;
+  logic buffer_data_port_write_ready;
 
   // Soft Reset Logic /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   logic software_reset_all_q, software_reset_all_d, software_reset_cmd_q, software_reset_cmd_d, software_reset_dat_q, software_reset_dat_d;
@@ -58,18 +71,20 @@ module sdhci_top #(
   `FF(software_reset_all_q, software_reset_all_d, '0, clk_i, rst_ni);
 
   assign software_reset_cmd_d = reg2hw.software_reset.software_reset_for_cmd_line.q;  // command circuit soft reset
-  `FF(software_reset_cmd_q, software_reset_cmd_d, '1, clk_i, rst_ni);
+  `FF(software_reset_cmd_q, software_reset_cmd_d, '0, clk_i, rst_ni);
 
   assign software_reset_dat_d = reg2hw.software_reset.software_reset_for_dat_line.q;  // dat circuit soft reset
-  `FF(software_reset_dat_q, software_reset_dat_d, '1, clk_i, rst_ni);
+  `FF(software_reset_dat_q, software_reset_dat_d, '0, clk_i, rst_ni);
 
-  assign sd_rst_n = rst_ni && !software_reset_all_q;
-  assign sd_rst_cmd_n = sd_rst_n && !software_reset_cmd_q;
-  assign sd_rst_dat_n = sd_rst_n && !software_reset_dat_q;
+  assign sd_clear     = software_reset_all_q;
+  assign sd_clear_cmd = sd_clear || software_reset_cmd_q;
+  assign sd_clear_dat = sd_clear || software_reset_dat_q;
 
+  assign hw2reg.software_reset.software_reset_for_all.d = 1'b0;
   assign hw2reg.software_reset.software_reset_for_dat_line.d = 1'b0;
   assign hw2reg.software_reset.software_reset_for_cmd_line.d = 1'b0;
 
+  assign hw2reg.software_reset.software_reset_for_all.de = software_reset_all_q;
   assign hw2reg.software_reset.software_reset_for_dat_line.de = software_reset_dat_q;
   assign hw2reg.software_reset.software_reset_for_cmd_line.de = software_reset_cmd_q;
 
@@ -77,14 +92,19 @@ module sdhci_top #(
   sdhci_reg_top #(
     .AW        (AddrWidth),
     .reg_req_t (reg_req_t),
-    .reg_rsp_t (reg_rsp_t)
+    .reg_rsp_t (reg_rsp_t),
+    .BufferNumWords(BufferNumWords),
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes)
   ) i_regs (
     .clk_i,
-    .rst_ni    (sd_rst_n),
+    .rst_ni,
     .reg_req_i,
     .reg_rsp_o,
     .reg2hw    (reg2hw_orig),
     .hw2reg,
+    .clear_i   (sd_clear),
+    .buffer_data_port_read_ready_i  (AllowNoncompliantBufferSizes ? buffer_data_port_read_ready  : 1'b1),
+    .buffer_data_port_write_ready_i (AllowNoncompliantBufferSizes ? buffer_data_port_write_ready : 1'b1),
     .devmode_i (1'b1)
   );
 
@@ -95,9 +115,10 @@ module sdhci_top #(
 
   sdhci_reg_logic i_sdhci_reg_logic (
     .clk_i,
-    .rst_ni     (sd_rst_n),
-    .rst_cmd_ni (sd_rst_cmd_n),
-    .rst_dat_ni (sd_rst_dat_n),
+    .rst_ni,
+    .clear_i     (sd_clear),
+    .clear_cmd_i (sd_clear_cmd),
+    .clear_dat_i (sd_clear_dat),
 
     .reg2hw_i          (reg2hw_orig),
     .hw2reg_i          (hw2reg),
@@ -132,10 +153,11 @@ module sdhci_top #(
 
   logic pause_sd_clk, sd_clk_en_p, sd_clk_en_n, div_1;
   sd_clk_generator #(
-    .ClkPreDivLog (ClkPreDivLog)
+    .ClkPreDiv (ClkPreDiv)
   ) i_sd_clk_generator (
     .clk_i,
-    .rst_ni (sd_rst_n),
+    .rst_ni,
+    .clear_i (sd_clear),
     .reg2hw_i (reg2hw),
 
     .pause_sd_clk_i  (pause_sd_clk),
@@ -176,7 +198,8 @@ module sdhci_top #(
 
   autocmd_wrap  i_autocmd_wrap (
     .clk_i           (clk_i),
-    .rst_ni          (sd_rst_cmd_n),
+    .rst_ni,
+    .clear_i         (sd_clear_cmd),
     .clk_en_p_i      (sd_clk_en_p),
     .clk_en_n_i      (sd_clk_en_n),
     .div_1_i         (div_1),
@@ -213,13 +236,16 @@ module sdhci_top #(
 
 
   dat_wrap #(
-    .TimeoutDivider(TimeoutDivider)
+    .TimeoutDivider (TimeoutDivider),
+    .BufferNumWords (BufferNumWords),
+    .AllowNoncompliantBufferSizes (AllowNoncompliantBufferSizes)
   ) i_dat_wrap (
     .clk_i,
     .sd_clk_en_p_i  (sd_clk_en_p),
     .sd_clk_en_n_i  (sd_clk_en_n),
     .div_1_i        (div_1),
-    .rst_ni      (sd_rst_dat_n),
+    .rst_ni,
+    .clear_i     (sd_clear_dat),
 
     .dat_i    (sd_dat_i),
     .dat_en_o (sd_dat_en_o),
@@ -246,6 +272,8 @@ module sdhci_top #(
     .buffer_data_port_d_o    (hw2reg.buffer_data_port.d),
     .buffer_read_enable_o    (hw2reg.present_state.buffer_read_enable),
     .buffer_write_enable_o   (hw2reg.present_state.buffer_write_enable),
+    .buffer_data_port_read_ready_o  (buffer_data_port_read_ready),
+    .buffer_data_port_write_ready_o (buffer_data_port_write_ready),
 
     .read_transfer_active_o  (hw2reg.present_state.read_transfer_active),
     .write_transfer_active_o (hw2reg.present_state.write_transfer_active),

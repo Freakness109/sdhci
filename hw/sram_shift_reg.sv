@@ -28,6 +28,7 @@ module sram_shift_reg #(
 ) (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
   input  logic en_i,
 
 
@@ -42,22 +43,22 @@ module sram_shift_reg #(
 );
   // Push a pop operation to the next clock cycle if the sram is busy
   logic pop_front_q, pop_front_d;
-  `FF(pop_front_q, pop_front_d, '0, clk_i, rst_ni);
+  `FFARNC(pop_front_q, pop_front_d, clear_i, '0, clk_i, rst_ni);
   assign pop_front_d = pop_front_i & (push_back_i | pop_front_q);
 
   `ASSERT_NEVER(Overload, pop_front_i & push_back_i & pop_front_q);
 
   logic [AddrWidth-1:0] back_addr_q, back_addr_d;
-  `FF(back_addr_q, back_addr_d, '0, clk_i, rst_ni);
+  `FFARNC(back_addr_q, back_addr_d, clear_i, '0, clk_i, rst_ni);
 
   logic [LengthWidth-1:0] length_q, length_d;
-  `FF(length_q, length_d, '0, clk_i, rst_ni);
+  `FFARNC(length_q, length_d, clear_i, '0, clk_i, rst_ni);
 
   always_comb begin
     length_d = length_q;
     back_addr_d = back_addr_q;
 
-    if (!en_i) begin
+    if (clear_i || !en_i) begin
       length_d = '0;
     end else if (push_back_i) begin
       length_d = length_q + 1;

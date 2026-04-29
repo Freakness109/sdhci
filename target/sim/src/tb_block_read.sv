@@ -11,12 +11,20 @@ module tb_block_read #(
     parameter int unsigned ClkEnPeriod   = 1,
     parameter int unsigned BlockSize     = 512,
     parameter int unsigned BlockCount    = 2,
-    parameter logic        Do4Bit        = 1'b1
+    parameter logic        Do4Bit        = 1'b1,
+    parameter int unsigned BufferNumWords = 256,
+    parameter bit          AllowNoncompliantBufferSizes = 1'b0
 )();
+  localparam int unsigned ExpectedChunkBytes =
+      AllowNoncompliantBufferSizes ? BufferNumWords * 4 : 512;
+  localparam logic [31:0] ExpectedVendorCapabilities = {
+      AllowNoncompliantBufferSizes, 15'h0, 16'(ExpectedChunkBytes)};
 
   sdhci_fixture #(
     .ClkPeriod(ClkPeriod),
-    .RstCycles(RstCycles)
+    .RstCycles(RstCycles),
+    .BufferNumWords(BufferNumWords),
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes)
   ) fixture ();
 
   task automatic wfi(input int unsigned timeout_cycles, string error_context);
@@ -84,6 +92,62 @@ module tb_block_read #(
     end
   endtask
 
+  task automatic wait_irq_bits(logic [15:0] required_normal, logic [15:0] allowed_normal,
+                               logic [15:0] expected_error, int unsigned timeout_cycles,
+                               string error_context);
+    logic [15:0] error_interrupt_status;
+    logic [15:0] normal_interrupt_status;
+    logic [15:0] normal_interrupt_status_seen;
+
+    normal_interrupt_status_seen = '0;
+    while ((normal_interrupt_status_seen & required_normal) != required_normal) begin
+      wfi(timeout_cycles, error_context);
+      fixture.vip.obi.get_interrupt_status(
+        .normal_interrupt_status(normal_interrupt_status),
+        .error_interrupt_status(error_interrupt_status)
+      );
+      fixture.vip.obi.clear_interrupt_status(
+        .normal_interrupt_status(normal_interrupt_status),
+        .error_interrupt_status(error_interrupt_status)
+      );
+
+      if (error_interrupt_status != expected_error) begin
+        $fatal(1, "Unexpected error interrupt status, got %x, expected %x (%s)",
+               error_interrupt_status, expected_error, error_context);
+      end
+      if (normal_interrupt_status & ~allowed_normal) begin
+        $fatal(1, "Unexpected normal interrupt status, got %x, allowed %x (%s)",
+               normal_interrupt_status, allowed_normal, error_context);
+      end
+
+      normal_interrupt_status_seen |= normal_interrupt_status;
+    end
+  endtask
+
+  task automatic read_noncompliant_block(output logic [31:0] read_data);
+    int unsigned words_read;
+    int unsigned words_left;
+    int unsigned words_this_chunk;
+
+    words_read = 0;
+    while (words_read < BlockSize / 4) begin
+      wait_irq_bits(
+        .required_normal('h20), // noncompliant data ready
+        .allowed_normal ('h20),
+        .expected_error ('h0),
+        .timeout_cycles (BlockSize * 8 + 500),
+        .error_context  ("noncompliant cmd18 data ready")
+      );
+
+      words_left = (BlockSize / 4) - words_read;
+      words_this_chunk = (words_left < BufferNumWords) ? words_left : BufferNumWords;
+      repeat (words_this_chunk) begin
+        fixture.vip.obi.read_buffer_data(.data(read_data));
+      end
+      words_read += words_this_chunk;
+    end
+  endtask
+
   initial begin : cmd_response
     fixture.vip.wait_for_reset();
 
@@ -144,9 +208,16 @@ module tb_block_read #(
 
   initial begin : obi_driver
     logic [31:0] read_data;
+    logic [31:0] vendor_capabilities;
     logic buffer_read_enable, buffer_write_enable;
 
     fixture.vip.wait_for_reset();
+    fixture.vip.obi.obi_read('h044, 4'b1111, vendor_capabilities);
+    if (vendor_capabilities != ExpectedVendorCapabilities) begin
+      $fatal(1, "Unexpected vendor capabilities: got 0x%08x expected 0x%08x",
+             vendor_capabilities, ExpectedVendorCapabilities);
+    end
+
     fixture.vip.obi.set_interrupt_status_enable(
       .normal_interrupt_status_enable('hFFFF),
       .error_interrupt_status_enable('hFFFF),
@@ -196,46 +267,69 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    wfi(200, "cmd18 complete");
-    check_irq(
-      .expected_normal('h01), // cmd complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd18 complete")
-    );
-
-    wfi(BlockSize * 8 + 500, "first data present");
-    check_irq(
-      .expected_normal('h20), // data present
-      .expected_error ('h0),  // no error
-      .error_context("first data present")
-    );
-
-    repeat (BlockCount - 1) begin
-      repeat (BlockSize / 4) begin
-        fixture.vip.obi.read_buffer_data(.data(read_data));
-      end
-      fixture.vip.obi.get_present_status_buffer_enable(
-        .buffer_read_enable(buffer_read_enable),
-        .buffer_write_enable(buffer_write_enable)
+    if (AllowNoncompliantBufferSizes) begin
+      wait_irq_bits(
+        .required_normal('h01), // cmd complete
+        .allowed_normal ('h21), // cmd complete and noncompliant per-word data ready
+        .expected_error ('h0),  // no error
+        .timeout_cycles (BlockSize * 8 + 500),
+        .error_context  ("noncompliant cmd18 complete")
       );
-      if (!buffer_read_enable) begin
-        wfi(BlockSize * 8 + 500, "data present during loop");
+
+      repeat (BlockCount) begin
+        read_noncompliant_block(read_data);
       end
+
+      wait_irq_bits(
+        .required_normal('h02), // transfer complete
+        .allowed_normal ('h22), // transfer complete and noncompliant data ready
+        .expected_error ('h0),  // no error
+        .timeout_cycles (BlockSize * 8 + 500),
+        .error_context  ("noncompliant cmd18 transfer complete")
+      );
+    end else begin
+      wfi(200, "cmd18 complete");
+      check_irq(
+        .expected_normal('h01), // cmd complete
+        .expected_error ('h0),  // no error
+        .error_context("cmd18 complete")
+      );
+
+      wfi(BlockSize * 8 + 500, "first data present");
       check_irq(
         .expected_normal('h20), // data present
         .expected_error ('h0),  // no error
-        .error_context("data present during loop")
+        .error_context("first data present")
+      );
+
+      repeat (BlockCount - 1) begin
+        repeat (BlockSize / 4) begin
+          fixture.vip.obi.read_buffer_data(.data(read_data));
+        end
+        fixture.vip.obi.get_present_status_buffer_enable(
+          .buffer_read_enable(buffer_read_enable),
+          .buffer_write_enable(buffer_write_enable)
+        );
+        if (!buffer_read_enable) begin
+          wfi(BlockSize * 8 + 500, "data present during loop");
+        end
+        check_irq(
+          .expected_normal('h20), // data present
+          .expected_error ('h0),  // no error
+          .error_context("data present during loop")
+        );
+      end
+      repeat (BlockSize / 4) begin
+        fixture.vip.obi.read_buffer_data(.data(read_data));
+      end
+      wfi(200, "cmd18 transfer complete");
+      check_irq(
+        .expected_normal('h02), // transfer complete
+        .expected_error ('h0),  // no error
+        .error_context("cmd18 transfer complete")
       );
     end
-    repeat (BlockSize / 4) begin
-      fixture.vip.obi.read_buffer_data(.data(read_data));
-    end
-    wfi(200, "cmd18 transfer complete");
-    check_irq(
-      .expected_normal('h02), // transfer complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd18 transfer complete")
-    );
+
     fixture.vip.obi.get_present_status_buffer_enable(
       .buffer_read_enable(buffer_read_enable),
       .buffer_write_enable(buffer_write_enable)
@@ -244,8 +338,6 @@ module tb_block_read #(
     if (buffer_read_enable) begin
       $fatal(1, "We should no longer have data!");
     end
-
-    // TODO: read interrupt registers + check transfer complete
 
     fixture.vip.obi.launch_command(
       .command_index(6'd12),
@@ -257,16 +349,34 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    wfi(200, "cmd12 complete and transfer complete");
-    check_irq(
-      .expected_normal('h03), // cmd complete
-      .expected_error ('h0),  // no error
-      .error_context("cmd12 complete and transfer complete")
-    );
+    if (AllowNoncompliantBufferSizes) begin
+      wait_irq_bits(
+        .required_normal('h03), // cmd complete and transfer complete
+        .allowed_normal ('h03),
+        .expected_error ('h0),  // no error
+        .timeout_cycles (200),
+        .error_context  ("cmd12 complete and transfer complete")
+      );
+    end else begin
+      wfi(200, "cmd12 complete and transfer complete");
+      check_irq(
+        .expected_normal('h03), // cmd complete
+        .expected_error ('h0),  // no error
+        .error_context("cmd12 complete and transfer complete")
+      );
+    end
 
     $display("All good");
 
     $finish();
   end
 
+endmodule
+
+module tb_noncompliant_block_read();
+  tb_block_read #(
+    .BlockCount(2),
+    .BufferNumWords(8),
+    .AllowNoncompliantBufferSizes(1'b1)
+  ) i_noncompliant_block_read ();
 endmodule

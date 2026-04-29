@@ -11,6 +11,8 @@
 
 module dat_wrap #(
   parameter int MaxBlockBitSize = 10, // max_block_length = 512 in caps
+  parameter int unsigned BufferNumWords = 256,
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0,
   parameter int unsigned TimeoutDivider = 1 // by how much to divide clk_i to get the timeout count frequency,
                                             // see dat_timeout for details
 ) (
@@ -19,6 +21,7 @@ module dat_wrap #(
   input  logic sd_clk_en_n_i,
   input  logic div_1_i,
   input  logic rst_ni,
+  input  logic clear_i,
 
   input  logic [3:0] dat_i,
   output logic       dat_en_o,
@@ -45,6 +48,8 @@ module dat_wrap #(
   output logic [31:0]            buffer_data_port_d_o,
   output `writable_reg_t()       buffer_read_enable_o,
   output `writable_reg_t()       buffer_write_enable_o,
+  output logic                   buffer_data_port_read_ready_o,
+  output logic                   buffer_data_port_write_ready_o,
 
   output `writable_reg_t()       read_transfer_active_o,
   output `writable_reg_t()       write_transfer_active_o,
@@ -58,8 +63,12 @@ module dat_wrap #(
   logic write_done, write_crc_timeout;
   logic timeout_elapsed;
 
+  logic block_count_limited;
+  assign block_count_limited = !reg2hw_i.transfer_mode.multi_single_block_select.q ||
+                               reg2hw_i.transfer_mode.block_count_enable.q;
+
   logic [15:0] transmitted_block_counter_q, transmitted_block_counter_d;
-  `FF (transmitted_block_counter_q, transmitted_block_counter_d, '0);
+  `FFARNC (transmitted_block_counter_q, transmitted_block_counter_d, clear_i, '0, clk_i, rst_ni);
 
   typedef enum logic [1:0] {
     READY,
@@ -98,16 +107,16 @@ module dat_wrap #(
   } write_state_e;
 
   dat_state_e dat_state_q, dat_state_d;
-  `FF (dat_state_q, dat_state_d, READY, clk_i, rst_ni);
+  `FFARNC (dat_state_q, dat_state_d, clear_i, READY, clk_i, rst_ni);
 
   busy_state_e busy_state_q, busy_state_d;
-  `FF (busy_state_q, busy_state_d, BUSY_WAIT_FOR_CMD, clk_i, rst_ni);
+  `FFARNC (busy_state_q, busy_state_d, clear_i, BUSY_WAIT_FOR_CMD, clk_i, rst_ni);
 
   read_state_e read_state_q, read_state_d;
-  `FF (read_state_q, read_state_d, WAIT_FOR_CMD, clk_i, rst_ni);
+  `FFARNC (read_state_q, read_state_d, clear_i, WAIT_FOR_CMD, clk_i, rst_ni);
 
   write_state_e write_state_q, write_state_d;
-  `FF (write_state_q, write_state_d, WAIT_FOR_RSP, clk_i, rst_ni);
+  `FFARNC (write_state_q, write_state_d, clear_i, WAIT_FOR_RSP, clk_i, rst_ni);
 
   always_comb begin : main_fsm
     dat_state_d = dat_state_q;
@@ -154,10 +163,10 @@ module dat_wrap #(
   assign sd_busy_o = dat_state_q == BUSY;
 
   logic [1:0] busy_counter_q, busy_counter_d;
-  `FF(busy_counter_q, busy_counter_d, 2'b0, clk_i, rst_ni);
+  `FFARNC(busy_counter_q, busy_counter_d, clear_i, 2'b0, clk_i, rst_ni);
 
   logic busy_saw_response_q, busy_saw_response_d;
-  `FF(busy_saw_response_q, busy_saw_response_d, 1'b0, clk_i, rst_ni);
+  `FFARNC(busy_saw_response_q, busy_saw_response_d, clear_i, 1'b0, clk_i, rst_ni);
 
   always_comb begin : busy_fsm
     busy_state_d        = busy_state_q;
@@ -245,7 +254,7 @@ module dat_wrap #(
           end
         end
         DONE_READING_BLOCK: begin
-          if (transmitted_block_counter_q == 'b1) begin
+          if (block_count_limited && transmitted_block_counter_q == 'b1) begin
             read_state_d = READING_BUSY;
           end else if (buffer_write_ready) begin
             read_state_d = START_READING;
@@ -302,7 +311,7 @@ module dat_wrap #(
           end
         end
         DONE_WRITING_BLOCK: begin
-          if (transmitted_block_counter_q == 'b1) begin
+          if (block_count_limited && transmitted_block_counter_q == 'b1) begin
             write_state_d = DONE_WRITING;
           end else begin
             write_state_d = WAIT_FOR_WRITE_BUFFER;
@@ -325,6 +334,12 @@ module dat_wrap #(
   logic [MaxBlockBitSize-1:0] block_size;
   assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
 
+  logic [MaxBlockBitSize-1:0] effective_block_size;
+  assign effective_block_size = (block_size == '0) ? MaxBlockBitSize'(1) : block_size;
+
+  logic [MaxBlockBitSize-1:0] words_per_block;
+  assign words_per_block = (effective_block_size + MaxBlockBitSize'(3)) >> 2;
+
 
   logic busy_waiting;
   logic read_waiting;
@@ -335,6 +350,23 @@ module dat_wrap #(
 
   logic start_write, write_requests_next_word, write_crc_err, write_end_bit_err;
   logic [31:0] write_data, read_data;
+  logic pause_sd_clk_read, pause_sd_clk_write;
+
+  assign pause_sd_clk_o = pause_sd_clk_read || pause_sd_clk_write;
+
+  logic [MaxBlockBitSize-1:0] write_word_counter_q, write_word_counter_d;
+  `FFARNC(write_word_counter_q, write_word_counter_d, clear_i, '0, clk_i, rst_ni);
+
+  always_comb begin
+    write_word_counter_d = write_word_counter_q;
+    if (dat_state_q != WRITE || write_state_q == WAIT_FOR_WRITE_BUFFER ||
+        write_state_q == START_WRITING || write_state_q == DONE_WRITING_BLOCK) begin
+      write_word_counter_d = '0;
+    end else if (write_state_q == WRITING && buffer_read_ready &&
+                 write_word_counter_q < words_per_block) begin
+      write_word_counter_d = write_word_counter_q + 1'b1;
+    end
+  end
 
   always_comb begin : autocmd12
     request_cmd12_o   = '0;
@@ -389,6 +421,8 @@ module dat_wrap #(
   always_comb begin
     if (reg2hw_i.transfer_mode.multi_single_block_select.q == 1'b0) begin
       new_block_count = 1'b1;
+    end else if (!reg2hw_i.transfer_mode.block_count_enable.q) begin
+      new_block_count = '0;
     end else begin
       new_block_count = reg2hw_i.block_count.q;
     end
@@ -399,13 +433,13 @@ module dat_wrap #(
     if (dat_state_q == READ) begin
       if (read_state_q == WAIT_FOR_CMD) begin
         transmitted_block_counter_d = new_block_count;
-      end else if (read_state_q == DONE_READING_BLOCK) begin
+      end else if (block_count_limited && read_state_q == DONE_READING_BLOCK) begin
         transmitted_block_counter_d = transmitted_block_counter_q - 1;
       end
     end else if (dat_state_q == WRITE) begin
       if (write_state_q == WAIT_FOR_RSP) begin
         transmitted_block_counter_d = new_block_count;
-      end else if (write_state_q == DONE_WRITING_BLOCK) begin
+      end else if (block_count_limited && write_state_q == DONE_WRITING_BLOCK) begin
         transmitted_block_counter_d = transmitted_block_counter_q - 1;
       end
     end
@@ -428,7 +462,7 @@ module dat_wrap #(
   end
 
   always_comb begin : read_control
-    pause_sd_clk_o    = '0;
+    pause_sd_clk_read = '0;
     start_read  = '0;
 
     buffer_write_valid = '0;
@@ -437,13 +471,15 @@ module dat_wrap #(
     unique case (read_state_q)
       WAIT_FOR_CMD: ;
       WAIT_FOR_READ_BUFFER: begin
-        pause_sd_clk_o = '1;
+        pause_sd_clk_read = '1;
       end
       START_READING: begin
         start_read = '1;
       end
       READING: begin
-        if (read_valid) begin
+        if (!buffer_write_ready) begin
+          pause_sd_clk_read = '1;
+        end else if (read_valid) begin
           buffer_write_valid = '1;
           buffer_write_data  = read_data;
         end
@@ -460,6 +496,7 @@ module dat_wrap #(
     start_write = '0;
     write_data  = 'X;
     buffer_read_ready  = '0;
+    pause_sd_clk_write = '0;
 
     unique case (write_state_q)
       WAIT_FOR_RSP: ;
@@ -468,7 +505,9 @@ module dat_wrap #(
         start_write = '1;
       end
       WRITING: begin
-        if (write_requests_next_word) begin
+        if (!buffer_read_valid && write_word_counter_q < words_per_block) begin
+          pause_sd_clk_write = '1;
+        end else if (write_requests_next_word && write_word_counter_q < words_per_block) begin
           buffer_read_ready = '1;
         end
 
@@ -495,11 +534,13 @@ module dat_wrap #(
 
 
   dat_buffer #(
-    .NumWords        (256), // = 1024, Just enough to double buffer 512 byte blocks
-    .MaxBlockBitSize (MaxBlockBitSize)
+    .NumWords        (BufferNumWords),
+    .MaxBlockBitSize (MaxBlockBitSize),
+    .AllowNoncompliantBufferSizes (AllowNoncompliantBufferSizes)
   ) i_dat_buffer (
     .clk_i,
     .rst_ni,
+    .clear_i,
 
     .read_operation_i  (reg2hw_i.present_state.read_transfer_active.q),
     .write_operation_i (reg2hw_i.present_state.write_transfer_active.q),
@@ -513,8 +554,16 @@ module dat_wrap #(
     .write_ready_o (buffer_write_ready),
 
     .empty_o       (buffer_empty),
+    .buffer_data_port_read_ready_o,
+    .buffer_data_port_write_ready_o,
 
-    .reg2hw_i,
+    .block_size_i             (block_size),
+    .block_count_i            (reg2hw_i.block_count.q),
+    .multi_block_i            (reg2hw_i.transfer_mode.multi_single_block_select.q),
+    .block_count_enable_i     (reg2hw_i.transfer_mode.block_count_enable.q),
+    .buffer_data_port_re_i    (reg2hw_i.buffer_data_port.re),
+    .buffer_data_port_qe_i    (reg2hw_i.buffer_data_port.qe),
+    .buffer_data_port_q_i     (reg2hw_i.buffer_data_port.q),
     .buffer_data_port_d_o,
     .buffer_read_enable_o,
     .buffer_write_enable_o,
@@ -527,11 +576,12 @@ module dat_wrap #(
     .clk_i,
     .sd_clk_en_i   (sd_clk_en_p_i),
     .rst_ni,
+    .clear_i,
     .dat_i,
 
     .start_i          (start_read),
     .timeout_i        (timeout_elapsed),
-    .block_size_i     (block_size),
+    .block_size_i     (effective_block_size),
     .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
 
     .data_valid_o  (read_valid),
@@ -551,12 +601,13 @@ module dat_wrap #(
     .sd_clk_en_n_i  (sd_clk_en_n_i),
     .div_1_i        (div_1_i),
     .rst_ni,
+    .clear_i,
     .dat0_i         (dat_i[0]),
     .dat_o,
     .dat_en_o,
 
     .start_i          (start_write),
-    .block_size_i     (block_size),
+    .block_size_i     (effective_block_size),
     .bus_width_is_4_i (reg2hw_i.host_control.data_transfer_width.q),
 
     .data_i        (write_data),
@@ -568,4 +619,13 @@ module dat_wrap #(
     .crc_err_o     (write_crc_err),
     .end_bit_err_o (write_end_bit_err)
   );
+
+`ifndef SYNTHESIS
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (rst_ni && !clear_i && cmd_started_i && cmd_data_present_i) begin
+      assert (block_size != '0)
+        else $error("DAT block size must be non-zero for data commands");
+    end
+  end
+`endif
 endmodule

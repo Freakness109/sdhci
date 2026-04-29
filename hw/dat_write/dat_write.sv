@@ -18,6 +18,7 @@ module dat_write #(
   input  logic       sd_clk_en_n_i,
   input  logic       div_1_i,
   input  logic       rst_ni,
+  input  logic       clear_i,
   input  logic       dat0_i,
   output logic [3:0] dat_o,
   output logic       dat_en_o,
@@ -56,10 +57,10 @@ module dat_write #(
   } dat_tx_state_e;
 
   dat_tx_state_e dat_tx_state_d, dat_tx_state_q;
-  `FFL (dat_tx_state_q, dat_tx_state_d, sd_clk_en_p_i, READY);
+  `FFLARNC (dat_tx_state_q, dat_tx_state_d, sd_clk_en_p_i, clear_i, READY, clk_i, rst_ni);
 
   logic [CounterWidth-1:0] counter_q, counter_d;
-  `FFL (counter_q, counter_d, sd_clk_en_p_i, 0);
+  `FFLARNC (counter_q, counter_d, sd_clk_en_p_i, clear_i, 0, clk_i, rst_ni);
 
   logic [CounterWidth-1:0] required_clock_count;
   assign required_clock_count = bus_width_is_4_i ? 2*block_size_i : 8*block_size_i;
@@ -87,26 +88,27 @@ module dat_write #(
   end
 
   logic [31:0] buffered_data_d, buffered_data_q;
-  `FFL (buffered_data_q, buffered_data_d, sd_clk_en_p_i, '0);
+  `FFLARNC (buffered_data_q, buffered_data_d, sd_clk_en_p_i, clear_i, '0, clk_i, rst_ni);
 
   logic end_bit_err_q, end_bit_err_d;
-  `FFL (end_bit_err_q, end_bit_err_d, sd_clk_en_p_i, '0);
+  `FFLARNC (end_bit_err_q, end_bit_err_d, sd_clk_en_p_i, clear_i, '0, clk_i, rst_ni);
 
   logic data_timeout_q, data_timeout_d;
-  `FFL (data_timeout_q, data_timeout_d, sd_clk_en_p_i, '0);
+  `FFLARNC (data_timeout_q, data_timeout_d, sd_clk_en_p_i, clear_i, '0, clk_i, rst_ni);
 
   logic [2:0] status_q, status_d;
-  `FFL (status_q, status_d, sd_clk_en_p_i, '0);
+  `FFLARNC (status_q, status_d, sd_clk_en_p_i, clear_i, '0, clk_i, rst_ni);
 
   logic [3:0] dat, dat_div1, dat_divn;
   
   //delay by half a clock cycle 
   always_ff @( negedge clk_i or negedge rst_ni) begin
     if(!rst_ni) dat_div1 <= 4'b1;
+    else if(clear_i) dat_div1 <= 4'b1;
     else dat_div1 <= dat;
   end
 
-  `FFL(dat_divn, dat, sd_clk_en_n_i, 4'b1, clk_i, rst_ni);
+  `FFLARNC(dat_divn, dat, sd_clk_en_n_i, clear_i, 4'b1, clk_i, rst_ni);
 
   assign dat_o = (div_1_i)  ? dat_div1 :  dat_divn; 
 
@@ -232,6 +234,7 @@ module dat_write #(
       .clk_i,
       .sd_clk_en_i        (sd_clk_en_p_i),
       .rst_ni,
+      .clear_i,
       .shift_out_crc16_i  (shift_out_crc),
       .dat_ser_i          (dat[i]),
       .crc_ser_o          (crc[i])

@@ -9,7 +9,9 @@
 module sdhci_fixture #(
     parameter time         ClkPeriod      = 50ns,
     parameter int unsigned RstCycles      = 1,
-    parameter int unsigned TimeoutDivider = 1
+    parameter int unsigned TimeoutDivider = 1,
+    parameter int unsigned BufferNumWords = 256,
+    parameter bit          AllowNoncompliantBufferSizes = 1'b0
 )();
   `include "obi/typedef.svh"
 
@@ -30,8 +32,10 @@ module sdhci_fixture #(
       .ObiCfg           (sdhci_obi_cfg),
       .obi_req_t        (sdhci_obi_req_t),
       .obi_rsp_t        (sdhci_obi_rsp_t),
-      .ClkPreDivLog     (0),
+      .ClkPreDiv        (2),
       .NumDebounceCycles(2),
+      .BufferNumWords   (BufferNumWords),
+      .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes),
       .TimeoutDivider   (TimeoutDivider)
   ) i_sdhci_top (
       .clk_i  (clk),

@@ -10,6 +10,7 @@
 module cmd_logic (
   input  logic clk_i,
   input  logic rst_ni,
+  input  logic clear_i,
   input  logic clk_en_p_i,
   input  logic clk_en_n_i,
   input  logic div_1_i,
@@ -29,7 +30,14 @@ module cmd_logic (
   output logic cmd_ready_o,
 
   output logic cmd_result_valid_o,
-  output logic [119:0] rsp_o,
+  output logic [31:0] response0_d_o,
+  output logic [31:0] response1_d_o,
+  output logic [31:0] response2_d_o,
+  output logic [31:0] response3_d_o,
+  output logic        response0_de_o,
+  output logic        response1_de_o,
+  output logic        response2_de_o,
+  output logic        response3_de_o,
   output logic index_error_o,
   output logic end_bit_error_o,
   output logic crc_error_o,
@@ -48,7 +56,7 @@ module cmd_logic (
   } cmd_fsm_t;
 
   cmd_fsm_t cmd_state_q, cmd_state_d;
-  `FF(cmd_state_q, cmd_state_d, IDLE, clk_i, rst_ni);
+  `FFARNC(cmd_state_q, cmd_state_d, clear_i, IDLE, clk_i, rst_ni);
 
   // TODO: this forces a sleep cycle in between transactions. This might not
   // be ideal -> reduce sleep cycles in BUS_COOLDOWN by one
@@ -58,17 +66,8 @@ module cmd_logic (
   logic start_cmd;
   assign start_cmd = cmd_ready && cmd_valid_i;
 
-  sdhci_pkg::cmd_t cmd_d, cmd_q;
-  `FFL(cmd_q, cmd_d, cmd_ready && cmd_valid_i, '0, clk_i, rst_ni);
-  assign cmd_d = cmd_i;
-
-  sdhci_pkg::cmd_arg_t cmd_arg_q, cmd_arg_d;
-  `FFL(cmd_arg_q, cmd_arg_d, cmd_ready && cmd_valid_i, '0, clk_i, rst_ni);
-  assign cmd_arg_d = cmd_arg_i;
-
-  sdhci_pkg::response_type_e response_type_q, response_type_d;
-  `FFL(response_type_q, response_type_d, cmd_ready && cmd_valid_i, sdhci_pkg::NO_RESPONSE, clk_i, rst_ni);
-  assign response_type_d = response_type_i;
+  // cmd_i, cmd_arg_i and response_type_i are the accepted command payload
+  // latched by autocmd_wrap, so no local duplicate latches are needed here.
 
   // Electrical spec, 7.13.5; units are number of cycles
   localparam logic [6:0] N_CR_MIN = 2;  // minimum time between command (SDHC) and response (card)
@@ -105,7 +104,7 @@ module cmd_logic (
       end
       SEND_CMD: begin
         if (tx_done) begin
-          if (response_type_q == sdhci_pkg::NO_RESPONSE) begin
+          if (response_type_i == sdhci_pkg::NO_RESPONSE) begin
             cmd_state_d = BUS_COOLDOWN;
           end else begin
             cmd_state_d = WAIT_RSP;
@@ -118,7 +117,7 @@ module cmd_logic (
         end else begin
           // +2: +1 for being over, +1 as we get tx_done on the end bit cycle,
           // and thus are one cycle ahead
-          if ((cmd_q == 'd01 || cmd_q == 'd02) && cycles_waiting == N_ID + 2) begin
+          if ((cmd_i == 'd01 || cmd_i == 'd02) && cycles_waiting == N_ID + 2) begin
             // The identification command (CMD2) has a shorter timeout period,
             // see 7.2.5
             cmd_state_d = RSP_TIMEOUT;
@@ -133,7 +132,7 @@ module cmd_logic (
         end
       end
       BUS_COOLDOWN: begin
-        if (response_type_q == sdhci_pkg::NO_RESPONSE
+        if (response_type_i == sdhci_pkg::NO_RESPONSE
             && cycles_waiting == N_CC) begin
           cmd_state_d = IDLE;
         end else if (cycles_waiting == N_RC) begin
@@ -148,7 +147,7 @@ module cmd_logic (
 
   assign cmd_done_o  = cmd_state_d != SEND_CMD && cmd_state_q == SEND_CMD;
   assign rsp_done_o  = cmd_state_d == BUS_COOLDOWN && cmd_state_q != BUS_COOLDOWN &&
-                       response_type_q != sdhci_pkg::NO_RESPONSE;
+                       response_type_i != sdhci_pkg::NO_RESPONSE;
 
   assign cmd_ready_o = cmd_ready;
 
@@ -159,10 +158,11 @@ module cmd_logic (
   assign crc_error_o = ~crc_correct;
 
   sdhci_pkg::cmd_t cmd_in_response;
-  assign cmd_in_response = sdhci_pkg::cmd_t'(rsp_o[37:32]);
+  logic [5:0] response_index;
+  assign cmd_in_response = sdhci_pkg::cmd_t'(response_index);
   // this line could optionally be masked by the valid line, leave it for now
-  assign index_error_o = (cmd_in_response != cmd_q) & (response_type_q == sdhci_pkg::RESPONSE_LENGTH_48 |
-                                                       response_type_q == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY);
+  assign index_error_o = (cmd_in_response != cmd_i) & (response_type_i == sdhci_pkg::RESPONSE_LENGTH_48 |
+                                                       response_type_i == sdhci_pkg::RESPONSE_LENGTH_48_CHECK_BUSY);
 
   always_comb begin : cmd_inhibit
     cmd_inhibit_cmd_o = 1'b1;
@@ -195,6 +195,7 @@ module cmd_logic (
   cmd_write i_cmd_write (
     .clk_i          (clk_i),
     .rst_ni         (rst_ni),
+    .clear_i        (clear_i),
 
     .clk_en_p_i     (clk_en_p_i),
     .clk_en_n_i     (clk_en_n_i),
@@ -203,8 +204,8 @@ module cmd_logic (
     .cmd_o          (sd_bus_cmd_o),
     .cmd_en_o       (sd_bus_cmd_en_o),
     .start_tx_i     (cmd_state_q == START),
-    .cmd_argument_i (cmd_arg_q),
-    .cmd_nr_i       (cmd_q),
+    .cmd_argument_i (cmd_arg_i),
+    .cmd_nr_i       (cmd_i),
 
     .tx_done_o      (tx_done)
   );
@@ -213,15 +214,23 @@ module cmd_logic (
     .clk_i             (clk_i),
     .clk_en_i          (clk_en_p_i),
     .rst_ni            (rst_ni),
+    .clear_i           (clear_i),
     .cmd_i             (sd_bus_cmd_i),
-    .long_rsp_i        (response_type_q == sdhci_pkg::RESPONSE_LENGTH_136),
+    .long_rsp_i        (response_type_i == sdhci_pkg::RESPONSE_LENGTH_136),
     .start_listening_i (cmd_state_q == WAIT_RSP && (cycles_waiting == N_CR_MIN - 1)),
     .timeout_i         (cmd_state_q == RSP_TIMEOUT),
     .receiving_o       (rsp_receiving),
     .rsp_valid_o       (rsp_received),
-    // TODO: do we buffer them?
     .end_bit_err_o     (end_bit_error_o),
-    .rsp_o             (rsp_o),
+    .response0_d_o     (response0_d_o),
+    .response1_d_o     (response1_d_o),
+    .response2_d_o     (response2_d_o),
+    .response3_d_o     (response3_d_o),
+    .response0_de_o    (response0_de_o),
+    .response1_de_o    (response1_de_o),
+    .response2_de_o    (response2_de_o),
+    .response3_de_o    (response3_de_o),
+    .response_index_o  (response_index),
     .crc_corr_o        (crc_correct)
   );
 
@@ -231,11 +240,11 @@ module cmd_logic (
   ) i_counter (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .clear_i    (1'b0),
+    .clear_i    (clear_i),
     .en_i       (clk_en_p_i),
     .load_i     (clear_cycle_counter),
     .down_i     (1'b0),
-    .d_i        ({'0, div_1_i}),
+    .d_i        ({6'b0, div_1_i}),
     .q_o        (cycles_waiting),
     .overflow_o ()
   );

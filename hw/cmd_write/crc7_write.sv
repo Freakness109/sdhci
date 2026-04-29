@@ -15,6 +15,7 @@ module crc7_write (
   input   logic clk_i,
   input   logic clk_en_i,
   input   logic rst_ni,
+  input   logic clear_i,
 
   input   logic shift_out_crc7_i,
   input   logic input_en_i, //enable for data_ser_i
@@ -46,8 +47,8 @@ module crc7_write (
     end
   end
   
-  `FFL (lower_3_q, lower_3_d, clk_en_i, 0, clk_i, rst_ni);
-  `FFL (upper_4_q, upper_4_d, clk_en_i, 0, clk_i, rst_ni);
+  `FFLARNC (lower_3_q, lower_3_d, clk_en_i, clear_i, 0, clk_i, rst_ni);
+  `FFLARNC (upper_4_q, upper_4_d, clk_en_i, clear_i, 0, clk_i, rst_ni);
   
   //Output assignment
   assign crc_ser_o = upper_4_q[3];

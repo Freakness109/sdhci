@@ -12,6 +12,7 @@ module crc16_write (
   input logic clk_i,
   input logic sd_clk_en_i,
   input logic rst_ni,
+  input logic clear_i,
 
   input logic shift_out_crc16_i,
   input logic dat_ser_i,
@@ -48,9 +49,9 @@ module crc16_write (
     end
   end
 
-  `FFL ( upper_4_q,  upper_4_d, sd_clk_en_i, 0);
-  `FFL (middle_7_q, middle_7_d, sd_clk_en_i, 0);
-  `FFL ( lower_5_q,  lower_5_d, sd_clk_en_i, 0);
+  `FFLARNC ( upper_4_q,  upper_4_d, sd_clk_en_i, clear_i, 0, clk_i, rst_ni);
+  `FFLARNC (middle_7_q, middle_7_d, sd_clk_en_i, clear_i, 0, clk_i, rst_ni);
+  `FFLARNC ( lower_5_q,  lower_5_d, sd_clk_en_i, clear_i, 0, clk_i, rst_ni);
 
 `ifdef VERILATOR
   logic [15:0] crc;

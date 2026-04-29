@@ -17,6 +17,7 @@ module par_ser_shift_reg #(
   input   logic clk_i,
   input   logic clk_en_i,
   input   logic rst_ni,
+  input   logic clear_i,
 
   input   logic par_write_en_i, //write data in parallel to shift register
   input   logic shift_en_i,     //enable shifting, non-latching!
@@ -38,7 +39,7 @@ module par_ser_shift_reg #(
     end
   end
   
-  `FFL(dat_q, dat_d, clk_en_i, 0, clk_i, rst_ni);
+  `FFLARNC(dat_q, dat_d, clk_en_i, clear_i, 0, clk_i, rst_ni);
 
   //output assignment
   assign dat_ser_o = dat_q[NumBits-1];
