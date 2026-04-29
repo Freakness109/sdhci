@@ -164,20 +164,20 @@ module sdhci_reg_logic (
   assign card_removal_o.de = !clear_dat_i & `did_get_unset(present_state, card_inserted);
   
   // Writes to the transfer_mode register should be ignored when command_inhibit_cmd is active
-  `FFL (transfer_mode_reg_o.multi_single_block_select     .d, reg2hw_i.transfer_mode.multi_single_block_select     .q,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.multi_single_block_select     .qe, '0)
-  `FFL (transfer_mode_reg_o.data_transfer_direction_select.d, reg2hw_i.transfer_mode.data_transfer_direction_select.q,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.data_transfer_direction_select.qe, '0)
-  `FFL (transfer_mode_reg_o.auto_cmd12_enable             .d, reg2hw_i.transfer_mode.auto_cmd12_enable             .q,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.auto_cmd12_enable             .qe, '0)
-  `FFL (transfer_mode_reg_o.block_count_enable            .d, reg2hw_i.transfer_mode.block_count_enable            .q,
-        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.block_count_enable            .qe, '0)
+  `FFLARNC (transfer_mode_reg_o.multi_single_block_select     .d, reg2hw_i.transfer_mode.multi_single_block_select     .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.multi_single_block_select     .qe, clear_i, '0, clk_i, rst_ni)
+  `FFLARNC (transfer_mode_reg_o.data_transfer_direction_select.d, reg2hw_i.transfer_mode.data_transfer_direction_select.q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.data_transfer_direction_select.qe, clear_i, '0, clk_i, rst_ni)
+  `FFLARNC (transfer_mode_reg_o.auto_cmd12_enable             .d, reg2hw_i.transfer_mode.auto_cmd12_enable             .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.auto_cmd12_enable             .qe, clear_i, '0, clk_i, rst_ni)
+  `FFLARNC (transfer_mode_reg_o.block_count_enable            .d, reg2hw_i.transfer_mode.block_count_enable            .q,
+        !reg2hw_i.present_state.command_inhibit_cmd.q && reg2hw_i.transfer_mode.block_count_enable            .qe, clear_i, '0, clk_i, rst_ni)
   // dma_enable is read-only zero in the register file (DMA not implemented), no shadow needed
 
   // Writes to the block_count and block_size register should be ignored when command_inhibit_dat is active
   logic [11:0] block_size;
-  `FFL (block_size, reg2hw_i.block_size.transfer_block_size.q,
-        !reg2hw_i.present_state.command_inhibit_dat.q && reg2hw_i.block_size.transfer_block_size.qe, '0);
+  `FFLARNC (block_size, reg2hw_i.block_size.transfer_block_size.q,
+        !reg2hw_i.present_state.command_inhibit_dat.q && reg2hw_i.block_size.transfer_block_size.qe, clear_i, '0, clk_i, rst_ni);
 
   assign block_size_reg_o.transfer_block_size.d = block_size;
   assign block_size_reg_o.host_dma_buffer_boundary.d = '0;
