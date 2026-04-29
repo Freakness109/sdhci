@@ -25,7 +25,6 @@ module sdhci_top #(
   // predivider folded into the same physical divider as sdclk_frequency_select;
   // advertise clk_i/ClkPreDiv as base_clock_frequency_for_sd_clock.
   parameter int unsigned       ClkPreDiv   = 2,
-  //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
 
   parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
                                     // see dat_timeout for details

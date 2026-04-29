@@ -23,7 +23,7 @@ deepclean: sdhci-deepclean
 help:
 	@echo "Some available commands"
 	@echo "all:       Fetch & compile everything"
-	@echo "hw:        Regenerate generated hardware"
+	@echo "hw:        Hardware source hook; no generated register files"
 	@echo "sw:        Compile the software libraries"
 	@echo "sim:       Generate simulation scripts and download models."
 	@echo "           Note: Some of these models are under other licenses."
