@@ -9,6 +9,26 @@ module tb_dat #(
     parameter time         ClkPeriod     = 50ns,
     parameter int unsigned RstCycles     = 1
   )();
+  localparam int unsigned TestClkPreDiv = 2;
+
+  function automatic logic [7:0] encode_frequency_select(input int unsigned min_effective_div);
+    int unsigned sdhci_div;
+    int unsigned effective_div;
+    sdhci_div = 1;
+    effective_div = TestClkPreDiv;
+    if (effective_div < 2) begin
+      effective_div = 2;
+    end
+    while (effective_div < min_effective_div && sdhci_div < 256) begin
+      sdhci_div <<= 1;
+      effective_div = TestClkPreDiv * sdhci_div;
+      if (effective_div[0]) begin
+        effective_div++;
+      end
+    end
+    return (sdhci_div == 1) ? 8'h00 : 8'(sdhci_div >> 1);
+  endfunction
+
   logic clk;
   logic rst_n;
 
@@ -115,12 +135,12 @@ module tb_dat #(
   /////////////////
 
   always begin
-    if (done_o && crc_err_o) begin
+    if (done_read && crc_err_o) begin
       $error("CRC Error");
       @(negedge clk)
       $fatal();
     end
-    if (done_o && end_bit_err_o) begin
+    if (done_read && end_bit_err_o) begin
       $error("End Bit Error");
       @(negedge clk)
       $fatal();
@@ -131,11 +151,14 @@ module tb_dat #(
 
   logic [31:0] entries [$];
   int ClkEnPeriod, remainingBlocks;
+  int watchdog_cycles;
   logic [31:0] got, want;
   initial begin
     $timeformat(-9, 0, "ns", 12);
-    $dumpfile("tb_dat.vcd");
-    $dumpvars(0);
+    if ($test$plusargs("vcd")) begin
+      $dumpfile("tb_dat.vcd");
+      $dumpvars(0);
+    end
 
     if (!$value$plusargs("UseWideBus=%d", UseWideBus)) begin
       UseWideBus = 1;
@@ -149,7 +172,7 @@ module tb_dat #(
 
     reg2hw_i = '0;
     reg2hw_i.clock_control.sd_clock_enable.q = 1;
-    reg2hw_i.clock_control.sdclk_frequency_select.q = 8'(ClkEnPeriod);
+    reg2hw_i.clock_control.sdclk_frequency_select.q = encode_frequency_select(ClkEnPeriod);
 
     $display("Testing dat line with UseWideBus=%d, BlockSize=%d, ClkEnPeriod=%d", UseWideBus, BlockSize, ClkEnPeriod);
 
@@ -170,6 +193,7 @@ module tb_dat #(
     start_read = '0;
 
     remainingBlocks = BlockSize;
+    watchdog_cycles = 0;
     while (!done_read)
     begin
 
@@ -212,11 +236,18 @@ module tb_dat #(
 
       @(negedge sd_clk);
       @(posedge clk);
+      #1ns;
+      watchdog_cycles++;
+      if (watchdog_cycles > (BlockSize * (UseWideBus ? 16 : 64) + 1000)) begin
+        $fatal(1, "DAT transfer timed out");
+      end
     end
 
     repeat(50) @(posedge clk);
 
-    $dumpflush;
+    if ($test$plusargs("vcd")) begin
+      $dumpflush;
+    end
     $finish();
   end
 

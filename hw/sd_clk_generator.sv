@@ -66,6 +66,8 @@ module sd_clk_generator #(
       reg2hw_i.clock_control.sdclk_frequency_select.q);
 
   logic [31:0] effective_div_full;
+  // ClkPreDiv is arbitrary, so folding it into the SDHCI divider can produce
+  // an odd effective divide. Round odd values up to keep sd_clk_o at 50% duty.
   assign effective_div_full = (requested_div_full < 32'd2) ? 32'd2 :
                               (requested_div_full[0] ? requested_div_full + 32'd1 :
                                                        requested_div_full);
