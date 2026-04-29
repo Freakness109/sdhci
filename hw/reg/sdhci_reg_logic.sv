@@ -59,32 +59,32 @@ module sdhci_reg_logic (
   `define instant_reg_value(register, field)  \
       (hw2reg_i.register.field.de ? hw2reg_i.register.field.d : reg2hw_i.register.field.q)
 
-  `define should_interrupt(register, field) ( \
-    |( reg2hw_i.register``_status.field.q & // Is 1 \
-        reg2hw_i.register``_signal_enable.field``_signal_enable.q)) // Should interrupt \
+  `define should_interrupt(status_register, signal_enable_register, status_field, enable_field) ( \
+    |( reg2hw_i.status_register.status_field.q & // Is 1 \
+        reg2hw_i.signal_enable_register.enable_field.q)) // Should interrupt \
     
   assign interrupt_signal_for_each_slot_o[7:1] = '0;
   assign interrupt_signal_for_each_slot_o[0] =
-    // `should_interrupt(normal_interrupt, card_interrupt    ) |
-    `should_interrupt(normal_interrupt, card_removal      ) |
-    `should_interrupt(normal_interrupt, card_insertion    ) |
-    `should_interrupt(normal_interrupt, buffer_read_ready ) |
-    `should_interrupt(normal_interrupt, buffer_write_ready) |
-    // `should_interrupt(normal_interrupt, dma_interrupt     ) |
-    // `should_interrupt(normal_interrupt, block_gap_event   ) |
-    `should_interrupt(normal_interrupt, transfer_complete ) |
-    `should_interrupt(normal_interrupt, command_complete  ) |
+    // `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, card_interrupt, card_interrupt_signal_enable) |
+    `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, card_removal, card_removal_signal_enable) |
+    `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, card_insertion, card_insertion_signal_enable) |
+    `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, buffer_read_ready, buffer_read_ready_signal_enable) |
+    `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, buffer_write_ready, buffer_write_ready_signal_enable) |
+    // `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, dma_interrupt, dma_interrupt_signal_enable) |
+    // `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, block_gap_event, block_gap_event_signal_enable) |
+    `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, transfer_complete, transfer_complete_signal_enable) |
+    `should_interrupt(normal_interrupt_status, normal_interrupt_signal_enable, command_complete, command_complete_signal_enable) |
 
-    `should_interrupt(error_interrupt, auto_cmd12_error     ) |
-    // `should_interrupt(error_interrupt, current_limit_error  ) |
-    `should_interrupt(error_interrupt, data_end_bit_error   ) |
-    `should_interrupt(error_interrupt, data_crc_error       ) |
-    `should_interrupt(error_interrupt, data_timeout_error   ) |
-    `should_interrupt(error_interrupt, command_index_error  ) |
-    `should_interrupt(error_interrupt, command_end_bit_error) |
-    `should_interrupt(error_interrupt, command_crc_error    ) |
-    `should_interrupt(error_interrupt, command_timeout_error) /*|
-    `should_interrupt(error_interrupt, vendor_specific_error)*/;
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, auto_cmd12_error, auto_cmd12_error_signal_enable) |
+    // `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, current_limit_error, current_limit_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, data_end_bit_error, data_end_bit_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, data_crc_error, data_crc_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, data_timeout_error, data_timeout_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, command_index_error, command_index_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, command_end_bit_error, command_end_bit_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, command_crc_error, command_crc_error_signal_enable) |
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, command_timeout_error, command_timeout_error_signal_enable) /*|
+    `should_interrupt(error_interrupt_status, error_interrupt_signal_enable, vendor_specific_error, vendor_specific_error_signal_enable)*/;
 
 
   /* logic interrupt_status_q, interrupt_status_d; */
