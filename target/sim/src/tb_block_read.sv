@@ -124,6 +124,30 @@ module tb_block_read #(
     end
   endtask
 
+  task automatic read_noncompliant_block(output logic [31:0] read_data);
+    int unsigned words_read;
+    int unsigned words_left;
+    int unsigned words_this_chunk;
+
+    words_read = 0;
+    while (words_read < BlockSize / 4) begin
+      wait_irq_bits(
+        .required_normal('h20), // noncompliant data ready
+        .allowed_normal ('h20),
+        .expected_error ('h0),
+        .timeout_cycles (BlockSize * 8 + 500),
+        .error_context  ("noncompliant cmd18 data ready")
+      );
+
+      words_left = (BlockSize / 4) - words_read;
+      words_this_chunk = (words_left < BufferNumWords) ? words_left : BufferNumWords;
+      repeat (words_this_chunk) begin
+        fixture.vip.obi.read_buffer_data(.data(read_data));
+      end
+      words_read += words_this_chunk;
+    end
+  endtask
+
   initial begin : cmd_response
     fixture.vip.wait_for_reset();
 
@@ -252,8 +276,8 @@ module tb_block_read #(
         .error_context  ("noncompliant cmd18 complete")
       );
 
-      repeat (BlockSize / 4) begin
-        fixture.vip.obi.read_buffer_data(.data(read_data));
+      repeat (BlockCount) begin
+        read_noncompliant_block(read_data);
       end
 
       wait_irq_bits(
@@ -315,8 +339,6 @@ module tb_block_read #(
       $fatal(1, "We should no longer have data!");
     end
 
-    // TODO: read interrupt registers + check transfer complete
-
     fixture.vip.obi.launch_command(
       .command_index(6'd12),
       .command_type (2'b00), // normal command
@@ -353,7 +375,7 @@ endmodule
 
 module tb_noncompliant_block_read();
   tb_block_read #(
-    .BlockCount(1),
+    .BlockCount(2),
     .BufferNumWords(8),
     .AllowNoncompliantBufferSizes(1'b1)
   ) i_noncompliant_block_read ();
