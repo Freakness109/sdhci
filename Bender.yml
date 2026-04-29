@@ -59,6 +59,7 @@ sources:
   - hw/sdhci_top.sv # sdhci_reg_obi, sdhci_reg_logic, sd_clk_generator, cmd_wrap, dat_wrap
 
   # Level 6
+  - hw/sdhci_obi_to_reg.sv # register_interface to OBI bridge
   - hw/sdhci_top_obi.sv # sdhci_top, external obi_pkg
 
   - target: any(simulation, test)
@@ -66,6 +67,7 @@ sources:
       # Level 1
       - target/sim/src/tb_dat.sv # sd_clk_generator, dat_write, dat_read
       - target/sim/src/tb_dat_buffer_sizes.sv # dat_buffer
+      - target/sim/src/tb_reg_reset.sv # sdhci_top register reset behavior
       - target/sim/src/tb_driver_crc.sv
       - target/sim/model/sd_crc_7.v
       - target/sim/model/sd_crc_16.v
