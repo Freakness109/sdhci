@@ -30,11 +30,12 @@ module sdhci_top #(
   parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
                                     // see dat_timeout for details
 
-  // Default mode is SDHCI-compliant and requires enough FIFO space for a full
-  // 512-byte block. Compact mode is an integration tradeoff for smaller FIFOs
-  // and uses Buffer Data Port wait states instead of mid-block polling.
+  // Warranty-void integration escape hatch: default mode is SDHCI-compliant
+  // and requires enough FIFO space for a full 512-byte block. Setting
+  // AllowNoncompliantBufferSizes permits smaller FIFOs and reports the usable
+  // Buffer Data Port chunk size in the vendor extension at offset 0x44.
   parameter int unsigned BufferNumWords = 256,
-  parameter bit          CompactBufferMode = 1'b0,
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0,
 
   // clock runs at 50MHz, so 1ms is 50_000 cycles
   parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
@@ -92,7 +93,9 @@ module sdhci_top #(
   sdhci_reg_top #(
     .AW        (AddrWidth),
     .reg_req_t (reg_req_t),
-    .reg_rsp_t (reg_rsp_t)
+    .reg_rsp_t (reg_rsp_t),
+    .BufferNumWords(BufferNumWords),
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes)
   ) i_regs (
     .clk_i,
     .rst_ni,
@@ -101,8 +104,8 @@ module sdhci_top #(
     .reg2hw    (reg2hw_orig),
     .hw2reg,
     .clear_i   (sd_clear),
-    .buffer_data_port_read_ready_i  (CompactBufferMode ? buffer_data_port_read_ready  : 1'b1),
-    .buffer_data_port_write_ready_i (CompactBufferMode ? buffer_data_port_write_ready : 1'b1),
+    .buffer_data_port_read_ready_i  (AllowNoncompliantBufferSizes ? buffer_data_port_read_ready  : 1'b1),
+    .buffer_data_port_write_ready_i (AllowNoncompliantBufferSizes ? buffer_data_port_write_ready : 1'b1),
     .devmode_i (1'b1)
   );
 
@@ -236,7 +239,7 @@ module sdhci_top #(
   dat_wrap #(
     .TimeoutDivider (TimeoutDivider),
     .BufferNumWords (BufferNumWords),
-    .CompactBufferMode (CompactBufferMode)
+    .AllowNoncompliantBufferSizes (AllowNoncompliantBufferSizes)
   ) i_dat_wrap (
     .clk_i,
     .sd_clk_en_p_i  (sd_clk_en_p),

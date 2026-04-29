@@ -13,7 +13,7 @@
 module dat_buffer #(
   parameter int unsigned NumWords        = 256,
   parameter int unsigned MaxBlockBitSize = 10,
-  parameter bit          CompactBufferMode = 1'b0
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -46,8 +46,8 @@ module dat_buffer #(
 
   `ASSERT_INIT(BufferSizeAtLeast32B, NumBytes >= 32, "data buffer must be at least 32 bytes")
   `ASSERT_INIT(BufferSizeStandardBlock,
-      CompactBufferMode || NumBytes >= 512,
-      "default SDHCI buffer mode requires at least one 512-byte block")
+      AllowNoncompliantBufferSizes || NumBytes >= 512,
+      "set AllowNoncompliantBufferSizes to use a non-SDHCI-compliant buffer below 512 bytes")
   `ASSERT_INIT(BufferSizeAtMost1KiB, NumBytes <= 1024, "data buffer must be at most 1024 bytes")
   `ASSERT_INIT(BufferSizePowerOfTwo, (NumWords & (NumWords - 1)) == 0, "data buffer word count must be a power of two")
 
@@ -113,7 +113,7 @@ module dat_buffer #(
 
       buffer_data_port_read_ready_o = accepts_data_port_chunk && !reg_empty && !write_valid_i;
       buffer_read_enable_o.d = accepts_data_port_chunk &&
-                               (CompactBufferMode ? !reg_empty : has_block) && !write_valid_i;
+                               (AllowNoncompliantBufferSizes ? !reg_empty : has_block) && !write_valid_i;
       buffer_data_port_d_o   = reg_pop_data;
       reg_pop                = reg2hw_i.buffer_data_port.re &&
                                buffer_data_port_read_ready_o;
@@ -124,7 +124,7 @@ module dat_buffer #(
 
       buffer_data_port_write_ready_o = accepts_data_port_chunk && !reg_full;
       buffer_write_enable_o.d = accepts_data_port_chunk &&
-                                 (CompactBufferMode ? !reg_full : has_block_space);
+                                 (AllowNoncompliantBufferSizes ? !reg_full : has_block_space);
       reg_push_data           = reg2hw_i.buffer_data_port.q;
       reg_push                = reg2hw_i.buffer_data_port.qe &&
                                 buffer_data_port_write_ready_o;
@@ -167,8 +167,8 @@ module dat_buffer #(
     if (rst_ni && !clear_i && enable_reg) begin
       assert (block_size != '0)
         else $error("DAT block size must be non-zero during data transfers");
-      assert (CompactBufferMode || effective_block_size <= NumBytes)
-        else $error("default DAT buffer mode requires a full transfer block to fit");
+      assert (AllowNoncompliantBufferSizes || effective_block_size <= NumBytes)
+        else $error("set AllowNoncompliantBufferSizes to use a DAT buffer smaller than the transfer block");
     end
   end
 `endif

@@ -5,7 +5,9 @@
 module sdhci_reg_top #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
-  parameter int AW = 8
+  parameter int AW = 8,
+  parameter int unsigned BufferNumWords = 256,
+  parameter bit AllowNoncompliantBufferSizes = 1'b0
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -27,6 +29,10 @@ module sdhci_reg_top #(
   localparam int DBW = DW / 8;
 
   localparam logic [DW-1:0] Capabilities = 32'h0100_32b2;
+  localparam logic [15:0] BufferDataPortChunkBytes =
+      AllowNoncompliantBufferSizes ? 16'(BufferNumWords * 4) : 16'd512;
+  localparam logic [DW-1:0] VendorCapabilities = {
+      AllowNoncompliantBufferSizes, 15'h0, BufferDataPortChunkBytes};
 
   sdhci_reg2hw_t reg2hw_q, reg2hw_d;
   sdhci_reg2hw_t reg2hw_o;
@@ -297,6 +303,7 @@ module sdhci_reg_top #(
       end
 
       SDHCI_CAPABILITIES_OFFSET: reg_rsp_o.rdata = Capabilities;
+      SDHCI_CAPABILITIES_RESERVED_OFFSET: reg_rsp_o.rdata = VendorCapabilities;
       SDHCI_SLOT_INTERRUPT_STATUS_OFFSET: begin
         reg_rsp_o.rdata[7:0] = hw2reg.slot_interrupt_status.interrupt_signal_for_each_slot.d;
       end
@@ -724,6 +731,8 @@ endmodule
 
 module sdhci_reg_top_intf #(
   parameter int AW = 8,
+  parameter int unsigned BufferNumWords = 256,
+  parameter bit AllowNoncompliantBufferSizes = 1'b0,
   localparam int DW = 32
 ) (
   input  logic clk_i,
@@ -758,7 +767,9 @@ module sdhci_reg_top_intf #(
   sdhci_reg_top #(
     .reg_req_t(reg_bus_req_t),
     .reg_rsp_t(reg_bus_rsp_t),
-    .AW(AW)
+    .AW(AW),
+    .BufferNumWords(BufferNumWords),
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes)
   ) i_regs (
     .clk_i,
     .rst_ni,

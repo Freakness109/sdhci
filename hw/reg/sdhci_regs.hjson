@@ -1276,11 +1276,33 @@
     // Capabilities (Reserved)
     {
       name: "capabilities_reserved"
-      desc: ""
+      desc: '''
+        Vendor extension for non-compliant buffer sizing.
+
+        Bits 15:0 report the number of bytes software may transfer through the
+        Buffer Data Port before checking buffer-ready flags. Bit 31 is set when
+        the design was built with AllowNoncompliantBufferSizes enabled.
+      '''
       fields: [
         {
-          bits: "31:0"
+          bits: "31"
+          name: "noncompliant_buffer_size"
+          desc: ""
+          swaccess: "ro"
+          hwaccess: "none"
+          resval: "0"
+        }
+        {
+          bits: "30:16"
           name: "rsvd"
+          desc: ""
+          swaccess: "ro"
+          hwaccess: "none"
+          resval: "0"
+        }
+        {
+          bits: "15:0"
+          name: "buffer_data_port_chunk_size_bytes"
           desc: ""
           swaccess: "ro"
           hwaccess: "none"

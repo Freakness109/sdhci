@@ -15,7 +15,7 @@ module sdhci_top_obi #(
   parameter int unsigned       ClkPreDiv         = 2,
   parameter int unsigned       NumDebounceCycles = 500_000,
   parameter int unsigned       BufferNumWords    = 256,
-  parameter bit                CompactBufferMode = 1'b0,
+  parameter bit                AllowNoncompliantBufferSizes = 1'b0,
   parameter int                TimeoutDivider    = 1
 ) (
   input  logic clk_i,
@@ -70,7 +70,7 @@ module sdhci_top_obi #(
     .ClkPreDiv        (ClkPreDiv),
     .NumDebounceCycles(NumDebounceCycles),
     .BufferNumWords   (BufferNumWords),
-    .CompactBufferMode(CompactBufferMode),
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes),
     .TimeoutDivider   (TimeoutDivider)
   ) i_sdhci_impl (
     .clk_i,

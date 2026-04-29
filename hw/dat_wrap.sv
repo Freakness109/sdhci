@@ -12,7 +12,7 @@
 module dat_wrap #(
   parameter int MaxBlockBitSize = 10, // max_block_length = 512 in caps
   parameter int unsigned BufferNumWords = 256,
-  parameter bit          CompactBufferMode = 1'b0,
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0,
   parameter int unsigned TimeoutDivider = 1 // by how much to divide clk_i to get the timeout count frequency,
                                             // see dat_timeout for details
 ) (
@@ -536,7 +536,7 @@ module dat_wrap #(
   dat_buffer #(
     .NumWords        (BufferNumWords),
     .MaxBlockBitSize (MaxBlockBitSize),
-    .CompactBufferMode (CompactBufferMode)
+    .AllowNoncompliantBufferSizes (AllowNoncompliantBufferSizes)
   ) i_dat_buffer (
     .clk_i,
     .rst_ni,

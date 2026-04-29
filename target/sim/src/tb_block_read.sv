@@ -13,14 +13,18 @@ module tb_block_read #(
     parameter int unsigned BlockCount    = 2,
     parameter logic        Do4Bit        = 1'b1,
     parameter int unsigned BufferNumWords = 256,
-    parameter bit          CompactBufferMode = 1'b0
+    parameter bit          AllowNoncompliantBufferSizes = 1'b0
 )();
+  localparam int unsigned ExpectedChunkBytes =
+      AllowNoncompliantBufferSizes ? BufferNumWords * 4 : 512;
+  localparam logic [31:0] ExpectedVendorCapabilities = {
+      AllowNoncompliantBufferSizes, 15'h0, 16'(ExpectedChunkBytes)};
 
   sdhci_fixture #(
     .ClkPeriod(ClkPeriod),
     .RstCycles(RstCycles),
     .BufferNumWords(BufferNumWords),
-    .CompactBufferMode(CompactBufferMode)
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes)
   ) fixture ();
 
   task automatic wfi(input int unsigned timeout_cycles, string error_context);
@@ -180,9 +184,16 @@ module tb_block_read #(
 
   initial begin : obi_driver
     logic [31:0] read_data;
+    logic [31:0] vendor_capabilities;
     logic buffer_read_enable, buffer_write_enable;
 
     fixture.vip.wait_for_reset();
+    fixture.vip.obi.obi_read('h044, 4'b1111, vendor_capabilities);
+    if (vendor_capabilities != ExpectedVendorCapabilities) begin
+      $fatal(1, "Unexpected vendor capabilities: got 0x%08x expected 0x%08x",
+             vendor_capabilities, ExpectedVendorCapabilities);
+    end
+
     fixture.vip.obi.set_interrupt_status_enable(
       .normal_interrupt_status_enable('hFFFF),
       .error_interrupt_status_enable('hFFFF),
@@ -232,13 +243,13 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    if (CompactBufferMode) begin
+    if (AllowNoncompliantBufferSizes) begin
       wait_irq_bits(
         .required_normal('h01), // cmd complete
-        .allowed_normal ('h21), // cmd complete and compact per-word data ready
+        .allowed_normal ('h21), // cmd complete and noncompliant per-word data ready
         .expected_error ('h0),  // no error
         .timeout_cycles (BlockSize * 8 + 500),
-        .error_context  ("compact cmd18 complete")
+        .error_context  ("noncompliant cmd18 complete")
       );
 
       repeat (BlockSize / 4) begin
@@ -247,10 +258,10 @@ module tb_block_read #(
 
       wait_irq_bits(
         .required_normal('h02), // transfer complete
-        .allowed_normal ('h22), // transfer complete and compact data ready
+        .allowed_normal ('h22), // transfer complete and noncompliant data ready
         .expected_error ('h0),  // no error
         .timeout_cycles (BlockSize * 8 + 500),
-        .error_context  ("compact cmd18 transfer complete")
+        .error_context  ("noncompliant cmd18 transfer complete")
       );
     end else begin
       wfi(200, "cmd18 complete");
@@ -316,7 +327,7 @@ module tb_block_read #(
       .finish_transaction(1'b1)
     );
 
-    if (CompactBufferMode) begin
+    if (AllowNoncompliantBufferSizes) begin
       wait_irq_bits(
         .required_normal('h03), // cmd complete and transfer complete
         .allowed_normal ('h03),
@@ -340,10 +351,10 @@ module tb_block_read #(
 
 endmodule
 
-module tb_compact_block_read();
+module tb_noncompliant_block_read();
   tb_block_read #(
     .BlockCount(1),
     .BufferNumWords(8),
-    .CompactBufferMode(1'b1)
-  ) i_compact_block_read ();
+    .AllowNoncompliantBufferSizes(1'b1)
+  ) i_noncompliant_block_read ();
 endmodule

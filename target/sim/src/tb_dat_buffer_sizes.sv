@@ -21,8 +21,8 @@ module tb_dat_buffer_sizes #(
 
   tb_dat_buffer_size_case #(
     .NumWords(8),
-    .CompactBufferMode(1'b1)
-  ) i_32b_compact (
+    .AllowNoncompliantBufferSizes(1'b1)
+  ) i_32b_noncompliant (
     .clk_i  (clk),
     .rst_ni (rst_n),
     .done_o (done[0])
@@ -50,7 +50,7 @@ endmodule
 module tb_dat_buffer_size_case #(
   parameter int unsigned NumWords = 8,
   parameter int unsigned BlockSize = 512,
-  parameter bit          CompactBufferMode = 1'b0
+  parameter bit          AllowNoncompliantBufferSizes = 1'b0
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -87,7 +87,7 @@ module tb_dat_buffer_size_case #(
   dat_buffer #(
     .NumWords        (NumWords),
     .MaxBlockBitSize (10),
-    .CompactBufferMode(CompactBufferMode)
+    .AllowNoncompliantBufferSizes(AllowNoncompliantBufferSizes)
   ) i_dat_buffer (
     .clk_i,
     .rst_ni,
@@ -213,7 +213,7 @@ module tb_dat_buffer_size_case #(
     write_operation = 1'b0;
   endtask
 
-  task automatic test_compact_read_side();
+  task automatic test_noncompliant_read_side();
     int unsigned produced;
     int unsigned consumed;
     int unsigned cycles;
@@ -250,7 +250,7 @@ module tb_dat_buffer_size_case #(
 
       cycles++;
       if (cycles > BlockWords * 16) begin
-        $fatal(1, "compact read-side buffer stalled for NumWords=%0d produced=%0d consumed=%0d",
+        $fatal(1, "noncompliant read-side buffer stalled for NumWords=%0d produced=%0d consumed=%0d",
                NumWords, produced, consumed);
       end
     end
@@ -260,13 +260,13 @@ module tb_dat_buffer_size_case #(
     read_operation = 1'b0;
   endtask
 
-  task automatic test_compact_write_stall_resume();
+  task automatic test_noncompliant_write_stall_resume();
     write_operation = 1'b1;
     tick();
 
     for (int unsigned i = 0; i < NumWords; i++) begin
       if (!buffer_data_port_write_ready) begin
-        $fatal(1, "compact write-side buffer became full too early for NumWords=%0d", NumWords);
+        $fatal(1, "noncompliant write-side buffer became full too early for NumWords=%0d", NumWords);
       end
       reg2hw.buffer_data_port.q = 32'h4000_0000 + i;
       reg2hw.buffer_data_port.qe = 1'b1;
@@ -276,7 +276,7 @@ module tb_dat_buffer_size_case #(
     tick();
 
     if (buffer_data_port_write_ready) begin
-      $fatal(1, "compact write-side Buffer Data Port did not stall when full for NumWords=%0d", NumWords);
+      $fatal(1, "noncompliant write-side Buffer Data Port did not stall when full for NumWords=%0d", NumWords);
     end
 
     reg2hw.buffer_data_port.q = 32'h4BAD_F00D;
@@ -295,13 +295,13 @@ module tb_dat_buffer_size_case #(
       tick();
     end
     if (!buffer_data_port_write_ready) begin
-      $fatal(1, "compact write-side Buffer Data Port did not resume for NumWords=%0d", NumWords);
+      $fatal(1, "noncompliant write-side Buffer Data Port did not resume for NumWords=%0d", NumWords);
     end
 
     write_operation = 1'b0;
   endtask
 
-  task automatic test_compact_write_side();
+  task automatic test_noncompliant_write_side();
     int unsigned produced;
     int unsigned consumed;
     int unsigned cycles;
@@ -338,7 +338,7 @@ module tb_dat_buffer_size_case #(
 
       cycles++;
       if (cycles > BlockWords * 16) begin
-        $fatal(1, "compact write-side buffer stalled for NumWords=%0d produced=%0d consumed=%0d",
+        $fatal(1, "noncompliant write-side buffer stalled for NumWords=%0d produced=%0d consumed=%0d",
                NumWords, produced, consumed);
       end
     end
@@ -354,13 +354,13 @@ module tb_dat_buffer_size_case #(
     wait(rst_ni);
     tick();
 
-    if (CompactBufferMode) begin
+    if (AllowNoncompliantBufferSizes) begin
       pulse_clear();
-      test_compact_read_side();
+      test_noncompliant_read_side();
       pulse_clear();
-      test_compact_write_stall_resume();
+      test_noncompliant_write_stall_resume();
       pulse_clear();
-      test_compact_write_side();
+      test_noncompliant_write_side();
     end else begin
       pulse_clear();
       test_default_read_side();
