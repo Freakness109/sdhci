@@ -75,7 +75,13 @@ module tb_dat_buffer_size_case #(
   logic buffer_write_enable;
   logic [15:0] block_count;
 
-  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw;
+  logic [9:0] block_size;
+  logic [15:0] programmed_block_count;
+  logic multi_block;
+  logic block_count_enable;
+  logic buffer_data_port_re;
+  logic buffer_data_port_qe;
+  logic [31:0] buffer_data_port_q;
   `writable_reg_t() buffer_read_enable_hw;
   `writable_reg_t() buffer_write_enable_hw;
   `writable_reg_t([15:0]) block_count_hw;
@@ -103,7 +109,13 @@ module tb_dat_buffer_size_case #(
     .empty_o           (empty),
     .buffer_data_port_read_ready_o(buffer_data_port_read_ready),
     .buffer_data_port_write_ready_o(buffer_data_port_write_ready),
-    .reg2hw_i          (reg2hw),
+    .block_size_i      (block_size),
+    .block_count_i     (programmed_block_count),
+    .multi_block_i     (multi_block),
+    .block_count_enable_i(block_count_enable),
+    .buffer_data_port_re_i(buffer_data_port_re),
+    .buffer_data_port_qe_i(buffer_data_port_qe),
+    .buffer_data_port_q_i(buffer_data_port_q),
     .buffer_data_port_d_o(buffer_data_port_d),
     .buffer_read_enable_o(buffer_read_enable_hw),
     .buffer_write_enable_o(buffer_write_enable_hw),
@@ -117,10 +129,13 @@ module tb_dat_buffer_size_case #(
     read_ready = 1'b0;
     write_valid = 1'b0;
     write_data = '0;
-    reg2hw = '0;
-    reg2hw.block_size.transfer_block_size.q = BlockSize;
-    reg2hw.transfer_mode.multi_single_block_select.q = 1'b1;
-    reg2hw.block_count.q = 16'd2;
+    block_size = BlockSize;
+    programmed_block_count = 16'd2;
+    multi_block = 1'b1;
+    block_count_enable = 1'b0;
+    buffer_data_port_re = 1'b0;
+    buffer_data_port_qe = 1'b0;
+    buffer_data_port_q = '0;
   endtask
 
   task automatic tick();
@@ -171,9 +186,9 @@ module tb_dat_buffer_size_case #(
     end
 
     for (int unsigned i = 0; i < BlockWords; i++) begin
-      reg2hw.buffer_data_port.re = 1'b1;
+      buffer_data_port_re = 1'b1;
       tick();
-      reg2hw.buffer_data_port.re = 1'b0;
+      buffer_data_port_re = 1'b0;
       write_valid = 1'b0;
       tick();
     end
@@ -189,10 +204,10 @@ module tb_dat_buffer_size_case #(
     end
 
     for (int unsigned i = 0; i < BlockWords; i++) begin
-      reg2hw.buffer_data_port.q = 32'h2000_0000 + i;
-      reg2hw.buffer_data_port.qe = 1'b1;
+      buffer_data_port_q = 32'h2000_0000 + i;
+      buffer_data_port_qe = 1'b1;
       tick();
-      reg2hw.buffer_data_port.qe = 1'b0;
+      buffer_data_port_qe = 1'b0;
       tick();
     end
 
@@ -229,17 +244,17 @@ module tb_dat_buffer_size_case #(
       logic accepted_read;
 
       write_valid = 1'b0;
-      reg2hw.buffer_data_port.re = 1'b0;
+      buffer_data_port_re = 1'b0;
 
       if (produced < BlockWords && write_ready) begin
         write_data = 32'h3000_0000 + produced;
         write_valid = 1'b1;
       end else if (buffer_data_port_read_ready) begin
-        reg2hw.buffer_data_port.re = 1'b1;
+        buffer_data_port_re = 1'b1;
       end
 
       accepted_write = write_valid && write_ready;
-      accepted_read = reg2hw.buffer_data_port.re && buffer_data_port_read_ready;
+      accepted_read = buffer_data_port_re && buffer_data_port_read_ready;
       tick();
       if (accepted_write) begin
         produced++;
@@ -256,7 +271,7 @@ module tb_dat_buffer_size_case #(
     end
 
     write_valid = 1'b0;
-    reg2hw.buffer_data_port.re = 1'b0;
+    buffer_data_port_re = 1'b0;
     read_operation = 1'b0;
   endtask
 
@@ -268,21 +283,21 @@ module tb_dat_buffer_size_case #(
       if (!buffer_data_port_write_ready) begin
         $fatal(1, "noncompliant write-side buffer became full too early for NumWords=%0d", NumWords);
       end
-      reg2hw.buffer_data_port.q = 32'h4000_0000 + i;
-      reg2hw.buffer_data_port.qe = 1'b1;
+      buffer_data_port_q = 32'h4000_0000 + i;
+      buffer_data_port_qe = 1'b1;
       tick();
     end
-    reg2hw.buffer_data_port.qe = 1'b0;
+    buffer_data_port_qe = 1'b0;
     tick();
 
     if (buffer_data_port_write_ready) begin
       $fatal(1, "noncompliant write-side Buffer Data Port did not stall when full for NumWords=%0d", NumWords);
     end
 
-    reg2hw.buffer_data_port.q = 32'h4BAD_F00D;
-    reg2hw.buffer_data_port.qe = 1'b1;
+    buffer_data_port_q = 32'h4BAD_F00D;
+    buffer_data_port_qe = 1'b1;
     tick();
-    reg2hw.buffer_data_port.qe = 1'b0;
+    buffer_data_port_qe = 1'b0;
 
     read_ready = 1'b1;
     tick();
@@ -316,17 +331,17 @@ module tb_dat_buffer_size_case #(
       logic accepted_write;
       logic accepted_read;
 
-      reg2hw.buffer_data_port.qe = 1'b0;
+      buffer_data_port_qe = 1'b0;
       read_ready = 1'b0;
 
       if (produced < BlockWords && buffer_data_port_write_ready) begin
-        reg2hw.buffer_data_port.q = 32'h5000_0000 + produced;
-        reg2hw.buffer_data_port.qe = 1'b1;
+        buffer_data_port_q = 32'h5000_0000 + produced;
+        buffer_data_port_qe = 1'b1;
       end else if (read_valid) begin
         read_ready = 1'b1;
       end
 
-      accepted_write = reg2hw.buffer_data_port.qe && buffer_data_port_write_ready;
+      accepted_write = buffer_data_port_qe && buffer_data_port_write_ready;
       accepted_read = read_ready && read_valid;
       tick();
       if (accepted_write) begin
@@ -343,7 +358,7 @@ module tb_dat_buffer_size_case #(
       end
     end
 
-    reg2hw.buffer_data_port.qe = 1'b0;
+    buffer_data_port_qe = 1'b0;
     read_ready = 1'b0;
     write_operation = 1'b0;
   endtask

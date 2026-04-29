@@ -34,7 +34,13 @@ module dat_buffer #(
   output logic        buffer_data_port_read_ready_o,
   output logic        buffer_data_port_write_ready_o,
 
-  input  sdhci_reg_pkg::sdhci_reg2hw_t reg2hw_i,
+  input  logic [MaxBlockBitSize-1:0] block_size_i,
+  input  logic [15:0]                block_count_i,
+  input  logic                       multi_block_i,
+  input  logic                       block_count_enable_i,
+  input  logic                       buffer_data_port_re_i,
+  input  logic                       buffer_data_port_qe_i,
+  input  logic [31:0]                buffer_data_port_q_i,
 
   output logic [31:0]      buffer_data_port_d_o,
   output `writable_reg_t() buffer_read_enable_o,
@@ -51,11 +57,8 @@ module dat_buffer #(
   `ASSERT_INIT(BufferSizeAtMost1KiB, NumBytes <= 1024, "data buffer must be at most 1024 bytes")
   `ASSERT_INIT(BufferSizePowerOfTwo, (NumWords & (NumWords - 1)) == 0, "data buffer word count must be a power of two")
 
-  logic [MaxBlockBitSize-1:0] block_size;
-  assign block_size = MaxBlockBitSize'(reg2hw_i.block_size.transfer_block_size.q);
-
   logic [MaxBlockBitSize-1:0] effective_block_size;
-  assign effective_block_size = (block_size == '0) ? MaxBlockBitSize'(1) : block_size;
+  assign effective_block_size = (block_size_i == '0) ? MaxBlockBitSize'(1) : block_size_i;
 
   logic [MaxBlockBitSize-1:0] words_per_block;
   assign words_per_block = (effective_block_size + MaxBlockBitSize'(3)) >> 2;
@@ -79,9 +82,8 @@ module dat_buffer #(
 
   logic accepts_data_port_chunk;
   assign accepts_data_port_chunk =
-      (!reg2hw_i.transfer_mode.multi_single_block_select.q && !single_block_done_q) ||
-      (reg2hw_i.transfer_mode.multi_single_block_select.q &&
-       (!reg2hw_i.transfer_mode.block_count_enable.q || reg2hw_i.block_count.q != '0));
+      (!multi_block_i && !single_block_done_q) ||
+      (multi_block_i && (!block_count_enable_i || block_count_i != '0));
 
   logic enable_reg;
   assign enable_reg = read_operation_i || write_operation_i;
@@ -115,8 +117,7 @@ module dat_buffer #(
       buffer_read_enable_o.d = accepts_data_port_chunk &&
                                (AllowNoncompliantBufferSizes ? !reg_empty : has_block) && !write_valid_i;
       buffer_data_port_d_o   = reg_pop_data;
-      reg_pop                = reg2hw_i.buffer_data_port.re &&
-                               buffer_data_port_read_ready_o;
+      reg_pop                = buffer_data_port_re_i && buffer_data_port_read_ready_o;
     end else if (write_operation_i) begin
       reg_pop      = read_ready_i && !reg_empty;
       read_data_o  = reg_pop_data;
@@ -125,9 +126,8 @@ module dat_buffer #(
       buffer_data_port_write_ready_o = accepts_data_port_chunk && !reg_full;
       buffer_write_enable_o.d = accepts_data_port_chunk &&
                                  (AllowNoncompliantBufferSizes ? !reg_full : has_block_space);
-      reg_push_data           = reg2hw_i.buffer_data_port.q;
-      reg_push                = reg2hw_i.buffer_data_port.qe &&
-                                buffer_data_port_write_ready_o;
+      reg_push_data           = buffer_data_port_q_i;
+      reg_push                = buffer_data_port_qe_i && buffer_data_port_write_ready_o;
     end
 
 
@@ -142,15 +142,14 @@ module dat_buffer #(
       if (current_word_counter_q == words_per_block - 1) begin
         current_word_counter_d = '0;
 
-        if (!reg2hw_i.transfer_mode.multi_single_block_select.q) begin
+        if (!multi_block_i) begin
           single_block_done_d = 1'b1;
         end
 
-        if (reg2hw_i.transfer_mode.multi_single_block_select.q &&
-            reg2hw_i.transfer_mode.block_count_enable.q) begin
+        if (multi_block_i && block_count_enable_i) begin
           // TODO this will have to be changed when adding support for suspend / resume
-          block_count_o = '{ de: '1, d: reg2hw_i.block_count.q - 1 };
-          if (reg2hw_i.block_count.q != 'b1) begin
+          block_count_o = '{ de: '1, d: block_count_i - 1 };
+          if (block_count_i != 'b1) begin
             // To trigger an interrupt
             buffer_write_enable_o.d = '0;
             buffer_read_enable_o.d  = '0;
@@ -165,7 +164,7 @@ module dat_buffer #(
 `ifndef SYNTHESIS
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (rst_ni && !clear_i && enable_reg) begin
-      assert (block_size != '0)
+      assert (block_size_i != '0)
         else $error("DAT block size must be non-zero during data transfers");
       assert (AllowNoncompliantBufferSizes || effective_block_size <= NumBytes)
         else $error("set AllowNoncompliantBufferSizes to use a DAT buffer smaller than the transfer block");
